@@ -236,30 +236,24 @@ export function AdminContent() {
                 </TableHeader>
                   <TableBody>
                     {ministries.map((ministry) => (
-                      <TableRow key={ministry.id} className="border-b border-slate-100 hover:bg-slate-50/50">
-                        <TableCell className="font-medium text-slate-900 py-4">{ministry.name}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-slate-600">{ministry.description || "-"}</TableCell>
-                        <TableCell className="hidden md:table-cell text-slate-600">{ministry.leader || "-"}</TableCell>
+                      <TableRow key={ministry.id}>
+                        <TableCell className="font-medium">{ministry.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{ministry.description || "-"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{ministry.leader || "-"}</TableCell>
                         <TableCell>
                           <Badge
                             variant={ministry.active ? "default" : "secondary"}
-                            className={cn(
-                              "cursor-pointer transition-colors",
-                              ministry.active
-                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            )}
+                            className="cursor-pointer"
                             onClick={() => handleToggleMinistryStatus(ministry)}
                           >
                             {ministry.active ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600"
                               onClick={() => {
                                 setEditingMinistry(ministry)
                                 setIsMinistryDialogOpen(true)
@@ -270,7 +264,6 @@ export function AdminContent() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
                               onClick={() => setDeleteDialog({
                                 open: true,
                                 type: 'ministry',
@@ -290,25 +283,22 @@ export function AdminContent() {
         </TabsContent>
 
         <TabsContent value="regions" className="mt-6 w-full">
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+          <Card>
+            <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle className="text-xl font-semibold text-slate-900">Regions</CardTitle>
-                  <CardDescription className="text-slate-600 mt-1">
+                  <CardTitle>Regions</CardTitle>
+                  <CardDescription>
                     Manage geographical regions and areas
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={() => setIsRegionDialogOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                >
+                <Button onClick={() => setIsRegionDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Region
                 </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
               <div className="w-full rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -368,22 +358,20 @@ export function AdminContent() {
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6 w-full">
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50">
+          <Card>
+            <CardHeader>
               <div>
-                <CardTitle className="text-xl font-semibold text-slate-900">System Settings</CardTitle>
-                <CardDescription className="text-slate-600 mt-1">
+                <CardTitle>System Settings</CardTitle>
+                <CardDescription>
                   Configure system-wide settings and preferences
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent>
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-6">
-                  <Settings className="h-8 w-8 text-slate-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">Settings Panel</h3>
-                <p className="text-slate-600 max-w-md leading-relaxed">
+                <Settings className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Settings Panel</h3>
+                <p className="text-gray-600 max-w-md">
                   The settings configuration panel is coming soon. Here you'll be able to manage system-wide preferences,
                   notification settings, and more.
                 </p>
