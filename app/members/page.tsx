@@ -19,7 +19,7 @@ export default async function Members() {
   }
 
   return (
-    <LayoutWrapper centered={true}> {/* add centered prop */}
+    <LayoutWrapper>
       <MembersContent initialMembers={members || []} />
     </LayoutWrapper>
   )

@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Calendar, Heart, Home, MessageSquare, PieChart, Users } from "lucide-react"
+import { Calendar, Heart, Home, MessageSquare, PieChart, Settings, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   SidebarGroup,
@@ -41,6 +41,7 @@ const navigationItems = [
   { href: "/giving", label: "Giving", icon: Heart, public: false },
   { href: "/communication", label: "Communication", icon: MessageSquare, public: false },
   { href: "/reports", label: "Reports", icon: PieChart, public: false },
+  { href: "/admin", label: "Admin", icon: Settings, public: false },
 ]
 
 export function MainNav() {
@@ -57,14 +58,28 @@ export function MainNav() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-xs font-medium text-slate-500 uppercase tracking-wider px-3 mb-2">
+        Navigation
+      </SidebarGroupLabel>
       <SidebarGroupContent>
-        <SidebarMenu>
+        <SidebarMenu className="space-y-1">
           {filteredNavItems.map((item) => (
             <SidebarMenuItem key={item.label}>
-              <SidebarMenuButton asChild isActive={pathname === item.href}>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === item.href}
+                className={cn(
+                  "w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  pathname === item.href
+                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
+                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                )}
+              >
                 <Link href={item.href}>
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className={cn(
+                    "h-4 w-4 transition-colors",
+                    pathname === item.href ? "text-blue-600" : "text-slate-500"
+                  )} />
                   <span>{item.label}</span>
                 </Link>
               </SidebarMenuButton>
