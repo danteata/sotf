@@ -63,13 +63,17 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   }, [statusFilter, ministryFilter, searchQuery, members])
 
   const refreshMembers = async () => {
+    console.log("Refreshing members...")
     const { data, error, count } = await supabase
       .from("members")
-      .select("id, name, email, phone, status, joined_date, ministries, last_attendance, avatar, initials, region", { count: 'exact' })
+      .select("id, name, first_name, last_name, email, phone, status, joined_date, ministries, last_attendance, avatar, initials, region, address, city, created_at, updated_at", { count: 'exact' })
 
     if (!error && data) {
+      console.log("Fetched members:", data.length)
       setMembers(data)
       // Filters will be automatically applied due to the useEffect
+    } else if (error) {
+      console.error("Error refreshing members:", error)
     }
   }
 

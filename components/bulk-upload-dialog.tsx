@@ -23,11 +23,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
 
 interface BulkUploadDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
 type UploadStatus = "idle" | "uploading" | "validating" | "preview" | "success" | "error"
@@ -35,16 +35,20 @@ type UploadStatus = "idle" | "uploading" | "validating" | "preview" | "success" 
 interface PreviewData {
   firstName: string
   lastName: string
+  email: string
   region: string
+  location: string
   phone: string
   status: string
   joinDate: string
+  birthMonth?: number
+  birthDay?: number
   ministries: string[]
   isValid: boolean
   errors?: string[]
 }
 
-export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDialogProps & { onSuccess?: () => void }) {
+export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDialogProps) {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
   const [progress, setProgress] = useState(0)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -54,33 +58,124 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   const validateRecord = (record: any): PreviewData => {
     const errors: string[] = []
 
-    // Validate email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(record.email)) {
-      errors.push("Invalid email format")
+    // Validate email (optional but if present must be valid)
+    if (record.email && record.email.toString().trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(record.email.toString().trim())) {
+        errors.push("Invalid email format")
+      }
     }
 
-    // Validate phone (simple validation, adjust as needed)
-    // const phoneRegex = /^\(\d{3}\) \d{3}-\d{4}$/
-    const phoneRegex = /^\d{10}$/
-    if (!phoneRegex.test(record.phone)) {
-      errors.push("Invalid phone number format")
-    }
+    // Validate phone (optional, just check if it contains numbers)
+    // Skip validation errors for phone since it's optional
+    // The phone field will be cleaned and stored if it has any numbers
 
-    // Validate status
+    // Validate status (default to "active" if not provided)
     const validStatuses = ["active", "inactive", "visitor"]
-    if (!validStatuses.includes(record.status?.toLowerCase())) {
-      errors.push("Invalid status")
+    let status = "active" // Default value
+    if (record.status && record.status.toString().trim()) {
+      const providedStatus = record.status.toString().toLowerCase().trim()
+      if (validStatuses.includes(providedStatus)) {
+        status = providedStatus
+      } else {
+        errors.push("Status must be one of: active, inactive, visitor")
+      }
+    }
+
+    // Validate birth month (optional) - handle "Month of birth" column with month names
+    // Skip invalid values instead of throwing errors since this is optional
+    let birthMonth: number | undefined
+    const monthValue = record["Month of birth"] || record.birthMonth || record.birth_month
+    if (monthValue && monthValue.toString().trim()) {
+      const monthStr = monthValue.toString().trim()
+
+      // Map month names to numbers
+      const monthMap: { [key: string]: number } = {
+        'january': 1, 'jan': 1,
+        'february': 2, 'feb': 2,
+        'march': 3, 'mar': 3,
+        'april': 4, 'apr': 4,
+        'may': 5,
+        'june': 6, 'jun': 6,
+        'july': 7, 'jul': 7,
+        'august': 8, 'aug': 8,
+        'september': 9, 'sep': 9, 'sept': 9,
+        'october': 10, 'oct': 10,
+        'november': 11, 'nov': 11,
+        'december': 12, 'dec': 12
+      }
+
+      // Try to parse as number first, then as month name
+      const numericMonth = parseInt(monthStr)
+      if (!isNaN(numericMonth) && numericMonth >= 1 && numericMonth <= 12) {
+        birthMonth = numericMonth
+      } else {
+        const monthName = monthStr.toLowerCase()
+        if (monthMap[monthName]) {
+          birthMonth = monthMap[monthName]
+        }
+        // Skip invalid month values silently since it's optional
+      }
+    }
+
+    // Validate birth day (optional) - handle "Day of the month" column
+    // Skip invalid values instead of throwing errors since this is optional
+    let birthDay: number | undefined
+    const dayValue = record["Day of the month"] || record.birthDay || record.birth_day
+    if (dayValue && dayValue.toString().trim()) {
+      const day = parseInt(dayValue.toString())
+      if (!isNaN(day) && day >= 1 && day <= 31) {
+        birthDay = day
+      }
+      // Skip invalid day values silently since it's optional
+    }
+
+    // Handle ministries field
+    let ministries: string[] = []
+    try {
+      if (Array.isArray(record.ministries)) {
+        ministries = record.ministries
+      } else if (record.ministries && typeof record.ministries === 'string') {
+        ministries = record.ministries.split(",").map((m: string) => m.trim())
+      }
+    } catch (err) {
+      console.warn("Error parsing ministries:", err)
+    }
+
+    // Normalize field names - handle both camelCase and snake_case
+    const firstName = (record.firstName || record.first_name || "").toString().trim()
+    const lastName = (record.lastName || record.last_name || "").toString().trim()
+    const joinDate = record.joinDate || record.joined_date || format(new Date(), "yyyy-MM-dd")
+
+    // Validate required fields
+    if (!firstName) {
+      errors.push("First name is required")
+    }
+    if (!lastName) {
+      errors.push("Last name is required")
+    }
+
+    // Clean phone number - extract only digits
+    let cleanPhone = ""
+    if (record.phone && record.phone.toString().trim()) {
+      const phoneDigits = record.phone.toString().replace(/\D/g, '')
+      if (phoneDigits.length > 0) {
+        cleanPhone = phoneDigits
+      }
     }
 
     return {
-      firstName: record.firstName || "",
-      lastName: record.lastName || "",
-      phone: record.phone || "",
+      firstName,
+      lastName,
+      email: record.email || "",
+      phone: cleanPhone,
       region: record.region || "",
-      status: record.status || "",
-      joinDate: record.joinDate || format(new Date(), "yyyy-MM-dd"),
-      ministries: Array.isArray(record.ministries) ? record.ministries : record.ministries?.split(",").map((m: string) => m.trim()) || [],
+      location: record.location || record.Location || "",
+      status,
+      joinDate,
+      birthMonth,
+      birthDay,
+      ministries,
       isValid: errors.length === 0,
       errors: errors.length > 0 ? errors : undefined
     }
@@ -88,22 +183,49 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
   const processFile = async (file: File) => {
     try {
+      setErrorMessage(null)
       setUploadStatus("uploading")
+
+      // Check file type
+      if (!file.name.match(/\.(csv|xlsx|xls)$/i)) {
+        throw new Error("Please upload a CSV or Excel file (.csv, .xlsx, .xls)")
+      }
+
       const data = await file.arrayBuffer()
       const workbook = XLSX.read(data)
+
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        throw new Error("No sheets found in the file")
+      }
+
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet)
+
+      if (!jsonData || jsonData.length === 0) {
+        throw new Error("No data found in the file. Please check that your file contains data rows.")
+      }
 
       setProgress(50)
       setUploadStatus("validating")
 
-      const validatedData = jsonData.map(record => validateRecord(record))
+      console.log("Processing", jsonData.length, "records")
+      console.log("Sample record:", jsonData[0])
+
+      const validatedData = jsonData.map((record, index) => {
+        try {
+          return validateRecord(record)
+        } catch (validationError: any) {
+          console.error(`Error validating record ${index + 1}:`, validationError)
+          throw new Error(`Error in row ${index + 2}: ${validationError?.message || 'Validation error'}`)
+        }
+      })
+
       setPreviewData(validatedData)
       setProgress(100)
       setUploadStatus("preview")
-    } catch (error) {
+    } catch (error: any) {
       console.error("File processing error:", error)
-      setErrorMessage("Failed to process file. Please check the format and try again.")
+      setErrorMessage(error.message || "Failed to process file. Please check the format and try again.")
       setUploadStatus("error")
     }
   }
@@ -130,37 +252,101 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   }
 
   const handleConfirmUpload = async () => {
-    if (previewData.some(record => !record.isValid)) {
-      setErrorMessage("Cannot proceed with upload. Please fix the errors in your data file and try again.")
+    // Filter out invalid records and only upload valid ones
+    const validRecords = previewData.filter(record => record.isValid)
+    const invalidCount = previewData.length - validRecords.length
+
+    if (validRecords.length === 0) {
+      setErrorMessage("No valid records found. Please fix the errors in your data file and try again.")
       return
     }
 
     setUploadStatus("uploading")
     try {
-      const membersToInsert = previewData.map(record => ({
-        id: uuidv4(),
-        name: `${record.firstName} ${record.lastName}`,
-        phone: record.phone,
-        region: record.region,
-        status: record.status.toLowerCase(),
-        joined_date: record.joinDate,
-        ministries: record.ministries,
-        initials: `${record.firstName[0]}${record.lastName[0]}`.toUpperCase(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }))
+      const membersToInsert = validRecords.map((record, index) => {
+        // Ensure required fields are present
+        if (!record.firstName || !record.lastName) {
+          throw new Error(`Row ${index + 1}: First name and last name are required`)
+        }
 
-      const { error } = await supabase
+        // Generate email if not provided
+        const email = record.email && record.email.trim()
+          ? record.email.trim()
+          : `${record.firstName.toLowerCase().replace(/[^a-z0-9]/g, '')}.${record.lastName.toLowerCase().replace(/[^a-z0-9]/g, '')}@placeholder.com`
+
+        // Clean and validate the data
+        const firstName = record.firstName.toString().trim()
+        const lastName = record.lastName.toString().trim()
+
+        if (firstName.length === 0 || lastName.length === 0) {
+          throw new Error(`Row ${index + 1}: Names cannot be empty after trimming`)
+        }
+
+        // Ensure initials are valid
+        const firstInitial = firstName.charAt(0).toUpperCase()
+        const lastInitial = lastName.charAt(0).toUpperCase()
+
+        if (!firstInitial.match(/[A-Z]/) || !lastInitial.match(/[A-Z]/)) {
+          throw new Error(`Row ${index + 1}: Names must start with letters`)
+        }
+
+        const memberData = {
+          id: uuidv4(),
+          name: `${firstName} ${lastName}`,
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          phone: record.phone || "0000000000", // Provide default phone if empty
+          region: record.region || null,
+          address: record.location || null, // Map location to address field
+          status: record.status.toLowerCase(),
+          joined_date: record.joinDate,
+          birth_month: record.birthMonth || null,
+          birth_day: record.birthDay || null,
+          ministries: record.ministries.length > 0 ? record.ministries : null,
+          initials: `${firstInitial}${lastInitial}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+
+        // Log the member data for debugging
+        console.log(`Processing row ${index + 1}:`, memberData)
+
+        return memberData
+      })
+
+      console.log("Inserting members:", membersToInsert.length, "records")
+      console.log("Sample record:", JSON.stringify(membersToInsert[0], null, 2))
+
+      const { error, data } = await supabase
         .from("members")
         .insert(membersToInsert)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error("Supabase error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        throw new Error(`Database error: ${error.message}${error.details ? ` - ${error.details}` : ''}${error.hint ? ` (${error.hint})` : ''}`)
+      }
+
+      console.log("Successfully inserted:", data?.length, "records")
+
+      // Show success message with upload summary
+      if (invalidCount > 0) {
+        setErrorMessage(`Upload completed! ${validRecords.length} members uploaded successfully. ${invalidCount} invalid rows were skipped.`)
+      } else {
+        setErrorMessage(`Upload completed! All ${validRecords.length} members uploaded successfully.`)
+      }
 
       setUploadStatus("success")
       onSuccess?.()
     } catch (error: any) {
       console.error("Upload error:", error)
-      setErrorMessage(error.message)
+      setErrorMessage(error.message || "Failed to upload members. Please try again.")
       setUploadStatus("error")
     }
   }
@@ -168,13 +354,17 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   const handleDownloadTemplate = () => {
     const template = [
       {
-        firstName: "",
-        lastName: "",
-        region: "",
-        phone: "",
-        status: "",
-        joinDate: "",
-        ministries: ""
+        firstName: "John",
+        lastName: "Doe",
+        email: "", // Optional - will generate placeholder if empty
+        phone: "1234567890",
+        region: "Northern",
+        Location: "123 Main St",
+        status: "", // Optional - defaults to "active" if empty
+        joinDate: "2024-01-15",
+        "Month of birth": "March", // Month name or number (1-12)
+        "Day of the month": "15", // Correct column name
+        ministries: "Youth Ministry, Music Ministry"
       }
     ]
 
@@ -265,8 +455,14 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Template Format</AlertTitle>
                   <AlertDescription>
-                    The template includes the following columns: First Name, Last Name, Phone, Region, Status, Join Date,
-                    and Ministries. For multiple ministries, separate them with a semicolon (;).
+                    <div className="space-y-2">
+                      <p><strong>Required columns:</strong> firstName, lastName</p>
+                      <p><strong>Optional columns:</strong> email, phone, region, Location, joinDate, status, ministries</p>
+                      <p><strong>Birth columns:</strong> "Month of birth" (month names like "January" or numbers 1-12), "Day of the month" (1-31)</p>
+                      <p><strong>Status values:</strong> active (default), inactive, visitor</p>
+                      <p><strong>Ministries:</strong> Separate multiple ministries with commas</p>
+                      <p><strong>Note:</strong> Invalid values in optional fields will be skipped. Missing emails will get placeholder addresses.</p>
+                    </div>
                   </AlertDescription>
                 </Alert>
               </TabsContent>
@@ -318,6 +514,16 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                 </div>
               </div>
 
+              {invalidRecordsCount > 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Invalid Records Found</AlertTitle>
+                  <AlertDescription>
+                    {invalidRecordsCount} invalid rows will be skipped during upload. Only valid records will be imported.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {errorMessage && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -334,8 +540,11 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                       <TableHead>Name</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Region</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Join Date</TableHead>
+                      <TableHead>Birth Month</TableHead>
+                      <TableHead>Birth Day</TableHead>
                       <TableHead>Ministries</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -361,9 +570,13 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                         </TableCell>
                         <TableCell>{record.phone}</TableCell>
                         <TableCell>{record.region}</TableCell>
+                        <TableCell>{record.location}</TableCell>
                         <TableCell>
                           <Badge variant={record.status === "active" ? "default" : "secondary"}>{record.status}</Badge>
                         </TableCell>
+                        <TableCell>{record.joinDate}</TableCell>
+                        <TableCell>{record.birthMonth || "-"}</TableCell>
+                        <TableCell>{record.birthDay || "-"}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {record.ministries.length > 0 ? (
@@ -377,7 +590,6 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>{record.joinDate}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -430,8 +642,8 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                 <Button variant="outline" onClick={handleReset}>
                   Cancel
                 </Button>
-                <Button onClick={handleConfirmUpload} disabled={invalidRecordsCount > 0}>
-                  Confirm Upload
+                <Button onClick={handleConfirmUpload} disabled={validRecordsCount === 0}>
+                  Confirm Upload ({validRecordsCount} valid records)
                 </Button>
               </>
             )}

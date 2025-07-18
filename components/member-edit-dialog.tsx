@@ -2,11 +2,10 @@
 
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { format } from "date-fns"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -37,7 +36,6 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Member } from "@/types/database"
-import { cn } from "@/lib/utils"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -46,8 +44,10 @@ const memberSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number is required"),
+  phone: z.string().min(1, "Phone number is required"),
   dob: z.string().optional(),
+  birth_month: z.number().min(1).max(12).optional(),
+  birth_day: z.number().min(1).max(31).optional(),
   gender: z.string().optional(),
   status: z.string().min(1, "Status is required"),
   joined_date: z.string().optional(),
@@ -96,6 +96,8 @@ export function MemberEditDialog({
       email: member.email,
       phone: member.phone,
       dob: member.dob || "",
+      birth_month: member.birth_month || undefined,
+      birth_day: member.birth_day || undefined,
       gender: member.gender || "",
       status: member.status,
       joined_date: member.joined_date,
@@ -126,6 +128,8 @@ export function MemberEditDialog({
           email: data.email,
           phone: data.phone,
           dob: data.dob,
+          birth_month: data.birth_month,
+          birth_day: data.birth_day,
           gender: data.gender,
           status: data.status,
           joined_date: data.joined_date,
@@ -272,29 +276,90 @@ export function MemberEditDialog({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="region"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Region</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select region" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Northern">Northern</SelectItem>
-                          <SelectItem value="Southern">Southern</SelectItem>
-                          <SelectItem value="Eastern">Eastern</SelectItem>
-                          <SelectItem value="Western">Western</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="birth_month"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Birth Month (for notifications)</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select month" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="1">January</SelectItem>
+                            <SelectItem value="2">February</SelectItem>
+                            <SelectItem value="3">March</SelectItem>
+                            <SelectItem value="4">April</SelectItem>
+                            <SelectItem value="5">May</SelectItem>
+                            <SelectItem value="6">June</SelectItem>
+                            <SelectItem value="7">July</SelectItem>
+                            <SelectItem value="8">August</SelectItem>
+                            <SelectItem value="9">September</SelectItem>
+                            <SelectItem value="10">October</SelectItem>
+                            <SelectItem value="11">November</SelectItem>
+                            <SelectItem value="12">December</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="birth_day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Birth Day (for notifications)</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select day" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                              <SelectItem key={day} value={day.toString()}>
+                                {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="region"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Region</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select region" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Northern">Northern</SelectItem>
+                            <SelectItem value="Southern">Southern</SelectItem>
+                            <SelectItem value="Eastern">Eastern</SelectItem>
+                            <SelectItem value="Western">Western</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="contact" className="space-y-4">

@@ -30,8 +30,10 @@ const memberSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number is required"),
+  phone: z.string().min(1, "Phone number is required"),
   dob: z.string().optional(),
+  birth_month: z.number().min(1).max(12).optional(),
+  birth_day: z.number().min(1).max(31).optional(),
   gender: z.string().optional(),
   status: z.string().min(1, "Status is required"),
   joined_date: z.string().optional(),
@@ -81,6 +83,8 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     register("gender")
     register("status")
     register("region")
+    register("birth_month")
+    register("birth_day")
   }, [register])
 
   useEffect(() => {
@@ -210,6 +214,46 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="birth_month">Birth Month (for notifications)</Label>
+                  <Select onValueChange={(value) => setValue("birth_month", parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">January</SelectItem>
+                      <SelectItem value="2">February</SelectItem>
+                      <SelectItem value="3">March</SelectItem>
+                      <SelectItem value="4">April</SelectItem>
+                      <SelectItem value="5">May</SelectItem>
+                      <SelectItem value="6">June</SelectItem>
+                      <SelectItem value="7">July</SelectItem>
+                      <SelectItem value="8">August</SelectItem>
+                      <SelectItem value="9">September</SelectItem>
+                      <SelectItem value="10">October</SelectItem>
+                      <SelectItem value="11">November</SelectItem>
+                      <SelectItem value="12">December</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="birth_day">Birth Day (for notifications)</Label>
+                  <Select onValueChange={(value) => setValue("birth_day", parseInt(value))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

@@ -6,7 +6,7 @@ export default async function Members() {
   const { data: members, error } = await supabase
     .from("members")
     .select(
-      "id, name, email, phone, status, joined_date, ministries, last_attendance, avatar, initials, region"
+      "id, name, first_name, last_name, email, phone, status, joined_date, ministries, last_attendance, avatar, initials, region, address, city, created_at, updated_at"
     )
 
   if (error) {
