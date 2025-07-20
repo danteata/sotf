@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { MinistryDialog } from "@/components/ministry-dialog"
 import { RegionDialog } from "@/components/region-dialog"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 
 // Interfaces are now imported from types/database.ts
@@ -33,6 +34,9 @@ export function AdminContent() {
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
   const [editingMinistry, setEditingMinistry] = useState<Ministry | null>(null)
   const [editingRegion, setEditingRegion] = useState<Region | null>(null)
+  const { terminology } = useTerminology()
+  const ministryLabels = getMinistryLabels(terminology)
+  const regionLabels = getRegionLabels(terminology)
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
     type: 'ministry' | 'region'
@@ -171,10 +175,10 @@ export function AdminContent() {
       <Tabs defaultValue="ministries" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-md bg-gray-100 p-1 rounded-lg">
           <TabsTrigger value="ministries">
-            Ministries
+            {ministryLabels.plural}
           </TabsTrigger>
           <TabsTrigger value="regions">
-            Regions
+            {regionLabels.plural}
           </TabsTrigger>
           <TabsTrigger value="settings">
             Settings
@@ -186,14 +190,14 @@ export function AdminContent() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Ministries</CardTitle>
+                  <CardTitle>{ministryLabels.plural}</CardTitle>
                   <CardDescription>
-                    Manage church ministries and departments
+                    Manage church {ministryLabels.plural.toLowerCase()} and departments
                   </CardDescription>
                 </div>
                 <Button onClick={() => setIsMinistryDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Ministry
+                  Add {ministryLabels.single}
                 </Button>
               </div>
             </CardHeader>
@@ -203,7 +207,7 @@ export function AdminContent() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead className="hidden sm:table-cell">Description</TableHead>
-                    <TableHead className="hidden md:table-cell">Leader</TableHead>
+                    <TableHead className="hidden md:table-cell">{ministryLabels.leader}</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[120px]">Actions</TableHead>
                   </TableRow>
@@ -261,14 +265,14 @@ export function AdminContent() {
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Regions</CardTitle>
+                  <CardTitle>{regionLabels.plural}</CardTitle>
                   <CardDescription>
-                    Manage geographical regions and areas
+                    Manage geographical {regionLabels.plural.toLowerCase()} and areas
                   </CardDescription>
                 </div>
                 <Button onClick={() => setIsRegionDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Add Region
+                  Add {regionLabels.single}
                 </Button>
               </div>
             </CardHeader>
@@ -279,7 +283,7 @@ export function AdminContent() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-medium">Name</TableHead>
                       <TableHead className="font-medium hidden sm:table-cell">Description</TableHead>
-                      <TableHead className="font-medium hidden md:table-cell">Regional Minister</TableHead>
+                      <TableHead className="font-medium hidden md:table-cell">{regionLabels.leader}</TableHead>
                       <TableHead className="font-medium">Status</TableHead>
                       <TableHead className="font-medium w-[100px]">Actions</TableHead>
                     </TableRow>
