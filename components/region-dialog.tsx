@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { supabase } from "@/lib/supabase"
+import { getMembersLegacyFormat, getAppConfig } from "@/lib/database-utils"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -26,10 +27,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { MemberCombobox } from "@/components/ui/member-combobox"
 
 const regionSchema = z.object({
   name: z.string().min(1, "Region name is required"),
   description: z.string().optional(),
+  regional_minister_id: z.string().optional(),
   active: z.boolean().default(true),
 })
 
@@ -39,6 +42,7 @@ interface Region {
   id: string
   name: string
   description?: string
+  regional_minister_id?: string
   active: boolean
   created_at: string
 }
@@ -52,12 +56,16 @@ interface RegionDialogProps {
 
 export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [members, setMembers] = useState<any[]>([])
+  const [regionTerm, setRegionTerm] = useState('Region')
+  const [regionalLeaderTerm, setRegionalLeaderTerm] = useState('Regional Minister')
 
   const form = useForm<RegionFormData>({
     resolver: zodResolver(regionSchema),
     defaultValues: {
       name: "",
       description: "",
+      regional_minister_id: "none",
       active: true,
     },
   })
@@ -69,17 +77,42 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
         form.reset({
           name: region.name,
           description: region.description || "",
+          regional_minister_id: region.regional_minister_id || "none",
           active: region.active,
         })
       } else {
         form.reset({
           name: "",
           description: "",
+          regional_minister_id: "none",
           active: true,
         })
       }
     }
   }, [open, region, form])
+
+  // Load members and terminology when dialog opens
+  useEffect(() => {
+    const loadData = async () => {
+      if (!open) return
+
+      try {
+        const [membersData, regionTermData, regionalLeaderTermData] = await Promise.all([
+          getMembersLegacyFormat(),
+          getAppConfig('region_term'),
+          getAppConfig('regional_leader_term')
+        ])
+
+        setMembers(membersData)
+        setRegionTerm(regionTermData || 'Region')
+        setRegionalLeaderTerm(regionalLeaderTermData || 'Regional Minister')
+      } catch (error) {
+        console.error('Error loading region dialog data:', error)
+      }
+    }
+
+    loadData()
+  }, [open])
 
   const onSubmit = async (data: RegionFormData) => {
     setIsLoading(true)
@@ -91,6 +124,7 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
           .update({
             name: data.name,
             description: data.description || null,
+            regional_minister_id: data.regional_minister_id === "none" ? null : data.regional_minister_id || null,
             active: data.active,
             updated_at: new Date().toISOString(),
           })
@@ -104,6 +138,7 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
           .insert({
             name: data.name,
             description: data.description || null,
+            regional_minister_id: data.regional_minister_id === "none" ? null : data.regional_minister_id || null,
             active: data.active,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -127,12 +162,12 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {region ? "Edit Region" : "Add New Region"}
+            {region ? `Edit ${regionTerm}` : `Add New ${regionTerm}`}
           </DialogTitle>
           <DialogDescription>
-            {region 
-              ? "Update the region information below."
-              : "Create a new region for your organization."
+            {region
+              ? `Update the ${regionTerm.toLowerCase()} information below.`
+              : `Create a new ${regionTerm.toLowerCase()} for your organization.`
             }
           </DialogDescription>
         </DialogHeader>
@@ -144,9 +179,9 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Region Name</FormLabel>
+                  <FormLabel>{regionTerm} Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Northern Region" {...field} />
+                    <Input placeholder={`e.g., Northern ${regionTerm}`} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -160,10 +195,30 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Brief description of the region..."
+                    <Textarea
+                      placeholder={`Brief description of the ${regionTerm.toLowerCase()}...`}
                       className="resize-none"
                       {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="regional_minister_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{regionalLeaderTerm}</FormLabel>
+                  <FormControl>
+                    <MemberCombobox
+                      members={members}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder={`Search and select ${regionalLeaderTerm.toLowerCase()}...`}
+                      emptyText="No members found."
                     />
                   </FormControl>
                   <FormMessage />
@@ -179,7 +234,7 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
                   <div className="space-y-0.5">
                     <FormLabel>Active Status</FormLabel>
                     <div className="text-sm text-muted-foreground">
-                      Enable this region for member assignments
+                      Enable this {regionTerm.toLowerCase()} for member assignments
                     </div>
                   </div>
                   <FormControl>

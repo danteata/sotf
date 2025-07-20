@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { Plus, Settings, Trash2, Edit, RefreshCw } from "lucide-react"
-import { supabase } from "@/lib/supabase"
-import { cn } from "@/lib/utils"
+import {
+  getMinistries,
+  getRegions,
+  updateMinistry,
+  updateRegion,
+  deleteMinistry,
+  deleteRegion
+} from "@/lib/database-utils"
+import type { Ministry, Region } from "@/types/database"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,24 +19,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { MinistryDialog } from "@/components/ministry-dialog"
 import { RegionDialog } from "@/components/region-dialog"
+import { SettingsDialog } from "@/components/settings-dialog"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 
-interface Ministry {
-  id: string
-  name: string
-  description?: string
-  leader?: string
-  active: boolean
-  created_at: string
-}
-
-interface Region {
-  id: string
-  name: string
-  description?: string
-  active: boolean
-  created_at: string
-}
+// Interfaces are now imported from types/database.ts
 
 export function AdminContent() {
   const [ministries, setMinistries] = useState<Ministry[]>([])
@@ -37,6 +30,7 @@ export function AdminContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [isMinistryDialogOpen, setIsMinistryDialogOpen] = useState(false)
   const [isRegionDialogOpen, setIsRegionDialogOpen] = useState(false)
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
   const [editingMinistry, setEditingMinistry] = useState<Ministry | null>(null)
   const [editingRegion, setEditingRegion] = useState<Region | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -50,17 +44,13 @@ export function AdminContent() {
     const fetchData = async () => {
       setIsLoading(true)
       try {
-        const [ministriesResult, regionsResult] = await Promise.all([
-          supabase.from("ministries").select("*").order("name"),
-          supabase.from("regions").select("*").order("name")
+        const [ministriesData, regionsData] = await Promise.all([
+          getMinistries(),
+          getRegions()
         ])
 
-        if (ministriesResult.data) {
-          setMinistries(ministriesResult.data)
-        }
-        if (regionsResult.data) {
-          setRegions(regionsResult.data)
-        }
+        setMinistries(ministriesData)
+        setRegions(regionsData)
       } catch (error) {
         console.error("Error fetching admin data:", error)
       } finally {
@@ -73,30 +63,22 @@ export function AdminContent() {
 
   const refreshMinistries = async () => {
     console.log("Refreshing ministries...")
-    const { data, error } = await supabase
-      .from("ministries")
-      .select("*")
-      .order("name")
-
-    if (!error && data) {
+    try {
+      const data = await getMinistries()
       console.log("Fetched ministries:", data.length)
       setMinistries(data)
-    } else if (error) {
+    } catch (error) {
       console.error("Error fetching ministries:", error)
     }
   }
 
   const refreshRegions = async () => {
     console.log("Refreshing regions...")
-    const { data, error } = await supabase
-      .from("regions")
-      .select("*")
-      .order("name")
-
-    if (!error && data) {
+    try {
+      const data = await getRegions()
       console.log("Fetched regions:", data.length)
       setRegions(data)
-    } else if (error) {
+    } catch (error) {
       console.error("Error fetching regions:", error)
     }
   }
@@ -106,48 +88,40 @@ export function AdminContent() {
   }
 
   const handleDeleteMinistry = async (ministry: Ministry) => {
-    const { error } = await supabase
-      .from("ministries")
-      .delete()
-      .eq("id", ministry.id)
-
-    if (!error) {
+    try {
+      await deleteMinistry(ministry.id)
       refreshMinistries()
       setDeleteDialog({ open: false, type: 'ministry', item: null })
+    } catch (error) {
+      console.error("Error deleting ministry:", error)
     }
   }
 
   const handleDeleteRegion = async (region: Region) => {
-    const { error } = await supabase
-      .from("regions")
-      .delete()
-      .eq("id", region.id)
-
-    if (!error) {
+    try {
+      await deleteRegion(region.id)
       refreshRegions()
       setDeleteDialog({ open: false, type: 'region', item: null })
+    } catch (error) {
+      console.error("Error deleting region:", error)
     }
   }
 
   const handleToggleMinistryStatus = async (ministry: Ministry) => {
-    const { error } = await supabase
-      .from("ministries")
-      .update({ active: !ministry.active })
-      .eq("id", ministry.id)
-
-    if (!error) {
+    try {
+      await updateMinistry(ministry.id, { active: !ministry.active })
       refreshMinistries()
+    } catch (error) {
+      console.error("Error updating ministry:", error)
     }
   }
 
   const handleToggleRegionStatus = async (region: Region) => {
-    const { error } = await supabase
-      .from("regions")
-      .update({ active: !region.active })
-      .eq("id", region.id)
-
-    if (!error) {
+    try {
+      await updateRegion(region.id, { active: !region.active })
       refreshRegions()
+    } catch (error) {
+      console.error("Error updating region:", error)
     }
   }
 
@@ -239,7 +213,7 @@ export function AdminContent() {
                       <TableRow key={ministry.id}>
                         <TableCell className="font-medium">{ministry.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{ministry.description || "-"}</TableCell>
-                        <TableCell className="hidden md:table-cell">{ministry.leader || "-"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{ministry.leader_name || ministry.leader || "-"}</TableCell>
                         <TableCell>
                           <Badge
                             variant={ministry.active ? "default" : "secondary"}
@@ -305,6 +279,7 @@ export function AdminContent() {
                     <TableRow className="bg-muted/50">
                       <TableHead className="font-medium">Name</TableHead>
                       <TableHead className="font-medium hidden sm:table-cell">Description</TableHead>
+                      <TableHead className="font-medium hidden md:table-cell">Regional Minister</TableHead>
                       <TableHead className="font-medium">Status</TableHead>
                       <TableHead className="font-medium w-[100px]">Actions</TableHead>
                     </TableRow>
@@ -314,6 +289,7 @@ export function AdminContent() {
                       <TableRow key={region.id}>
                         <TableCell className="font-medium">{region.name}</TableCell>
                         <TableCell className="hidden sm:table-cell">{region.description || "-"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{region.regional_minister_name || "-"}</TableCell>
                         <TableCell>
                           <Badge
                             variant={region.active ? "default" : "secondary"}
@@ -370,11 +346,17 @@ export function AdminContent() {
             <CardContent>
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Settings className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium mb-2">Settings Panel</h3>
-                <p className="text-gray-600 max-w-md">
-                  The settings configuration panel is coming soon. Here you'll be able to manage system-wide preferences,
-                  notification settings, and more.
+                <h3 className="text-lg font-medium mb-2">System Settings</h3>
+                <p className="text-gray-600 max-w-md mb-6">
+                  Configure terminology, application settings, and organization preferences.
                 </p>
+                <Button
+                  onClick={() => setIsSettingsDialogOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Open Settings
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -414,6 +396,12 @@ export function AdminContent() {
             handleDeleteRegion(deleteDialog.item as Region)
           }
         }}
+      />
+
+      <SettingsDialog
+        open={isSettingsDialogOpen}
+        onOpenChange={setIsSettingsDialogOpen}
+        onSuccess={refreshAll}
       />
     </div>
   )
