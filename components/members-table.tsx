@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { MoreHorizontal, ArrowUpDown, Mail, Phone } from "lucide-react"
+import { useTerminology, getMinistryLabels } from "@/hooks/use-terminology"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +33,8 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
+  const { terminology } = useTerminology()
+  const ministryLabels = getMinistryLabels(terminology)
 
   const handleSelectAll = () => {
     if (selectedMembers.length === members.length) {
@@ -141,7 +144,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 <ArrowUpDown className="h-4 w-4 cursor-pointer" />
               </div>
             </TableHead>
-            <TableHead className="hidden lg:table-cell">Ministry</TableHead>
+            <TableHead className="hidden lg:table-cell">{ministryLabels.single}</TableHead>
             <TableHead>
               <div className="flex items-center space-x-2" onClick={() => handleSort("last_attendance")}>
                 <span>Last Attendance</span>

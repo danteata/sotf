@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { supabase } from "@/lib/supabase"
 import { getMinistries, getRegions, updateMemberWithMinistries, getMemberMinistries } from "@/lib/database-utils"
+import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { useToast } from "@/components/ui/use-toast"
 
 import {
@@ -83,6 +84,9 @@ export function MemberEditDialog({
   const [regions, setRegions] = useState<Region[]>([])
   const [memberMinistryIds, setMemberMinistryIds] = useState<string[]>([])
   const { toast } = useToast()
+  const { terminology } = useTerminology()
+  const ministryLabels = getMinistryLabels(terminology)
+  const regionLabels = getRegionLabels(terminology)
 
   // Split the name into first and last name
   let firstName, lastName
@@ -222,7 +226,7 @@ export function MemberEditDialog({
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
                 <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
-                <TabsTrigger value="ministry" className="text-xs sm:text-sm">Ministry</TabsTrigger>
+                <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4">
@@ -379,7 +383,7 @@ export function MemberEditDialog({
                     name="region"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Region</FormLabel>
+                        <FormLabel>{regionLabels.single}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -522,7 +526,7 @@ export function MemberEditDialog({
                   control={form.control}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ministries</FormLabel>
+                      <FormLabel>{ministryLabels.plural}</FormLabel>
                       <div className="space-y-2">
                         {ministries.map(ministry => (
                           <div key={ministry.id} className="flex items-center space-x-2">

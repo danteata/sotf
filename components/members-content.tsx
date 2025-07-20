@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Download, Filter, Plus, Search, Upload, RefreshCw } from "lucide-react"
+import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { getMembersLegacyFormat, getMinistries } from "@/lib/database-utils"
 
 import { Button } from "@/components/ui/button"
@@ -27,6 +28,9 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   const [statusFilter, setStatusFilter] = useState("all")
   const [ministryFilter, setMinistryFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const { terminology } = useTerminology()
+  const ministryLabels = getMinistryLabels(terminology)
+  const regionLabels = getRegionLabels(terminology)
 
   const applyFilters = () => {
     let filtered = [...members]
@@ -182,10 +186,10 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                 onValueChange={setMinistryFilter}
               >
                 <SelectTrigger className="h-8 w-full sm:w-[150px]">
-                  <SelectValue placeholder="Ministry" />
+                  <SelectValue placeholder={ministryLabels.single} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Ministries</SelectItem>
+                  <SelectItem value="all">All {ministryLabels.plural}</SelectItem>
                   {ministries.map((ministry) => (
                     <SelectItem key={ministry.id} value={ministry.name}>
                       {ministry.name}

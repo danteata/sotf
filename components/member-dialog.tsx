@@ -24,6 +24,7 @@ import { supabase } from "@/lib/supabase"
 import { v4 as uuidv4 } from 'uuid'
 import { cn } from "@/lib/utils"
 import { getMinistries, getRegions, saveMemberWithMinistries } from "@/lib/database-utils"
+import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { Badge } from "@/components/ui/badge"
 
 const memberSchema = z.object({
@@ -63,6 +64,9 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   const [ministries, setMinistries] = useState<any[]>([])
   const [regions, setRegions] = useState<any[]>([])
   const { toast } = useToast()
+  const { terminology } = useTerminology()
+  const ministryLabels = getMinistryLabels(terminology)
+  const regionLabels = getRegionLabels(terminology)
 
   const {
     register,
@@ -201,7 +205,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
               <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
-              <TabsTrigger value="ministry" className="text-xs sm:text-sm">Ministry</TabsTrigger>
+              <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4 pt-4">
@@ -324,7 +328,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="region">Region</Label>
+                  <Label htmlFor="region">{regionLabels.single}</Label>
                   <Select onValueChange={(value) => setValue("region", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select region" />
@@ -388,7 +392,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
             <TabsContent value="ministry" className="space-y-4 pt-4">
               <div>
-                <Label htmlFor="ministries">Ministries</Label>
+                <Label htmlFor="ministries">{ministryLabels.plural}</Label>
                 <input
                   type="hidden"
                   {...register("ministries")}
