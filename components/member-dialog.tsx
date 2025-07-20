@@ -23,6 +23,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
 import { v4 as uuidv4 } from 'uuid'
 import { cn } from "@/lib/utils"
+import { getMinistries, getRegions, saveMemberWithMinistries } from "@/lib/database-utils"
+import { Badge } from "@/components/ui/badge"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -42,7 +44,7 @@ const memberSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   country: z.string().optional(),
-  ministries: z.array(z.string()).optional(),
+  ministries: z.array(z.string()).optional(), // Ministry IDs
   skills: z.string().optional(),
   avatar_url: z.string().optional(),
 })
@@ -58,6 +60,8 @@ interface MemberDialogProps {
 export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProps) {
   const [activeTab, setActiveTab] = useState("basic")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [ministries, setMinistries] = useState<any[]>([])
+  const [regions, setRegions] = useState<any[]>([])
   const { toast } = useToast()
 
   const {
@@ -91,8 +95,35 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     register("ministries")
   }, [register])
 
+  // Load ministries and regions when dialog opens
+  useEffect(() => {
+    const loadData = async () => {
+      if (!open) return
+
+      try {
+        const [ministriesData, regionsData] = await Promise.all([
+          getMinistries(true), // Only active ministries
+          getRegions(true)     // Only active regions
+        ])
+
+        setMinistries(ministriesData)
+        setRegions(regionsData)
+      } catch (error) {
+        console.error('Error loading ministries and regions:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load ministries and regions",
+          variant: "destructive",
+        })
+      }
+    }
+
+    loadData()
+  }, [open, toast])
+
   const onSubmit = async (data: MemberFormData) => {
     console.log("Form submitted with data:", data); // Debug log
+    console.log("Ministries from form:", data.ministries); // Debug ministries
     setIsSubmitting(true)
     try {
       // Generate initials from first and last name
@@ -101,19 +132,33 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
       // Format the data for insertion
       const memberData = {
         id: uuidv4(), // Add this line to generate a unique ID
-        ...data,
+        title: data.title,
+        first_name: data.first_name,
+        last_name: data.last_name,
         name: `${data.first_name} ${data.last_name}`,
-        initials,
+        email: data.email,
+        phone: data.phone,
+        dob: data.dob,
+        birth_month: data.birth_month,
+        birth_day: data.birth_day,
+        gender: data.gender,
+        status: data.status,
         joined_date: data.joined_date || format(new Date(), "yyyy-MM-dd"),
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        country: data.country,
+        region: data.region,
+        skills: data.skills,
+        avatar_url: data.avatar_url,
+        initials,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
 
-      const { error } = await supabase
-        .from("members")
-        .insert([memberData])
-
-      if (error) throw error
+      // Use the helper function to save member with ministries (pass ministry IDs)
+      await saveMemberWithMinistries(memberData, data.ministries || [])
 
       toast({
         title: "Success",
@@ -285,10 +330,11 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       <SelectValue placeholder="Select region" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Northern">Northern</SelectItem>
-                      <SelectItem value="Southern">Southern</SelectItem>
-                      <SelectItem value="Eastern">Eastern</SelectItem>
-                      <SelectItem value="Western">Western</SelectItem>
+                      {regions.map((region) => (
+                        <SelectItem key={region.id} value={region.name}>
+                          {region.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -348,58 +394,48 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                   {...register("ministries")}
                   value={watch("ministries")?.join(",")}
                 />
-                <Select
-                  onValueChange={(value) => {
-                    const currentMinistries = watch("ministries") || [];
-                    if (currentMinistries.includes(value)) {
-                      setValue(
-                        "ministries",
-                        currentMinistries.filter((m) => m !== value)
-                      );
-                    } else {
-                      setValue("ministries", [...currentMinistries, value]);
-                    }
-                  }}
-                >
-                  <SelectTrigger id="ministries">
-                    <SelectValue placeholder="Select ministries" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="music">
+                <div className="space-y-2 mt-2">
+                  {ministries.map((ministry) => (
+                    <div key={ministry.id} className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={watch("ministries")?.includes("music")}
-                        className="mr-2"
-                        readOnly
+                        id={`ministry-${ministry.id}`}
+                        checked={watch("ministries")?.includes(ministry.id) || false}
+                        onChange={(e) => {
+                          const currentMinistries = watch("ministries") || [];
+                          console.log('Add dialog - Current ministries before change:', currentMinistries);
+                          console.log('Add dialog - Checkbox checked:', e.target.checked, 'for ministry:', ministry.name, 'ID:', ministry.id);
+
+                          if (e.target.checked) {
+                            const newMinistries = [...currentMinistries, ministry.id];
+                            console.log('Add dialog - New ministries after adding:', newMinistries);
+                            setValue("ministries", newMinistries);
+                          } else {
+                            const newMinistries = currentMinistries.filter((m) => m !== ministry.id);
+                            console.log('Add dialog - New ministries after removing:', newMinistries);
+                            setValue("ministries", newMinistries);
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      Music
-                    </SelectItem>
-                    <SelectItem value="youth">
-                      <input
-                        type="checkbox"
-                        checked={watch("ministries")?.includes("youth")}
-                        className="mr-2"
-                        readOnly
-                      />
-                      Youth
-                    </SelectItem>
-                    <SelectItem value="children">
-                      <input
-                        type="checkbox"
-                        checked={watch("ministries")?.includes("children")}
-                        className="mr-2"
-                        readOnly
-                      />
-                      Children
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {watch("ministries")?.map((ministry) => (
-                    <span key={ministry} className="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                      {ministry}
-                    </span>
+                      <label
+                        htmlFor={`ministry-${ministry.id}`}
+                        className="text-sm font-medium text-gray-700 cursor-pointer"
+                      >
+                        {ministry.name}
+                      </label>
+                    </div>
                   ))}
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {watch("ministries")?.map((ministryId) => {
+                    const ministry = ministries.find(m => m.id === ministryId);
+                    return ministry ? (
+                      <Badge key={ministryId} variant="secondary">
+                        {ministry.name}
+                      </Badge>
+                    ) : null;
+                  })}
                 </div>
               </div>
             </TabsContent>

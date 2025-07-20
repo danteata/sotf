@@ -2,11 +2,12 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { supabase } from "@/lib/supabase"
+import { getMinistries, getRegions, updateMemberWithMinistries, getMemberMinistries } from "@/lib/database-utils"
 import { useToast } from "@/components/ui/use-toast"
 
 import {
@@ -35,12 +36,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Member } from "@/types/database"
+import { Member, Ministry, Region } from "@/types/database"
+import { Badge } from "./ui/badge"
 
 const memberSchema = z.object({
   title: z.string().optional(),
   region: z.string().optional(),
-  ministries: z.array(z.string()).optional(),
+  ministries: z.array(z.string()).optional(), // Ministry IDs
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
@@ -77,6 +79,9 @@ export function MemberEditDialog({
 }: MemberEditDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
+  const [ministries, setMinistries] = useState<Ministry[]>([])
+  const [regions, setRegions] = useState<Region[]>([])
+  const [memberMinistryIds, setMemberMinistryIds] = useState<string[]>([])
   const { toast } = useToast()
 
   // Split the name into first and last name
@@ -106,7 +111,7 @@ export function MemberEditDialog({
       state: member.state || "",
       zip: member.zip || "",
       country: member.country || "United States",
-      ministries: member.ministries || [],
+      ministries: memberMinistryIds,
       region: member.region || "",
       avatar: member.avatar || "",
     },
@@ -114,39 +119,72 @@ export function MemberEditDialog({
 
   form.register("region")
 
+  // Load ministries, regions, and member's current ministries when dialog opens
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [ministriesData, regionsData, memberMinistries] = await Promise.all([
+          getMinistries(true), // Only active ministries
+          getRegions(true),    // Only active regions
+          getMemberMinistries(member.id)
+        ])
+
+        setMinistries(ministriesData)
+        setRegions(regionsData)
+
+        // Extract ministry IDs from member's current ministries
+        const ministryIds = memberMinistries?.map((mm: any) => mm.ministry?.id || mm.ministry_id).filter(Boolean) || []
+        setMemberMinistryIds(ministryIds)
+
+        // Update form with ministry IDs
+        form.setValue('ministries', ministryIds)
+
+        console.log('Loaded member ministries:', memberMinistries)
+        console.log('Ministry IDs:', ministryIds)
+      } catch (error) {
+        console.error('Error loading ministries and regions:', error)
+      }
+    }
+
+    if (open) {
+      loadData()
+    }
+  }, [open, member.id, form])
+
   async function onSubmit(data: MemberFormValues) {
+    console.log("Edit form submitted with data:", data); // Debug log
+    console.log("Ministries from edit form:", data.ministries); // Debug ministries
     setIsLoading(true)
     try {
       // Generate initials from first and last name
       const initials = `${data.first_name[0]}${data.last_name[0]}`.toUpperCase()
 
-      const { error } = await supabase
-        .from("members")
-        .update({
-          title: data.title,
-          name: `${data.first_name} ${data.last_name}`,
-          email: data.email,
-          phone: data.phone,
-          dob: data.dob,
-          birth_month: data.birth_month,
-          birth_day: data.birth_day,
-          gender: data.gender,
-          status: data.status,
-          joined_date: data.joined_date,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zip: data.zip,
-          region: data.region,
-          country: data.country,
-          ministries: data.ministries,
-          avatar: data.avatar,
-          initials,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", member.id)
+      const memberData = {
+        title: data.title,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        name: `${data.first_name} ${data.last_name}`,
+        email: data.email,
+        phone: data.phone,
+        dob: data.dob,
+        birth_month: data.birth_month,
+        birth_day: data.birth_day,
+        gender: data.gender,
+        status: data.status,
+        joined_date: data.joined_date,
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        zip: data.zip,
+        region: data.region,
+        country: data.country,
+        avatar: data.avatar,
+        initials,
+        updated_at: new Date().toISOString(),
+      }
 
-      if (error) throw error
+      // Use the helper function to update member with ministries
+      await updateMemberWithMinistries(member.id, memberData, data.ministries || [])
 
       toast({
         title: "Success",
@@ -349,10 +387,11 @@ export function MemberEditDialog({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Northern">Northern</SelectItem>
-                            <SelectItem value="Southern">Southern</SelectItem>
-                            <SelectItem value="Eastern">Eastern</SelectItem>
-                            <SelectItem value="Western">Western</SelectItem>
+                            {regions.map(region => (
+                              <SelectItem key={region.id} value={region.name}>
+                                {region.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -484,42 +523,48 @@ export function MemberEditDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Ministries</FormLabel>
-                      <Select
-                        onValueChange={(value) => {
-                          const currentMinistries = field.value || [];
-                          if (currentMinistries.includes(value)) {
-                            form.setValue(
-                              "ministries",
-                              currentMinistries.filter((m: string) => m !== value)
-                            );
-                          } else {
-                            form.setValue("ministries", [...currentMinistries, value]);
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select ministries" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {['music', 'youth', 'children'].map(ministry => (
-                            <SelectItem key={ministry} value={ministry}>
-                              <input
-                                type="checkbox"
-                                checked={field.value?.includes(ministry)}
-                                className="mr-2"
-                                readOnly
-                              />
-                              {ministry.charAt(0).toUpperCase() + ministry.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {field.value?.map((ministry: string) => (
-                          <span key={ministry} className="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
-                            {ministry}
-                          </span>
+                      <div className="space-y-2">
+                        {ministries.map(ministry => (
+                          <div key={ministry.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`ministry-${ministry.id}`}
+                              checked={field.value?.includes(ministry.id) || false}
+                              onChange={(e) => {
+                                const currentMinistries = field.value || [];
+                                console.log('Current ministries before change:', currentMinistries);
+                                console.log('Checkbox checked:', e.target.checked, 'for ministry:', ministry.name, 'ID:', ministry.id);
+
+                                if (e.target.checked) {
+                                  const newMinistries = [...currentMinistries, ministry.id];
+                                  console.log('New ministries after adding:', newMinistries);
+                                  field.onChange(newMinistries);
+                                } else {
+                                  const newMinistries = currentMinistries.filter((m: string) => m !== ministry.id);
+                                  console.log('New ministries after removing:', newMinistries);
+                                  field.onChange(newMinistries);
+                                }
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <label
+                              htmlFor={`ministry-${ministry.id}`}
+                              className="text-sm font-medium text-gray-700 cursor-pointer"
+                            >
+                              {ministry.name}
+                            </label>
+                          </div>
                         ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {field.value?.map((ministryId: string) => {
+                          const ministry = ministries.find(m => m.id === ministryId);
+                          return ministry ? (
+                            <Badge key={ministryId} variant="secondary">
+                              {ministry.name}
+                            </Badge>
+                          ) : null;
+                        })}
                       </div>
                     </FormItem>
                   )}

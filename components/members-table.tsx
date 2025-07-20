@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MemberEditDialog } from "@/components/member-edit-dialog"
+import { MemberProfileDialog } from "@/components/member-profile-dialog"
 import { Member } from "@/types/database"; // Import Member type
 
 interface MembersTableProps {
@@ -30,6 +31,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [viewingMember, setViewingMember] = useState<Member | null>(null);
 
   const handleSelectAll = () => {
     if (selectedMembers.length === members.length) {
@@ -181,18 +183,24 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 </div>
               </TableCell>
               <TableCell className="hidden md:table-cell">{member.city}</TableCell>
+              <TableCell>{member.region || 'Not assigned'}</TableCell>
               <TableCell>{getStatusBadge(member.status)}</TableCell>
               <TableCell className="hidden md:table-cell">{member.joined_date}</TableCell>
               <TableCell className="hidden lg:table-cell">
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 max-w-[200px]">
                   {Array.isArray(member.ministries) && member.ministries.length > 0 ? (
-                    member.ministries.map((min: string, index: number) => (
-                      <Badge key={index} variant="outline">
+                    member.ministries.slice(0, 3).map((min: string, index: number) => (
+                      <Badge key={index} variant="outline" className="text-xs">
                         {min}
                       </Badge>
                     ))
                   ) : (
                     <span className="text-sm text-muted-foreground">None</span>
+                  )}
+                  {Array.isArray(member.ministries) && member.ministries.length > 3 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{member.ministries.length - 3}
+                    </Badge>
                   )}
                 </div>
               </TableCell>
@@ -207,7 +215,9 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem>View profile</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setViewingMember(member)}>
+                      View profile
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setEditingMember(member)}>
                       Edit member
                     </DropdownMenuItem>
@@ -238,6 +248,14 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
               onMemberUpdate();
             }
           }}
+        />
+      )}
+
+      {viewingMember && (
+        <MemberProfileDialog
+          member={viewingMember}
+          open={!!viewingMember}
+          onOpenChange={(open) => !open && setViewingMember(null)}
         />
       )}
     </div>

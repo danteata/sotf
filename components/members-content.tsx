@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Download, Filter, Plus, Search, Upload } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { Download, Filter, Plus, Search, Upload, RefreshCw } from "lucide-react"
+import { getMembersLegacyFormat, getMinistries } from "@/lib/database-utils"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MembersTable } from "@/components/members-table"
 import { MemberDialog } from "@/components/member-dialog"
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog"
-import { Member } from "@/components/members-table"
+import type { Member, Ministry } from "@/types/database"
 
 interface MembersContentProps {
   initialMembers: Member[] // rename prop to initialMembers
@@ -20,8 +20,10 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   const [members, setMembers] = useState<Member[]>(initialMembers)
   const [filteredMembers, setFilteredMembers] = useState<Member[]>(initialMembers)
   const [totalMembers, setTotalMembers] = useState<number>(initialMembers.length)
+  const [ministries, setMinistries] = useState<Ministry[]>([])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState("all")
   const [ministryFilter, setMinistryFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -34,13 +36,17 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       filtered = filtered.filter(member => member.status === statusFilter)
     }
 
-    // Apply ministry filter
+    // Apply ministry filter - support multiple ministries per member
     if (ministryFilter !== "all") {
-      filtered = filtered.filter(member =>
-        member.ministries &&
-        Array.isArray(member.ministries) &&
-        member.ministries.includes(ministryFilter)
-      )
+      filtered = filtered.filter(member => {
+        if (!member.ministries || !Array.isArray(member.ministries)) {
+          return false
+        }
+        // Check if any of the member's ministries exactly matches the filter
+        return member.ministries.some(ministry =>
+          ministry && ministry.trim() === ministryFilter.trim()
+        )
+      })
     }
 
     // Apply search filter
@@ -64,18 +70,49 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
 
   const refreshMembers = async () => {
     console.log("Refreshing members...")
-    const { data, error, count } = await supabase
-      .from("members")
-      .select("id, name, first_name, last_name, email, phone, status, joined_date, ministries, last_attendance, avatar, initials, region, address, city, created_at, updated_at", { count: 'exact' })
-
-    if (!error && data) {
+    try {
+      const data = await getMembersLegacyFormat()
       console.log("Fetched members:", data.length)
       setMembers(data)
+      setTotalMembers(data.length)
       // Filters will be automatically applied due to the useEffect
-    } else if (error) {
+    } catch (error) {
       console.error("Error refreshing members:", error)
     }
   }
+
+  const loadMinistries = async () => {
+    try {
+      const data = await getMinistries(true) // Only active ministries
+      setMinistries(data)
+    } catch (error) {
+      console.error("Error loading ministries:", error)
+    }
+  }
+
+  const refreshAll = async () => {
+    console.log("Refreshing all data...")
+    setIsRefreshing(true)
+    try {
+      await Promise.all([refreshMembers(), loadMinistries()])
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Load ministries on component mount
+  useEffect(() => {
+    loadMinistries()
+  }, [])
+
+  // Set up periodic refresh to catch admin changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshAll()
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -83,6 +120,16 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Members</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshAll}
+            disabled={isRefreshing}
+            className="flex-1 sm:flex-none"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
           <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -138,16 +185,12 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                   <SelectValue placeholder="Ministry" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Basontas</SelectItem>
-                  <SelectItem value="worship">Praise & Worship</SelectItem>
-                  <SelectItem value="youth">Youth</SelectItem>
-                  <SelectItem value="children">Saved</SelectItem>
-                  <SelectItem value="roses">Anointed Roses</SelectItem>
-                  <SelectItem value="tulips">Fragrant Tulips</SelectItem>
-                  <SelectItem value="ushers">Ushers</SelectItem>
-                  <SelectItem value="dancing_stars">Dancing Stars</SelectItem>
-                  <SelectItem value="airport_stars">Airport Stars</SelectItem>
-                  <SelectItem value="pastors">Pastors</SelectItem>
+                  <SelectItem value="all">All Ministries</SelectItem>
+                  {ministries.map((ministry) => (
+                    <SelectItem key={ministry.id} value={ministry.name}>
+                      {ministry.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
