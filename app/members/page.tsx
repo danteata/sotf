@@ -1,26 +1,22 @@
 import { MembersContent } from "@/components/members-content";
 import { LayoutWrapper } from "@/components/layout-wrapper";
-import { supabase } from "@/lib/supabase";
+import { getMembersLegacyFormat } from "@/lib/database-utils";
 
 export default async function Members() {
-  const { data: members, error } = await supabase
-    .from("members")
-    .select(
-      "id, name, first_name, last_name, email, phone, status, joined_date, ministries, last_attendance, avatar, initials, region, address, city, created_at, updated_at"
-    )
+  try {
+    const members = await getMembersLegacyFormat()
 
-  if (error) {
+    return (
+      <LayoutWrapper>
+        <MembersContent initialMembers={members || []} />
+      </LayoutWrapper>
+    )
+  } catch (error) {
     console.error("Error fetching members:", error)
     return (
       <LayoutWrapper>
-        <div>Error loading members data: {error.message}</div>
+        <div>Error loading members data: {error instanceof Error ? error.message : 'Unknown error'}</div>
       </LayoutWrapper>
     )
   }
-
-  return (
-    <LayoutWrapper>
-      <MembersContent initialMembers={members || []} />
-    </LayoutWrapper>
-  )
 }
