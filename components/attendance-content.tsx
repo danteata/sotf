@@ -1,12 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, Calendar, Users, History, LineChart, UserMinus, PlusCircle } from "lucide-react"
-import { format, subWeeks, startOfWeek, endOfWeek } from "date-fns"
-import { supabase } from "@/lib/supabase"
+import { Download, Calendar, Users, History, LineChart, UserMinus, PlusCircle, RefreshCw } from "lucide-react"
+import { getAttendanceStats } from "@/lib/database-utils"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
@@ -41,6 +40,7 @@ export function AttendanceContent() {
     childrenMinistry: { count: 0, percentChange: 0 }
   })
   const [loading, setLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -50,100 +50,8 @@ export function AttendanceContent() {
   const fetchAttendanceStats = async () => {
     try {
       setLoading(true)
-      const today = new Date()
-      const lastSundayDate = format(startOfWeek(today, { weekStartsOn: 0 }), 'yyyy-MM-dd')
-      const previousSundayDate = format(startOfWeek(subWeeks(today, 1), { weekStartsOn: 0 }), 'yyyy-MM-dd')
-      const fourWeeksAgoDate = format(startOfWeek(subWeeks(today, 4), { weekStartsOn: 0 }), 'yyyy-MM-dd')
-
-      // Fetch last Sunday's attendance
-      const { data: lastSundayData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("date", lastSundayDate)
-        .eq("event", "sunday-service")
-        .single()
-
-      // Fetch previous Sunday's attendance
-      const { data: previousSundayData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("date", previousSundayDate)
-        .eq("event", "sunday-service")
-        .single()
-
-      // Fetch last 4 weeks of Sunday attendance
-      const { data: fourWeeksData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("event", "sunday-service")
-        .gte("date", fourWeeksAgoDate)
-        .lte("date", lastSundayDate)
-        .order("date", { ascending: false })
-
-      // Fetch youth group attendance
-      const { data: youthData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("event", "youth-group")
-        .eq("date", lastSundayDate)
-        .single()
-
-      const { data: previousYouthData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("event", "youth-group")
-        .eq("date", previousSundayDate)
-        .single()
-
-      // Fetch children's ministry attendance
-      const { data: childrenData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("event", "children-ministry")
-        .eq("date", lastSundayDate)
-        .single()
-
-      const { data: previousChildrenData } = await supabase
-        .from("attendance")
-        .select("count")
-        .eq("event", "children-ministry")
-        .eq("date", previousSundayDate)
-        .single()
-
-      // Calculate statistics
-      const lastSundayCount = lastSundayData?.count || 0
-      const previousSundayCount = previousSundayData?.count || 0
-      const lastSundayPercentChange = previousSundayCount ?
-        ((lastSundayCount - previousSundayCount) / previousSundayCount) * 100 : 0
-
-      const fourWeekCounts = fourWeeksData?.map(d => d.count) || []
-      const fourWeekAverage = fourWeekCounts.length ?
-        Math.round(fourWeekCounts.reduce((a, b) => a + b, 0) / fourWeekCounts.length) : 0
-
-      const previousFourWeekAverage = previousSundayCount // Simplified for this example
-      const fourWeekPercentChange = previousFourWeekAverage ?
-        ((fourWeekAverage - previousFourWeekAverage) / previousFourWeekAverage) * 100 : 0
-
-      setStats({
-        lastSunday: {
-          count: lastSundayCount,
-          percentChange: lastSundayPercentChange
-        },
-        fourWeekAverage: {
-          count: fourWeekAverage,
-          percentChange: fourWeekPercentChange
-        },
-        youthGroup: {
-          count: youthData?.count || 0,
-          percentChange: previousYouthData?.count ?
-            (((youthData?.count || 0) - previousYouthData.count) / previousYouthData.count) * 100 : 0
-        },
-        childrenMinistry: {
-          count: childrenData?.count || 0,
-          percentChange: previousChildrenData?.count ?
-            (((childrenData?.count || 0) - previousChildrenData.count) / previousChildrenData.count) * 100 : 0
-        }
-      })
+      const statsData = await getAttendanceStats()
+      setStats(statsData)
     } catch (err) {
       console.error("Error fetching attendance stats:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch attendance statistics")
@@ -152,11 +60,33 @@ export function AttendanceContent() {
     }
   }
 
+  const refreshStats = async () => {
+    try {
+      setIsRefreshing(true)
+      const statsData = await getAttendanceStats()
+      setStats(statsData)
+    } catch (err) {
+      console.error("Error refreshing attendance stats:", err)
+      setError(err instanceof Error ? err.message : "Failed to refresh attendance statistics")
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 m-x-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Attendance</h1>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshStats}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
           <Button variant="outline" size="sm">
             <Download className="mr-2 h-4 w-4" />
             Export Data

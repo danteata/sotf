@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CalendarIcon, Search, CheckCircle } from "lucide-react"
+import { CalendarIcon, Search, CheckCircle, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
+import { getMembersLegacyFormat, getMinistries, getRegions } from "@/lib/database-utils"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -26,28 +27,32 @@ export function AttendanceForm() {
   const [attendanceType, setAttendanceType] = useState("sunday-service")
   const [notes, setNotes] = useState("")
   const [members, setMembers] = useState<any[]>([])
+  const [ministries, setMinistries] = useState<any[]>([])
+  const [regions, setRegions] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [ministryFilter, setMinistryFilter] = useState("all")
   const [regionFilter, setRegionFilter] = useState("all")
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data, error: fetchError } = await supabase
-          .from("members")
-          .select("*");
+    fetchAllData()
+  }, [])
 
-        if (fetchError) {
-          throw fetchError;
-        }
+  const fetchAllData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [membersData, ministriesData, regionsData] = await Promise.all([
+        getMembersLegacyFormat(),
+        getMinistries(true), // Only active ministries
+        getRegions(true)     // Only active regions
+      ])
 
-        // Transform fetched data with null checks and default values
-        const formattedMembers = data.map((member: any) => {
+      // Transform fetched data with null checks and default values
+      const formattedMembers = membersData.map((member: any) => {
           const firstName = member.first_name || '';
           const lastName = member.last_name || '';
           const initials = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
@@ -64,45 +69,67 @@ export function AttendanceForm() {
         });
 
         setMembers(formattedMembers);
+        setMinistries(ministriesData);
+        setRegions(regionsData);
       } catch (error: any) {
         setError(error.message);
-        console.error("Error fetching members:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
-    };
+    }
 
+    const refreshData = async () => {
+      setIsRefreshing(true);
+      try {
+        await fetchAllData();
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+
+  // Separate useEffect for fetching existing attendance when date or event type changes
+  useEffect(() => {
     const fetchExistingAttendance = async () => {
       if (!date) return; // Early return if no date
 
       try {
-        const { data: existingAttendance, error: fetchExistingError } =
-          await supabase
-            .from("attendance")
-            .select("members, date")
-            .eq("date", format(date, "yyyy-MM-dd"))
-            .eq("event", attendanceType)
-            .single();
+        const formattedDate = format(date, "yyyy-MM-dd")
+
+        // Get attendance record for this date and event type
+        const { data: existingAttendance, error: fetchExistingError } = await supabase
+          .from("attendance")
+          .select("id, date")
+          .eq("date", formattedDate)
+          .eq("event", attendanceType)
+          .single();
 
         if (fetchExistingError && fetchExistingError.code !== "PGRST116") {
           throw fetchExistingError;
         }
 
         if (existingAttendance) {
-          setSelectedMembers(existingAttendance.members || []);
-          const existingDate = new Date(existingAttendance.date);
-          if (!isSameDay(date, existingDate)) {
-            setDate(existingDate);
+          // Get the members who attended this event
+          const { data: memberAttendance, error: memberError } = await supabase
+            .from("member_attendance")
+            .select("member_id")
+            .eq("attendance_id", existingAttendance.id);
+
+          if (memberError) {
+            throw memberError;
           }
+
+          const attendedMemberIds = memberAttendance?.map(ma => ma.member_id) || [];
+          setSelectedMembers(attendedMemberIds);
         } else {
           setSelectedMembers([]);
         }
       } catch (error: any) {
         console.error("Error fetching existing attendance:", error);
+        setSelectedMembers([]);
       }
     };
 
-    fetchMembers();
     if (date) {
       fetchExistingAttendance();
     }
@@ -147,69 +174,136 @@ export function AttendanceForm() {
     setError(null)
 
     try {
-      // Fetch existing attendance record for the same date and event type
+      const formattedDate = format(date, "yyyy-MM-dd")
+
+      // First, create or find an event for this attendance
+      let eventId: string | null = null
+
+      // Check if an event exists for this date and type
+      const { data: existingEvent, error: eventFetchError } = await supabase
+        .from("events")
+        .select("id")
+        .eq("date", formattedDate)
+        .eq("type", attendanceType)
+        .single()
+
+      if (eventFetchError && eventFetchError.code !== 'PGRST116') {
+        throw eventFetchError
+      }
+
+      if (existingEvent) {
+        eventId = existingEvent.id
+      } else {
+        // Create a new event
+        const { data: newEvent, error: eventInsertError } = await supabase
+          .from("events")
+          .insert([{
+            title: `${attendanceType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} - ${formattedDate}`,
+            date: formattedDate,
+            type: attendanceType,
+            description: notes || 'Attendance record'
+          }])
+          .select("id")
+          .single()
+
+        if (eventInsertError) {
+          throw eventInsertError
+        }
+        eventId = newEvent.id
+      }
+
+      // Check for existing attendance record
       const { data: existingAttendance, error: fetchExistingError } = await supabase
         .from("attendance")
         .select("id")
-        .eq("date", format(date, "yyyy-MM-dd"))
+        .eq("date", formattedDate)
         .eq("event", attendanceType)
-        .single() // Expecting only one record or none
+        .single()
 
       if (fetchExistingError && fetchExistingError.code !== 'PGRST116') {
-        throw fetchExistingError;
+        throw fetchExistingError
       }
 
+      let attendanceId: string
+
       if (existingAttendance) {
-        // If a record exists, update it
+        // Update existing attendance record
         const { error: updateError } = await supabase
           .from("attendance")
           .update({
             count: selectedMembers.length,
             notes,
-            members: selectedMembers,
+            event_id: eventId,
           })
           .eq("id", existingAttendance.id)
 
         if (updateError) {
           throw updateError
         }
+        attendanceId = existingAttendance.id
+
+        // Delete existing member_attendance records for this attendance
+        const { error: deleteError } = await supabase
+          .from("member_attendance")
+          .delete()
+          .eq("attendance_id", attendanceId)
+
+        if (deleteError) {
+          throw deleteError
+        }
       } else {
-        // If no record exists, insert a new one
-        const { error: insertError } = await supabase.from("attendance").insert([
-          {
-            date: format(date, "yyyy-MM-dd"),
+        // Create new attendance record
+        const { data: newAttendance, error: insertError } = await supabase
+          .from("attendance")
+          .insert([{
+            date: formattedDate,
             event: attendanceType,
+            event_id: eventId,
             count: selectedMembers.length,
-            percent_change: 0, // Calculate this later
+            percent_change: 0,
             notes,
-            members: selectedMembers,
-          },
-        ])
+          }])
+          .select("id")
+          .single()
 
         if (insertError) {
           throw insertError
         }
+        attendanceId = newAttendance.id
+      }
+
+      // Insert member_attendance records for selected members
+      if (selectedMembers.length > 0) {
+        const memberAttendanceRecords = selectedMembers.map(memberId => ({
+          member_id: memberId,
+          attendance_id: attendanceId
+        }))
+
+        const { error: memberAttendanceError } = await supabase
+          .from("member_attendance")
+          .insert(memberAttendanceRecords)
+
+        if (memberAttendanceError) {
+          throw memberAttendanceError
+        }
       }
 
       // Reset form state
-      setDate(undefined)
       setSelectedMembers([])
       setNotes("")
       setSearchQuery("")
 
       toast({
-        variant: "default",
         title: "Success",
-        description: "Attendance saved successfully!",
-        className: "bg-green-600 text-white",
-        children: <CheckCircle className="h-4 w-4 ml-2" />,
+        description: `Attendance saved successfully! ${selectedMembers.length} members recorded for ${attendanceType.replace('-', ' ')}.`,
       })
     } catch (error: any) {
+      console.error('Error saving attendance:', error)
       setError(error.message)
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to save attendance. Please try again.",
       })
     } finally {
       setIsSaving(false)
@@ -224,11 +318,11 @@ export function AttendanceForm() {
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email.toLowerCase().includes(searchQuery.toLowerCase())
 
-    // Then apply ministry filter
+    // Then apply ministry filter - support multiple ministries per member
     const matchesMinistry =
       ministryFilter === "all" ||
       (member.ministries && Array.isArray(member.ministries) &&
-        member.ministries.includes(ministryFilter))
+        member.ministries.some(ministry => ministry && ministry.trim() === ministryFilter.trim()))
 
     // Then apply region filter
     const matchesRegion =
@@ -242,8 +336,21 @@ export function AttendanceForm() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Record Attendance</CardTitle>
-          <CardDescription>Select an event, date, and mark members who attended</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Record Attendance</CardTitle>
+              <CardDescription>Select an event, date, and mark members who attended</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshData}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -310,15 +417,11 @@ export function AttendanceForm() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Ministries</SelectItem>
-                  <SelectItem value="worship">Praise & Worship</SelectItem>
-                  <SelectItem value="youth">Youth</SelectItem>
-                  <SelectItem value="children">Saved</SelectItem>
-                  <SelectItem value="roses">Anointed Roses</SelectItem>
-                  <SelectItem value="tulips">Fragrant Tulips</SelectItem>
-                  <SelectItem value="ushers">Ushers</SelectItem>
-                  <SelectItem value="dancing_stars">Dancing Stars</SelectItem>
-                  <SelectItem value="airport_stars">Airport Stars</SelectItem>
-                  <SelectItem value="pastors">Pastors</SelectItem>
+                  {ministries.map((ministry) => (
+                    <SelectItem key={ministry.id} value={ministry.name}>
+                      {ministry.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -331,10 +434,11 @@ export function AttendanceForm() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Regions</SelectItem>
-                  <SelectItem value="Northern">Northern</SelectItem>
-                  <SelectItem value="Southern">Southern</SelectItem>
-                  <SelectItem value="Eastern">Eastern</SelectItem>
-                  <SelectItem value="Western">Western</SelectItem>
+                  {regions.map((region) => (
+                    <SelectItem key={region.id} value={region.name}>
+                      {region.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
