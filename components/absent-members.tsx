@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabase } from "@/lib/supabase"
 import { format } from "date-fns"
+import { useEventTypes } from "@/hooks/use-event-types"
 
 interface Member {
   id: string;
@@ -37,11 +38,19 @@ export function AbsentMembers() {
   const [allMembers, setAllMembers] = useState<Member[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [eventType, setEventType] = useState("sunday-service")
+  const [eventType, setEventType] = useState("")
   const [absenceFilter, setAbsenceFilter] = useState("all")
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
+
+  // Set default event type when event types are loaded
+  useEffect(() => {
+    if (!eventTypesLoading && eventTypes.length > 0 && !eventType) {
+      setEventType(eventTypes[0].value);
+    }
+  }, [eventTypes, eventTypesLoading, eventType]);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -72,8 +81,8 @@ export function AbsentMembers() {
       setError(null)
       try {
         const { data: attendanceData, error: fetchError } = await supabase
-          .from("attendance")
-          .select("id, date, event, members")
+          .from("attendance_with_type")
+          .select("id, date, event_type_value, event_type_label, members")
           .order("date", { ascending: false })
 
         if (fetchError) {
@@ -94,7 +103,7 @@ export function AbsentMembers() {
   // Find the most recent record for the selected event type
   const getEventRecords = () => {
     return attendanceRecords
-      .filter((record) => record.event.toLowerCase().replace(/\s+/g, "-") === eventType)
+      .filter((record) => record.event_type_value === eventType)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }
 
@@ -155,6 +164,24 @@ export function AbsentMembers() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="max-w-[300px]"
           />
+          <Select value={eventType || undefined} onValueChange={setEventType}>
+            <SelectTrigger className="w-[180px]" disabled={eventTypesLoading || eventTypes.length === 0}>
+              <SelectValue placeholder={eventTypesLoading ? "Loading..." : eventTypes.length === 0 ? "No event types" : "Select event type"} />
+            </SelectTrigger>
+            <SelectContent>
+              {eventTypesLoading ? (
+                <SelectItem value="loading" disabled>Loading event types...</SelectItem>
+              ) : eventTypes.length === 0 ? (
+                <SelectItem value="no-types" disabled>No event types configured</SelectItem>
+              ) : (
+                eventTypes.map((type) => (
+                  <SelectItem key={type.value} value={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
           <Select value={absenceFilter} onValueChange={setAbsenceFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by absences" />

@@ -2,15 +2,15 @@ import { Clock, MapPin, Calendar } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Event } from "@/types/database"
 import { format } from "date-fns"
-import { getEventTypeDisplayName } from "@/hooks/use-terminology"
+import { useEventTypes, getEventTypeDisplayName } from "@/hooks/use-event-types"
 
 interface UpcomingEventsProps {
   events: Event[]
-  terminology: any
   onEditEvent?: (event: Event) => void
 }
 
-export function UpcomingEvents({ events, terminology, onEditEvent }: UpcomingEventsProps) {
+export function UpcomingEvents({ events, onEditEvent }: UpcomingEventsProps) {
+  const { eventTypes } = useEventTypes()
   if (!events || events.length === 0) {
     return (
       <div className="text-center py-8">
@@ -33,8 +33,13 @@ export function UpcomingEvents({ events, terminology, onEditEvent }: UpcomingEve
             onClick={() => onEditEvent?.(event)}
           >
             <div className="flex items-center justify-between">
-              <Badge variant={getBadgeVariant(event.type)}>
-                {getEventTypeDisplayName(event.type || 'other', terminology)}
+              <Badge variant={
+                (event as any).event_type_color === 'default' ? 'default' :
+                (event as any).event_type_color === 'secondary' ? 'secondary' :
+                (event as any).event_type_color === 'destructive' ? 'destructive' :
+                'outline'
+              }>
+                {(event as any).event_type_label || getEventTypeDisplayName(event.type || 'other', eventTypes)}
               </Badge>
               <span className="text-sm text-muted-foreground">
                 {format(new Date(event.date), 'MMM dd')}
@@ -75,20 +80,5 @@ export function UpcomingEvents({ events, terminology, onEditEvent }: UpcomingEve
   )
 }
 
-function getBadgeVariant(eventType?: string) {
-  switch (eventType) {
-    case 'sunday-service':
-      return 'default'
-    case 'bible-study':
-      return 'secondary'
-    case 'youth-group':
-      return 'outline'
-    case 'children-ministry':
-      return 'secondary'
-    case 'other':
-      return 'outline'
-    default:
-      return 'outline'
-  }
-}
+// Badge variant function is now handled by getEventTypeBadgeVariant from useEventTypes hook
 

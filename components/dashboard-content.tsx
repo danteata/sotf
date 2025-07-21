@@ -42,11 +42,18 @@ export function DashboardContent() {
           new Date(m.joined_date) >= firstDayOfMonth
         ).length || 0
 
+        // Get sunday-service event type ID first
+        const { data: sundayServiceType } = await supabase
+          .from('event_types')
+          .select('id')
+          .eq('value', 'sunday-service')
+          .single()
+
         // Fetch latest attendance record
         const { data: latestAttendance, error: attendanceError } = await supabase
           .from('attendance')
           .select('*')
-          .eq('event', 'sunday-service')
+          .eq('event_type_id', sundayServiceType?.id)
           .order('date', { ascending: false })
           .limit(2)
 
@@ -54,7 +61,7 @@ export function DashboardContent() {
 
         // Fetch upcoming events
         const { data: events, error: eventsError } = await supabase
-          .from('events')
+          .from('events_with_type')
           .select('*')
           .gte('date', new Date().toISOString())
           .order('date', { ascending: true })

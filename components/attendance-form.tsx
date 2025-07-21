@@ -19,12 +19,13 @@ import { cn } from "@/lib/utils"
 import { format, isSameDay } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "./ui/badge"
+import { useEventTypes } from "@/hooks/use-event-types"
 
 export function AttendanceForm() {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
-  const [attendanceType, setAttendanceType] = useState("sunday-service")
+  const [attendanceType, setAttendanceType] = useState("")
   const [notes, setNotes] = useState("")
   const [members, setMembers] = useState<any[]>([])
   const [ministries, setMinistries] = useState<any[]>([])
@@ -34,6 +35,14 @@ export function AttendanceForm() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
+
+  // Set default event type when event types are loaded
+  useEffect(() => {
+    if (!eventTypesLoading && eventTypes.length > 0 && !attendanceType) {
+      setAttendanceType(eventTypes[0].value);
+    }
+  }, [eventTypes, eventTypesLoading, attendanceType]);
   const [ministryFilter, setMinistryFilter] = useState("all")
   const [regionFilter, setRegionFilter] = useState("all")
 
@@ -96,12 +105,23 @@ export function AttendanceForm() {
       try {
         const formattedDate = format(date, "yyyy-MM-dd")
 
+        // Get event type ID first
+        const { data: eventTypeData, error: eventTypeError } = await supabase
+          .from("event_types")
+          .select("id")
+          .eq("value", attendanceType)
+          .single();
+
+        if (eventTypeError) {
+          throw eventTypeError;
+        }
+
         // Get attendance record for this date and event type
         const { data: existingAttendance, error: fetchExistingError } = await supabase
           .from("attendance")
           .select("id, date")
           .eq("date", formattedDate)
-          .eq("event", attendanceType)
+          .eq("event_type_id", eventTypeData.id)
           .single();
 
         if (fetchExistingError && fetchExistingError.code !== "PGRST116") {
@@ -179,12 +199,23 @@ export function AttendanceForm() {
       // First, create or find an event for this attendance
       let eventId: string | null = null
 
+      // Get event type ID first
+      const { data: eventTypeData, error: eventTypeError } = await supabase
+        .from("event_types")
+        .select("id, label")
+        .eq("value", attendanceType)
+        .single();
+
+      if (eventTypeError) {
+        throw eventTypeError;
+      }
+
       // Check if an event exists for this date and type
       const { data: existingEvent, error: eventFetchError } = await supabase
         .from("events")
         .select("id")
         .eq("date", formattedDate)
-        .eq("type", attendanceType)
+        .eq("event_type_id", eventTypeData.id)
         .single()
 
       if (eventFetchError && eventFetchError.code !== 'PGRST116') {
@@ -198,9 +229,9 @@ export function AttendanceForm() {
         const { data: newEvent, error: eventInsertError } = await supabase
           .from("events")
           .insert([{
-            title: `${attendanceType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())} - ${formattedDate}`,
+            title: `${eventTypeData.label} - ${formattedDate}`,
             date: formattedDate,
-            type: attendanceType,
+            event_type_id: eventTypeData.id,
             description: notes || 'Attendance record'
           }])
           .select("id")
@@ -217,7 +248,7 @@ export function AttendanceForm() {
         .from("attendance")
         .select("id")
         .eq("date", formattedDate)
-        .eq("event", attendanceType)
+        .eq("event_type_id", eventTypeData.id)
         .single()
 
       if (fetchExistingError && fetchExistingError.code !== 'PGRST116') {
@@ -257,7 +288,7 @@ export function AttendanceForm() {
           .from("attendance")
           .insert([{
             date: formattedDate,
-            event: attendanceType,
+            event_type_id: eventTypeData.id,
             event_id: eventId,
             count: selectedMembers.length,
             percent_change: 0,
@@ -356,18 +387,22 @@ export function AttendanceForm() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="event-type">Event Type</Label>
-              <Select value={attendanceType} onValueChange={setAttendanceType}>
-                <SelectTrigger id="event-type">
-                  <SelectValue placeholder="Select event type" />
+              <Select value={attendanceType || undefined} onValueChange={setAttendanceType}>
+                <SelectTrigger id="event-type" disabled={eventTypesLoading || eventTypes.length === 0}>
+                  <SelectValue placeholder={eventTypesLoading ? "Loading..." : eventTypes.length === 0 ? "No event types configured" : "Select event type"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sunday-service">Sunday Service</SelectItem>
-                  <SelectItem value="bible-study">Bible Study</SelectItem>
-                  <SelectItem value="youth-group">Youth Group</SelectItem>
-                  <SelectItem value="childrens-ministry">Children's Ministry</SelectItem>
-                  <SelectItem value="choir-practice">Choir Practice</SelectItem>
-                  <SelectItem value="outreach">Outreach Event</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {eventTypesLoading ? (
+                    <SelectItem value="loading" disabled>Loading event types...</SelectItem>
+                  ) : eventTypes.length === 0 ? (
+                    <SelectItem value="no-types" disabled>No event types configured</SelectItem>
+                  ) : (
+                    eventTypes.map((eventType) => (
+                      <SelectItem key={eventType.value} value={eventType.value}>
+                        {eventType.label}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

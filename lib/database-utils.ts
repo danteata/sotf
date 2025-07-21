@@ -346,12 +346,21 @@ export async function getAttendanceStats() {
   const fourWeeksAgoDate = format(startOfWeek(subWeeks(today, 4), { weekStartsOn: 0 }), 'yyyy-MM-dd')
 
   try {
+    // Get sunday-service event type ID
+    const { data: sundayServiceType } = await supabase
+      .from("event_types")
+      .select("id")
+      .eq("value", "sunday-service")
+      .single()
+
+    const sundayServiceTypeId = sundayServiceType?.id
+
     // Fetch last Sunday's attendance
     const { data: lastSundayData } = await supabase
       .from("attendance")
       .select("count")
       .eq("date", lastSundayDate)
-      .eq("event", "sunday-service")
+      .eq("event_type_id", sundayServiceTypeId)
       .single()
 
     // Fetch previous Sunday's attendance
@@ -359,45 +368,63 @@ export async function getAttendanceStats() {
       .from("attendance")
       .select("count")
       .eq("date", previousSundayDate)
-      .eq("event", "sunday-service")
+      .eq("event_type_id", sundayServiceTypeId)
       .single()
 
     // Fetch last 4 weeks of Sunday attendance
     const { data: fourWeeksData } = await supabase
       .from("attendance")
       .select("count")
-      .eq("event", "sunday-service")
+      .eq("event_type_id", sundayServiceTypeId)
       .gte("date", fourWeeksAgoDate)
       .lte("date", lastSundayDate)
       .order("date", { ascending: false })
+
+    // Get youth-group event type ID
+    const { data: youthGroupType } = await supabase
+      .from("event_types")
+      .select("id")
+      .eq("value", "youth-group")
+      .single()
+
+    const youthGroupTypeId = youthGroupType?.id
 
     // Fetch youth group attendance
     const { data: youthData } = await supabase
       .from("attendance")
       .select("count")
-      .eq("event", "youth-group")
+      .eq("event_type_id", youthGroupTypeId)
       .eq("date", lastSundayDate)
       .single()
 
     const { data: previousYouthData } = await supabase
       .from("attendance")
       .select("count")
-      .eq("event", "youth-group")
+      .eq("event_type_id", youthGroupTypeId)
       .eq("date", previousSundayDate)
       .single()
+
+    // Get children-ministry event type ID
+    const { data: childrenMinistryType } = await supabase
+      .from("event_types")
+      .select("id")
+      .eq("value", "children-ministry")
+      .single()
+
+    const childrenMinistryTypeId = childrenMinistryType?.id
 
     // Fetch children's ministry attendance
     const { data: childrenData } = await supabase
       .from("attendance")
       .select("count")
-      .eq("event", "children-ministry")
+      .eq("event_type_id", childrenMinistryTypeId)
       .eq("date", lastSundayDate)
       .single()
 
     const { data: previousChildrenData } = await supabase
       .from("attendance")
       .select("count")
-      .eq("event", "children-ministry")
+      .eq("event_type_id", childrenMinistryTypeId)
       .eq("date", previousSundayDate)
       .single()
 

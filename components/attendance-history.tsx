@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils"
 import { format, subDays } from "date-fns"
 import { supabase } from "@/lib/supabase"
+import { useEventTypes } from "@/hooks/use-event-types"
 
 import type { DateRange } from "react-day-picker"
 import { Input } from "./ui/input"
@@ -35,6 +36,7 @@ export function AttendanceHistory() {
   const [eventType, setEventType] = useState("all")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
 
   useEffect(() => {
     const fetchAttendance = async () => {
@@ -42,8 +44,8 @@ export function AttendanceHistory() {
       setError(null);
       try {
         let query = supabase
-          .from("attendance")
-          .select("id, date, event, count, percent_change, notes")
+          .from("attendance_with_type")
+          .select("id, date, event_type_value, event_type_label, count, percent_change, notes")
           .order("date", { ascending: false });
 
         if (dateRange?.from) {
@@ -78,7 +80,7 @@ export function AttendanceHistory() {
   const filteredRecords = attendanceData.filter((record) => {
     if (
       eventType !== "all" &&
-      record.event.toLowerCase().replace(/\s+/g, "-") !== eventType
+      record.event_type_value !== eventType
     ) {
       return false
     }
@@ -108,12 +110,17 @@ export function AttendanceHistory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="sunday-service">Sunday Service</SelectItem>
-                  <SelectItem value="bible-study">Bible Study</SelectItem>
-                  <SelectItem value="youth-group">Youth Group</SelectItem>
-                  <SelectItem value="children's-ministry">
-                    Children's Ministry
-                  </SelectItem>
+                  {eventTypesLoading ? (
+                    <SelectItem value="loading" disabled>Loading event types...</SelectItem>
+                  ) : eventTypes.length === 0 ? (
+                    <SelectItem value="no-types" disabled>No event types configured</SelectItem>
+                  ) : (
+                    eventTypes.map((eventType) => (
+                      <SelectItem key={eventType.value} value={eventType.value}>
+                        {eventType.label}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -167,7 +174,7 @@ export function AttendanceHistory() {
                   filteredRecords.map((record) => (
                     <TableRow key={record.id}>
                       <TableCell>{record.date}</TableCell>
-                      <TableCell>{record.event}</TableCell>
+                      <TableCell>{record.event_type_label || record.event_type_value || 'Unknown'}</TableCell>
                       <TableCell className="text-right font-medium">
                         {record.count}
                       </TableCell>

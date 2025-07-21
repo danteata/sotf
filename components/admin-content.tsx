@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { MinistryDialog } from "@/components/ministry-dialog"
 import { RegionDialog } from "@/components/region-dialog"
 import { SettingsDialog } from "@/components/settings-dialog"
+import { EventTypesManagement } from "@/components/event-types-management"
 import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 
@@ -173,12 +174,15 @@ export function AdminContent() {
 
       {/* Tabs */}
       <Tabs defaultValue="ministries" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-md bg-gray-100 p-1 rounded-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg bg-gray-100 p-1 rounded-lg">
           <TabsTrigger value="ministries">
             {ministryLabels.plural}
           </TabsTrigger>
           <TabsTrigger value="regions">
             {regionLabels.plural}
+          </TabsTrigger>
+          <TabsTrigger value="events">
+            Event Types
           </TabsTrigger>
           <TabsTrigger value="settings">
             Settings
@@ -335,6 +339,11 @@ export function AdminContent() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Event Types Tab */}
+        <TabsContent value="events" className="mt-6 w-full">
+          <EventTypesManagement />
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6 w-full">

@@ -41,7 +41,8 @@ import {
 } from "@/components/ui/popover"
 import { useToast } from "@/components/ui/use-toast"
 import { supabase } from "@/lib/supabase"
-import { useTerminology, getEventTypeDisplayName } from "@/hooks/use-terminology"
+import { useTerminology } from "@/hooks/use-terminology"
+import { useEventTypes } from "@/hooks/use-event-types"
 import { cn } from "@/lib/utils"
 
 const eventSchema = z.object({
@@ -64,7 +65,8 @@ interface Event {
   date: string
   time?: string
   location?: string
-  type: string
+  type?: string // Legacy field for backward compatibility
+  event_type_id?: string // New foreign key field
   created_at: string
   updated_at: string
 }
@@ -80,6 +82,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const { terminology } = useTerminology()
+  const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
@@ -94,38 +97,71 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
 
   // Reset form when dialog opens/closes or event changes
   useEffect(() => {
-    if (open) {
-      if (event) {
-        form.reset({
-          title: event.title,
-          description: event.description || "",
-          date: new Date(event.date),
-          time: event.time || "",
-          location: event.location || "",
-          type: event.type,
-        })
-      } else {
-        form.reset({
-          title: "",
-          description: "",
-          time: "",
-          location: "",
-          type: "",
-        })
+    const loadEventData = async () => {
+      if (open) {
+        if (event) {
+          let eventTypeValue = event.type // Legacy field
+
+          // If we have event_type_id but no type, get the value from event_types table
+          if (event.event_type_id && !eventTypeValue) {
+            try {
+              const { data: eventTypeData } = await supabase
+                .from('event_types')
+                .select('value')
+                .eq('id', event.event_type_id)
+                .single()
+
+              eventTypeValue = eventTypeData?.value || ''
+            } catch (error) {
+              console.error('Error loading event type:', error)
+              eventTypeValue = ''
+            }
+          }
+
+          form.reset({
+            title: event.title,
+            description: event.description || "",
+            date: new Date(event.date),
+            time: event.time || "",
+            location: event.location || "",
+            type: eventTypeValue || "",
+          })
+        } else {
+          form.reset({
+            title: "",
+            description: "",
+            time: "",
+            location: "",
+            type: "",
+          })
+        }
       }
     }
+
+    loadEventData()
   }, [open, event, form])
 
   const onSubmit = async (data: EventFormData) => {
     setIsLoading(true)
     try {
+      // Get the event type ID from the selected value
+      const { data: eventTypeData, error: eventTypeError } = await supabase
+        .from('event_types')
+        .select('id')
+        .eq('value', data.type)
+        .single()
+
+      if (eventTypeError) {
+        throw new Error(`Event type not found: ${data.type}`)
+      }
+
       const eventData = {
         title: data.title,
         description: data.description || null,
         date: format(data.date, 'yyyy-MM-dd'),
         time: data.time || null,
         location: data.location || null,
-        type: data.type,
+        event_type_id: eventTypeData.id,
         updated_at: new Date().toISOString(),
       }
 
@@ -185,13 +221,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
     }
   }
 
-  const eventTypes = [
-    { value: 'sunday-service', label: 'Sunday Service' },
-    { value: 'bible-study', label: 'Bible Study' },
-    { value: 'youth-group', label: 'Youth Group' },
-    { value: 'children-ministry', label: `Children ${terminology.ministry_term}` },
-    { value: 'other', label: 'Other' },
-  ]
+  // Event types are now loaded from the useEventTypes hook
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -327,11 +357,17 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {eventTypes.map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
+                      {eventTypesLoading ? (
+                        <SelectItem value="loading" disabled>Loading event types...</SelectItem>
+                      ) : eventTypes.length === 0 ? (
+                        <SelectItem value="no-types" disabled>No event types configured</SelectItem>
+                      ) : (
+                        eventTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
