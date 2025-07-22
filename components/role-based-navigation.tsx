@@ -97,7 +97,7 @@ export function RoleBasedNavigation() {
     },
     {
       title: "Settings",
-      href: "/settings",
+      href: "/admin",
       icon: Settings,
       roles: ["admin"]
     }

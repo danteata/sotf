@@ -7,18 +7,20 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Shield, Users, Edit, Plus, Search } from "lucide-react"
+import { Shield, Users, Edit, UserPlus } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { supabase } from "@/lib/supabase"
 import { useTerminology } from "@/hooks/use-terminology"
+import { LeaderInvitationSystem } from "@/components/leader-invitation-system"
 import type { User, UserRole, Ministry, Region } from "@/types/database"
 
 export function UserManagement() {
-  const { role, isAdmin } = useUserRole()
+  const { isAdmin } = useUserRole()
   const { terminology } = useTerminology()
+  const [activeTab, setActiveTab] = useState<'users' | 'invitations'>('users')
   
   const [users, setUsers] = useState<User[]>([])
   const [ministries, setMinistries] = useState<Ministry[]>([])
@@ -215,18 +217,40 @@ export function UserManagement() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
           <p className="text-muted-foreground">
-            Manage user roles and permissions
+            Manage user roles, permissions, and invite leaders
           </p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>System Users</CardTitle>
-          <CardDescription>
-            Assign roles and manage user permissions
-          </CardDescription>
-        </CardHeader>
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 mb-6">
+        <Button
+          variant={activeTab === 'users' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('users')}
+          className="flex items-center gap-2"
+        >
+          <Users className="h-4 w-4" />
+          Existing Users
+        </Button>
+        <Button
+          variant={activeTab === 'invitations' ? 'default' : 'outline'}
+          onClick={() => setActiveTab('invitations')}
+          className="flex items-center gap-2"
+        >
+          <UserPlus className="h-4 w-4" />
+          Invite Leaders
+        </Button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'users' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>System Users</CardTitle>
+            <CardDescription>
+              Assign roles and manage user permissions for existing accounts
+            </CardDescription>
+          </CardHeader>
         <CardContent>
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -322,97 +346,100 @@ export function UserManagement() {
             </Table>
           </div>
         </CardContent>
-      </Card>
 
-      {/* Edit User Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit User Role</DialogTitle>
-            <DialogDescription>
-              Assign roles and permissions for {editingUser?.name}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="role">Role</Label>
-              <Select value={selectedRole} onValueChange={(value: UserRole) => setSelectedRole(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Member</SelectItem>
-                  <SelectItem value="ministry_leader">{terminology.ministry_term} Leader</SelectItem>
-                  <SelectItem value="region_leader">Region Leader</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Edit User Dialog */}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit User Role</DialogTitle>
+                <DialogDescription>
+                  Assign roles and permissions for {editingUser?.name}
+                </DialogDescription>
+              </DialogHeader>
 
-            {(selectedRole === 'ministry_leader' || selectedRole === 'admin') && (
-              <div>
-                <Label>{terminology.ministry_term} Leadership</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {ministries.map((ministry) => (
-                    <div key={ministry.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={ministry.id}
-                        checked={selectedMinistries.includes(ministry.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedMinistries([...selectedMinistries, ministry.id])
-                          } else {
-                            setSelectedMinistries(selectedMinistries.filter(id => id !== ministry.id))
-                          }
-                        }}
-                      />
-                      <Label htmlFor={ministry.id} className="text-sm">
-                        {ministry.name}
-                      </Label>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={selectedRole} onValueChange={(value: UserRole) => setSelectedRole(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="ministry_leader">{terminology.ministry_term} Leader</SelectItem>
+                      <SelectItem value="region_leader">Region Leader</SelectItem>
+                      <SelectItem value="admin">Administrator</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {(selectedRole === 'ministry_leader' || selectedRole === 'admin') && (
+                  <div>
+                    <Label>{terminology.ministry_term} Leadership</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {ministries.map((ministry) => (
+                        <div key={ministry.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={ministry.id}
+                            checked={selectedMinistries.includes(ministry.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedMinistries([...selectedMinistries, ministry.id])
+                              } else {
+                                setSelectedMinistries(selectedMinistries.filter(id => id !== ministry.id))
+                              }
+                            }}
+                          />
+                          <Label htmlFor={ministry.id} className="text-sm">
+                            {ministry.name}
+                          </Label>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                {(selectedRole === 'region_leader' || selectedRole === 'admin') && (
+                  <div>
+                    <Label>Region Leadership</Label>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {regions.map((region) => (
+                        <div key={region.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={region.id}
+                            checked={selectedRegions.includes(region.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedRegions([...selectedRegions, region.id])
+                              } else {
+                                setSelectedRegions(selectedRegions.filter(id => id !== region.id))
+                              }
+                            }}
+                          />
+                          <Label htmlFor={region.id} className="text-sm">
+                            {region.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveUser}>
+                    Save Changes
+                  </Button>
                 </div>
               </div>
-            )}
-
-            {(selectedRole === 'region_leader' || selectedRole === 'admin') && (
-              <div>
-                <Label>Region Leadership</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {regions.map((region) => (
-                    <div key={region.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={region.id}
-                        checked={selectedRegions.includes(region.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSelectedRegions([...selectedRegions, region.id])
-                          } else {
-                            setSelectedRegions(selectedRegions.filter(id => id !== region.id))
-                          }
-                        }}
-                      />
-                      <Label htmlFor={region.id} className="text-sm">
-                        {region.name}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveUser}>
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </DialogContent>
+          </Dialog>
+        </Card>
+      ) : (
+        <LeaderInvitationSystem />
+      )}
     </div>
   )
 }
