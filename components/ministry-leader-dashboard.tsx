@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Users, Calendar, TrendingUp, Search, Plus, UserCheck, UserX } from "lucide-react"
-import { useUserRole, useManagedMembers } from "@/hooks/use-user-role"
+import { useUserRole, useManagedMembers, useAccessibleMinistriesAndRegions } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
 import { AttendanceForm } from "@/components/attendance-form"
 import { format } from "date-fns"
@@ -17,6 +17,7 @@ import { format } from "date-fns"
 export function MinistryLeaderDashboard() {
   const { user, role, ministryLeaderships, isLoading: roleLoading } = useUserRole()
   const { members, isLoading: membersLoading, error, refetch } = useManagedMembers()
+  const { ministries: accessibleMinistries, regions: accessibleRegions } = useAccessibleMinistriesAndRegions()
   const { terminology } = useTerminology()
   
   const [searchQuery, setSearchQuery] = useState("")
@@ -107,9 +108,9 @@ export function MinistryLeaderDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{members.length}</div>
+            <div className="text-2xl font-bold">{filteredMembers.length}</div>
             <p className="text-xs text-muted-foreground">
-              Active members in your {terminology.ministry_term.toLowerCase()}s
+              Members in your {terminology.ministry_term.toLowerCase()}s
             </p>
           </CardContent>
         </Card>
@@ -121,7 +122,7 @@ export function MinistryLeaderDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {members.filter(m => m.status === 'active').length}
+              {filteredMembers.filter(m => m.status === 'active').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Currently active members
@@ -136,7 +137,7 @@ export function MinistryLeaderDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {members.filter(m => m.status === 'inactive').length}
+              {filteredMembers.filter(m => m.status === 'inactive').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Members needing attention
@@ -176,7 +177,7 @@ export function MinistryLeaderDashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All {terminology.ministry_term}s</SelectItem>
-                    {ministryLeaderships.map((ministry) => (
+                    {accessibleMinistries.map((ministry) => (
                       <SelectItem key={ministry.id} value={ministry.name}>
                         {ministry.name}
                       </SelectItem>
@@ -278,8 +279,10 @@ export function MinistryLeaderDashboard() {
                   ×
                 </Button>
               </div>
-              <AttendanceForm 
+              <AttendanceForm
                 availableMembers={members}
+                availableMinistries={accessibleMinistries}
+                availableRegions={accessibleRegions}
                 onSuccess={() => {
                   setShowAttendanceForm(false)
                   refetch()

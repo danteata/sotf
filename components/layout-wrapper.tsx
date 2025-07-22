@@ -1,26 +1,18 @@
 "use client"
 
 import { type ReactNode, useState } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import {
   Bell,
   Search as SearchIcon,
   Menu,
-  X,
-  Home,
-  Users,
-  Calendar,
-  Heart,
-  MessageSquare,
-  PieChart,
-  Settings
+  X
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { UserNav } from "@/components/user-nav"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { RoleBasedNavigation, RoleIndicator } from "@/components/role-based-navigation"
 
 // Conditionally import Clerk hooks
 let useUser: any = () => ({ isLoaded: true, isSignedIn: false })
@@ -41,16 +33,7 @@ if (typeof window !== "undefined") {
   }
 }
 
-const navigationItems = [
-  { href: "/", label: "Dashboard", icon: Home, public: true },
-  { href: "/members", label: "Members", icon: Users, public: false },
-  { href: "/attendance", label: "Attendance", icon: Calendar, public: false },
-  { href: "/events", label: "Events", icon: Calendar, public: false },
-  { href: "/giving", label: "Giving", icon: Heart, public: false },
-  { href: "/communication", label: "Communication", icon: MessageSquare, public: false },
-  { href: "/reports", label: "Reports", icon: PieChart, public: false },
-  { href: "/admin", label: "Admin", icon: Settings, public: false },
-]
+
 
 interface LayoutWrapperProps {
   children?: ReactNode
@@ -59,16 +42,11 @@ interface LayoutWrapperProps {
 
 export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const pathname = usePathname()
   const { isSignedIn } = useUser()
 
   const isClerkConfigured =
     typeof process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === "string" &&
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
-
-  const filteredNavItems = isClerkConfigured
-    ? navigationItems.filter((item) => item.public || isSignedIn)
-    : navigationItems
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -104,30 +82,17 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1">
+        <div className="flex-1 px-4 py-6">
           <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-4">
             Navigation
           </div>
-          {filteredNavItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                pathname === item.href
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
-                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-              )}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <item.icon className={cn(
-                "h-4 w-4",
-                pathname === item.href ? "text-blue-600" : "text-gray-500"
-              )} />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+          <div onClick={() => setSidebarOpen(false)}>
+            <RoleBasedNavigation />
+          </div>
+        </div>
+
+        {/* Role Indicator */}
+        <RoleIndicator />
       </div>
 
       {/* Main content */}

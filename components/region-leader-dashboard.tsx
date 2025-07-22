@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MapPin, Users, Calendar, TrendingUp, Search, Plus, UserCheck, UserX } from "lucide-react"
-import { useUserRole, useManagedMembers } from "@/hooks/use-user-role"
+import { useUserRole, useManagedMembers, useAccessibleMinistriesAndRegions } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
 import { AttendanceForm } from "@/components/attendance-form"
 import { format } from "date-fns"
@@ -17,6 +17,7 @@ import { format } from "date-fns"
 export function RegionLeaderDashboard() {
   const { user, role, regionLeaderships, isLoading: roleLoading } = useUserRole()
   const { members, isLoading: membersLoading, error, refetch } = useManagedMembers()
+  const { ministries: accessibleMinistries, regions: accessibleRegions } = useAccessibleMinistriesAndRegions()
   const { terminology } = useTerminology()
   
   const [searchQuery, setSearchQuery] = useState("")
@@ -107,9 +108,9 @@ export function RegionLeaderDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{members.length}</div>
+            <div className="text-2xl font-bold">{filteredMembers.length}</div>
             <p className="text-xs text-muted-foreground">
-              Active members in your regions
+              Members in your regions
             </p>
           </CardContent>
         </Card>
@@ -121,7 +122,7 @@ export function RegionLeaderDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {members.filter(m => m.status === 'active').length}
+              {filteredMembers.filter(m => m.status === 'active').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Currently active members
@@ -136,7 +137,7 @@ export function RegionLeaderDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {members.filter(m => m.status === 'inactive').length}
+              {filteredMembers.filter(m => m.status === 'inactive').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Members needing attention
@@ -177,7 +178,7 @@ export function RegionLeaderDashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Regions</SelectItem>
-                    {regionLeaderships.map((region) => (
+                    {accessibleRegions.map((region) => (
                       <SelectItem key={region.id} value={region.name}>
                         {region.name}
                       </SelectItem>
@@ -289,9 +290,9 @@ export function RegionLeaderDashboard() {
         <TabsContent value="regions" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             {regionLeaderships.map((region) => {
-              const regionMembers = members.filter(m => m.region_name === region.name)
+              const regionMembers = filteredMembers.filter(m => m.region_name === region.name)
               const activeMembers = regionMembers.filter(m => m.status === 'active')
-              
+
               return (
                 <Card key={region.id}>
                   <CardHeader>
@@ -331,8 +332,10 @@ export function RegionLeaderDashboard() {
                   ×
                 </Button>
               </div>
-              <AttendanceForm 
+              <AttendanceForm
                 availableMembers={members}
+                availableMinistries={accessibleMinistries}
+                availableRegions={accessibleRegions}
                 onSuccess={() => {
                   setShowAttendanceForm(false)
                   refetch()

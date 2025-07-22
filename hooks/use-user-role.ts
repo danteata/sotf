@@ -47,6 +47,7 @@ export function useUserRole(): UserRoleData {
           .from('users')
           .select('*')
           .eq('clerk_user_id', clerkUser.id)
+          .eq('is_active', true)
           .single()
 
         let user: User
@@ -77,6 +78,7 @@ export function useUserRole(): UserRoleData {
 
         // Load ministry leaderships if user is a ministry leader
         if (user.role === 'ministry_leader' || user.role === 'admin') {
+          console.log('Loading ministry leaderships for user:', user.id)
           const { data: ministryData, error: ministryError } = await supabase
             .from('user_ministry_leadership')
             .select(`
@@ -93,14 +95,18 @@ export function useUserRole(): UserRoleData {
             `)
             .eq('user_id', user.id)
 
+          console.log('Ministry leadership query result:', { ministryData, ministryError })
+
           if (ministryError) throw ministryError
 
-          const ministries = ministryData?.map(item => item.ministries).filter(Boolean) || []
-          setMinistryLeaderships(ministries as Ministry[])
+          const ministries = ministryData?.map(item => item.ministries).filter(Boolean).flat() || []
+          setMinistryLeaderships(ministries as unknown as Ministry[])
+          console.log('Set ministry leaderships:', ministries)
         }
 
         // Load region leaderships if user is a region leader
         if (user.role === 'region_leader' || user.role === 'admin') {
+          console.log('Loading region leaderships for user:', user.id)
           const { data: regionData, error: regionError } = await supabase
             .from('user_region_leadership')
             .select(`
@@ -116,10 +122,13 @@ export function useUserRole(): UserRoleData {
             `)
             .eq('user_id', user.id)
 
+          console.log('Region leadership query result:', { regionData, regionError })
+
           if (regionError) throw regionError
 
-          const regions = regionData?.map(item => item.regions).filter(Boolean) || []
-          setRegionLeaderships(regions as Region[])
+          const regions = regionData?.map(item => item.regions).filter(Boolean).flat() || []
+          setRegionLeaderships(regions as unknown as Region[])
+          console.log('Set region leaderships:', regions)
         }
 
       } catch (err) {
@@ -245,38 +254,60 @@ export function useManagedMembers() {
     setError(null)
 
     try {
-      let query
-
       if (role === 'admin') {
         // Admins can see all members
-        query = supabase
+        const { data, error: queryError } = await supabase
           .from('members_with_details')
           .select('*')
-          .eq('status', 'active')
+          .order('name')
+
+        if (queryError) throw queryError
+        setMembers(data || [])
+
       } else if (role === 'ministry_leader' && ministryLeaderships.length > 0) {
         // Ministry leaders see their ministry members
-        query = supabase
-          .from('ministry_leader_members')
-          .select('*')
-          .eq('leader_user_id', user.id)
+        const ministryIds = ministryLeaderships.map(m => m.id)
+
+        // Get members who belong to the ministries this user leads
+        const { data: memberMinistries, error: mmError } = await supabase
+          .from('member_ministries')
+          .select('member_id')
+          .in('ministry_id', ministryIds)
+
+        if (mmError) throw mmError
+
+        if (memberMinistries && memberMinistries.length > 0) {
+          const memberIds = memberMinistries.map(mm => mm.member_id)
+
+          const { data: members, error: membersError } = await supabase
+            .from('members_with_details')
+            .select('*')
+            .in('id', memberIds)
+            .order('name')
+
+          if (membersError) throw membersError
+          setMembers(members || [])
+        } else {
+          setMembers([])
+        }
+
       } else if (role === 'region_leader' && regionLeaderships.length > 0) {
         // Region leaders see their region members
-        query = supabase
-          .from('region_leader_members')
+        const regionIds = regionLeaderships.map(r => r.id)
+
+        const { data: members, error: membersError } = await supabase
+          .from('members_with_details')
           .select('*')
-          .eq('leader_user_id', user.id)
+          .in('region_id', regionIds)
+          .order('name')
+
+        if (membersError) throw membersError
+        setMembers(members || [])
+
       } else {
         // Regular members can't manage anyone
         setMembers([])
-        setIsLoading(false)
-        return
       }
-
-      const { data, error: queryError } = await query.order('name')
-
-      if (queryError) throw queryError
-
-      setMembers(data || [])
     } catch (err) {
       console.error('Error loading managed members:', err)
       setError(err instanceof Error ? err.message : 'Failed to load members')
@@ -291,4 +322,84 @@ export function useManagedMembers() {
   }, [loadManagedMembers])
 
   return { members, isLoading, error, refetch: loadManagedMembers }
+}
+
+// Hook to get ministries and regions that the current user can access
+export function useAccessibleMinistriesAndRegions() {
+  const { user, role, ministryLeaderships, regionLeaderships, isLoading: roleLoading } = useUserRole()
+  const [ministries, setMinistries] = useState<Ministry[]>([])
+  const [regions, setRegions] = useState<Region[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadAccessibleData = async () => {
+      if (roleLoading || !user) {
+        setMinistries([])
+        setRegions([])
+        setIsLoading(false)
+        return
+      }
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        if (role === 'admin') {
+          // Admins can see all ministries and regions
+          const [ministriesData, regionsData] = await Promise.all([
+            supabase.from('ministries').select('*').eq('active', true).order('name'),
+            supabase.from('regions').select('*').eq('active', true).order('name')
+          ])
+
+          if (ministriesData.error) throw ministriesData.error
+          if (regionsData.error) throw regionsData.error
+
+          setMinistries(ministriesData.data || [])
+          setRegions(regionsData.data || [])
+
+        } else if (role === 'ministry_leader') {
+          // Ministry leaders see only their ministries, all regions
+          setMinistries(ministryLeaderships)
+
+          const { data: regionsData, error: regionsError } = await supabase
+            .from('regions')
+            .select('*')
+            .eq('active', true)
+            .order('name')
+
+          if (regionsError) throw regionsError
+          setRegions(regionsData || [])
+
+        } else if (role === 'region_leader') {
+          // Region leaders see all ministries, only their regions
+          const { data: ministriesData, error: ministriesError } = await supabase
+            .from('ministries')
+            .select('*')
+            .eq('active', true)
+            .order('name')
+
+          if (ministriesError) throw ministriesError
+          setMinistries(ministriesData || [])
+          setRegions(regionLeaderships)
+
+        } else {
+          // Regular members see nothing
+          setMinistries([])
+          setRegions([])
+        }
+      } catch (err) {
+        console.error('Error loading accessible ministries and regions:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load data')
+        setMinistries([])
+        setRegions([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadAccessibleData()
+  }, [user, role, ministryLeaderships, regionLeaderships, roleLoading])
+
+  return { ministries, regions, isLoading, error }
 }

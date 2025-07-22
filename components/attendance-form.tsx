@@ -21,7 +21,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "./ui/badge"
 import { useEventTypes } from "@/hooks/use-event-types"
 
-export function AttendanceForm() {
+interface AttendanceFormProps {
+  availableMembers?: any[]
+  availableMinistries?: any[]
+  availableRegions?: any[]
+  onSuccess?: () => void
+}
+
+export function AttendanceForm({
+  availableMembers,
+  availableMinistries,
+  availableRegions,
+  onSuccess
+}: AttendanceFormProps = {}) {
   const [date, setDate] = useState<Date | undefined>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
@@ -47,8 +59,17 @@ export function AttendanceForm() {
   const [regionFilter, setRegionFilter] = useState("all")
 
   useEffect(() => {
-    fetchAllData()
-  }, [])
+    if (availableMembers && availableMinistries && availableRegions) {
+      // Use provided data (for role-based filtering)
+      setMembers(availableMembers)
+      setMinistries(availableMinistries)
+      setRegions(availableRegions)
+      setLoading(false)
+    } else {
+      // Fetch all data (for admin users)
+      fetchAllData()
+    }
+  }, [availableMembers, availableMinistries, availableRegions])
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -328,6 +349,11 @@ export function AttendanceForm() {
         title: "Success",
         description: `Attendance saved successfully! ${selectedMembers.length} members recorded for ${attendanceType.replace('-', ' ')}.`,
       })
+
+      // Call success callback if provided
+      if (onSuccess) {
+        onSuccess()
+      }
     } catch (error: any) {
       console.error('Error saving attendance:', error)
       setError(error.message)
