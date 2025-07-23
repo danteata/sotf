@@ -1,40 +1,86 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { MapPin, Users, Calendar, TrendingUp, Search, Plus, UserCheck, UserX } from "lucide-react"
-import { useUserRole, useManagedMembers, useAccessibleMinistriesAndRegions } from "@/hooks/use-user-role"
-import { useTerminology } from "@/hooks/use-terminology"
-import { AttendanceForm } from "@/components/attendance-form"
-import { format } from "date-fns"
+import { useState } from 'react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  MapPin,
+  Users,
+  Calendar,
+  TrendingUp,
+  Search,
+  Plus,
+  UserCheck,
+  UserX,
+} from 'lucide-react'
+import {
+  useUserRole,
+  useManagedMembers,
+  useAccessibleMinistriesAndRegions,
+} from '@/hooks/use-user-role'
+import { useTerminology } from '@/hooks/use-terminology'
+import { AttendanceForm } from '@/components/attendance-form'
+import { format } from 'date-fns'
+import { AttendanceHistory } from '@/components/attendance-history'
 
 export function RegionLeaderDashboard() {
-  const { user, role, regionLeaderships, isLoading: roleLoading } = useUserRole()
-  const { members, isLoading: membersLoading, error, refetch } = useManagedMembers()
-  const { ministries: accessibleMinistries, regions: accessibleRegions } = useAccessibleMinistriesAndRegions()
+  const {
+    user,
+    role,
+    regionLeaderships,
+    isLoading: roleLoading,
+  } = useUserRole()
+  const {
+    members,
+    isLoading: membersLoading,
+    error,
+    refetch,
+  } = useManagedMembers()
+  const { ministries: accessibleMinistries, regions: accessibleRegions } =
+    useAccessibleMinistriesAndRegions()
   const { terminology } = useTerminology()
-  
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedRegion, setSelectedRegion] = useState("all")
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedRegion, setSelectedRegion] = useState('all')
   const [showAttendanceForm, setShowAttendanceForm] = useState(false)
 
   // Filter members based on search and filters
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = searchQuery === "" || 
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch =
+      searchQuery === '' ||
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email?.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || member.status === statusFilter
+    const matchesStatus =
+      statusFilter === 'all' || member.status === statusFilter
 
-    const matchesRegion = selectedRegion === "all" || 
-      member.region_name === selectedRegion
+    const matchesRegion =
+      selectedRegion === 'all' || member.region_name === selectedRegion
 
     return matchesSearch && matchesStatus && matchesRegion
   })
@@ -74,7 +120,9 @@ export function RegionLeaderDashboard() {
     <div className="container p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Region Leader Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Region Leader Dashboard
+          </h1>
           <p className="text-muted-foreground">
             Manage your region members and track attendance
           </p>
@@ -97,7 +145,7 @@ export function RegionLeaderDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{regionLeaderships.length}</div>
             <p className="text-xs text-muted-foreground">
-              {regionLeaderships.map(r => r.name).join(', ')}
+              {regionLeaderships.map((r) => r.name).join(', ')}
             </p>
           </CardContent>
         </Card>
@@ -117,12 +165,14 @@ export function RegionLeaderDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Members
+            </CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredMembers.filter(m => m.status === 'active').length}
+              {filteredMembers.filter((m) => m.status === 'active').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Currently active members
@@ -132,12 +182,14 @@ export function RegionLeaderDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Inactive Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Inactive Members
+            </CardTitle>
             <UserX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredMembers.filter(m => m.status === 'inactive').length}
+              {filteredMembers.filter((m) => m.status === 'inactive').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Members needing attention
@@ -172,7 +224,10 @@ export function RegionLeaderDashboard() {
                     className="max-w-sm"
                   />
                 </div>
-                <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+                <Select
+                  value={selectedRegion}
+                  onValueChange={setSelectedRegion}
+                >
                   <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Select Region" />
                   </SelectTrigger>
@@ -223,25 +278,37 @@ export function RegionLeaderDashboard() {
                       </TableRow>
                     ) : filteredMembers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={7}
+                          className="h-24 text-center text-muted-foreground"
+                        >
                           No members found
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredMembers.map((member) => (
                         <TableRow key={member.id}>
-                          <TableCell className="font-medium">{member.name}</TableCell>
+                          <TableCell className="font-medium">
+                            {member.name}
+                          </TableCell>
                           <TableCell>{member.email || '-'}</TableCell>
                           <TableCell>{member.phone || '-'}</TableCell>
                           <TableCell>{member.region_name || '-'}</TableCell>
                           <TableCell>
-                            {member.ministry_names && member.ministry_names.length > 0 ? (
+                            {member.ministry_names &&
+                            member.ministry_names.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
-                                {member.ministry_names.slice(0, 2).map((ministry, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs">
-                                    {ministry}
-                                  </Badge>
-                                ))}
+                                {member.ministry_names
+                                  .slice(0, 2)
+                                  .map((ministry, index) => (
+                                    <Badge
+                                      key={index}
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {ministry}
+                                    </Badge>
+                                  ))}
                                 {member.ministry_names.length > 2 && (
                                   <Badge variant="outline" className="text-xs">
                                     +{member.ministry_names.length - 2}
@@ -253,12 +320,23 @@ export function RegionLeaderDashboard() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={
+                                member.status === 'active'
+                                  ? 'default'
+                                  : 'secondary'
+                              }
+                            >
                               {member.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {member.created_at ? format(new Date(member.created_at), 'MMM dd, yyyy') : '-'}
+                            {member.created_at
+                              ? format(
+                                  new Date(member.created_at),
+                                  'MMM dd, yyyy'
+                                )
+                              : '-'}
                           </TableCell>
                         </TableRow>
                       ))
@@ -279,10 +357,11 @@ export function RegionLeaderDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4" />
-                <p>Attendance history feature coming soon</p>
-              </div>
+              {/* AttendanceHistory component filtered for this leader's regions */}
+              <AttendanceHistory
+                source="region"
+                regions={regionLeaderships.map((r) => r.name)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -290,8 +369,12 @@ export function RegionLeaderDashboard() {
         <TabsContent value="regions" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
             {regionLeaderships.map((region) => {
-              const regionMembers = filteredMembers.filter(m => m.region_name === region.name)
-              const activeMembers = regionMembers.filter(m => m.status === 'active')
+              const regionMembers = filteredMembers.filter(
+                (m) => m.region_name === region.name
+              )
+              const activeMembers = regionMembers.filter(
+                (m) => m.status === 'active'
+              )
 
               return (
                 <Card key={region.id}>
@@ -305,12 +388,20 @@ export function RegionLeaderDashboard() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-2xl font-bold">{regionMembers.length}</div>
-                        <p className="text-xs text-muted-foreground">Total Members</p>
+                        <div className="text-2xl font-bold">
+                          {regionMembers.length}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Total Members
+                        </p>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-green-600">{activeMembers.length}</div>
-                        <p className="text-xs text-muted-foreground">Active Members</p>
+                        <div className="text-2xl font-bold text-green-600">
+                          {activeMembers.length}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Active Members
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -328,7 +419,10 @@ export function RegionLeaderDashboard() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Record Attendance</h2>
-                <Button variant="ghost" onClick={() => setShowAttendanceForm(false)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAttendanceForm(false)}
+                >
                   ×
                 </Button>
               </div>

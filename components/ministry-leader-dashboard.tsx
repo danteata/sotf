@@ -1,39 +1,85 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Calendar, TrendingUp, Search, Plus, UserCheck, UserX } from "lucide-react"
-import { useUserRole, useManagedMembers, useAccessibleMinistriesAndRegions } from "@/hooks/use-user-role"
-import { useTerminology } from "@/hooks/use-terminology"
-import { AttendanceForm } from "@/components/attendance-form"
-import { format } from "date-fns"
+import { useState } from 'react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Users,
+  Calendar,
+  TrendingUp,
+  Search,
+  Plus,
+  UserCheck,
+  UserX,
+} from 'lucide-react'
+import {
+  useUserRole,
+  useManagedMembers,
+  useAccessibleMinistriesAndRegions,
+} from '@/hooks/use-user-role'
+import { useTerminology } from '@/hooks/use-terminology'
+import { AttendanceForm } from '@/components/attendance-form'
+import { format } from 'date-fns'
+import { AttendanceHistory } from '@/components/attendance-history'
 
 export function MinistryLeaderDashboard() {
-  const { user, role, ministryLeaderships, isLoading: roleLoading } = useUserRole()
-  const { members, isLoading: membersLoading, error, refetch } = useManagedMembers()
-  const { ministries: accessibleMinistries, regions: accessibleRegions } = useAccessibleMinistriesAndRegions()
+  const {
+    user,
+    role,
+    ministryLeaderships,
+    isLoading: roleLoading,
+  } = useUserRole()
+  const {
+    members,
+    isLoading: membersLoading,
+    error,
+    refetch,
+  } = useManagedMembers()
+  const { ministries: accessibleMinistries, regions: accessibleRegions } =
+    useAccessibleMinistriesAndRegions()
   const { terminology } = useTerminology()
-  
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedMinistry, setSelectedMinistry] = useState("all")
+
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [selectedMinistry, setSelectedMinistry] = useState('all')
   const [showAttendanceForm, setShowAttendanceForm] = useState(false)
 
   // Filter members based on search and filters
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = searchQuery === "" || 
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch =
+      searchQuery === '' ||
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email?.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || member.status === statusFilter
+    const matchesStatus =
+      statusFilter === 'all' || member.status === statusFilter
 
-    const matchesMinistry = selectedMinistry === "all" || 
+    const matchesMinistry =
+      selectedMinistry === 'all' ||
       (member.ministry_name && member.ministry_name.includes(selectedMinistry))
 
     return matchesSearch && matchesStatus && matchesMinistry
@@ -61,7 +107,8 @@ export function MinistryLeaderDashboard() {
               <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
               <p className="text-muted-foreground">
-                You don't have permission to access the ministry leader dashboard.
+                You don't have permission to access the ministry leader
+                dashboard.
               </p>
             </div>
           </CardContent>
@@ -74,9 +121,12 @@ export function MinistryLeaderDashboard() {
     <div className="container p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Ministry Leader Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Ministry Leader Dashboard
+          </h1>
           <p className="text-muted-foreground">
-            Manage your {terminology.ministry_term.toLowerCase()} members and track attendance
+            Manage your {terminology.ministry_term.toLowerCase()} members and
+            track attendance
           </p>
         </div>
         <div className="flex gap-2">
@@ -91,13 +141,17 @@ export function MinistryLeaderDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Your {terminology.ministry_term}s</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Your {terminology.ministry_term}s
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{ministryLeaderships.length}</div>
+            <div className="text-2xl font-bold">
+              {ministryLeaderships.length}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {ministryLeaderships.map(m => m.name).join(', ')}
+              {ministryLeaderships.map((m) => m.name).join(', ')}
             </p>
           </CardContent>
         </Card>
@@ -117,12 +171,14 @@ export function MinistryLeaderDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Active Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Members
+            </CardTitle>
             <UserCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredMembers.filter(m => m.status === 'active').length}
+              {filteredMembers.filter((m) => m.status === 'active').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Currently active members
@@ -132,12 +188,14 @@ export function MinistryLeaderDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Inactive Members</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Inactive Members
+            </CardTitle>
             <UserX className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredMembers.filter(m => m.status === 'inactive').length}
+              {filteredMembers.filter((m) => m.status === 'inactive').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Members needing attention
@@ -157,7 +215,8 @@ export function MinistryLeaderDashboard() {
             <CardHeader>
               <CardTitle>Your {terminology.ministry_term} Members</CardTitle>
               <CardDescription>
-                Manage and view members in your {terminology.ministry_term.toLowerCase()}s
+                Manage and view members in your{' '}
+                {terminology.ministry_term.toLowerCase()}s
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -171,12 +230,17 @@ export function MinistryLeaderDashboard() {
                     className="max-w-sm"
                   />
                 </div>
-                <Select value={selectedMinistry} onValueChange={setSelectedMinistry}>
+                <Select
+                  value={selectedMinistry}
+                  onValueChange={setSelectedMinistry}
+                >
                   <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Select Ministry" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All {terminology.ministry_term}s</SelectItem>
+                    <SelectItem value="all">
+                      All {terminology.ministry_term}s
+                    </SelectItem>
                     {accessibleMinistries.map((ministry) => (
                       <SelectItem key={ministry.id} value={ministry.name}>
                         {ministry.name}
@@ -221,24 +285,40 @@ export function MinistryLeaderDashboard() {
                       </TableRow>
                     ) : filteredMembers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={6}
+                          className="h-24 text-center text-muted-foreground"
+                        >
                           No members found
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredMembers.map((member) => (
                         <TableRow key={member.id}>
-                          <TableCell className="font-medium">{member.name}</TableCell>
+                          <TableCell className="font-medium">
+                            {member.name}
+                          </TableCell>
                           <TableCell>{member.email || '-'}</TableCell>
                           <TableCell>{member.phone || '-'}</TableCell>
                           <TableCell>{member.region_name || '-'}</TableCell>
                           <TableCell>
-                            <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
+                            <Badge
+                              variant={
+                                member.status === 'active'
+                                  ? 'default'
+                                  : 'secondary'
+                              }
+                            >
                               {member.status}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {member.created_at ? format(new Date(member.created_at), 'MMM dd, yyyy') : '-'}
+                            {member.created_at
+                              ? format(
+                                  new Date(member.created_at),
+                                  'MMM dd, yyyy'
+                                )
+                              : '-'}
                           </TableCell>
                         </TableRow>
                       ))
@@ -255,14 +335,16 @@ export function MinistryLeaderDashboard() {
             <CardHeader>
               <CardTitle>Attendance History</CardTitle>
               <CardDescription>
-                View attendance records for your {terminology.ministry_term.toLowerCase()} events
+                View attendance records for your{' '}
+                {terminology.ministry_term.toLowerCase()} events
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Calendar className="h-12 w-12 mx-auto mb-4" />
-                <p>Attendance history feature coming soon</p>
-              </div>
+              {/* AttendanceHistory component filtered for this leader's ministries */}
+              <AttendanceHistory
+                source="ministry"
+                ministries={ministryLeaderships.map((m) => m.name)}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -275,7 +357,10 @@ export function MinistryLeaderDashboard() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">Record Attendance</h2>
-                <Button variant="ghost" onClick={() => setShowAttendanceForm(false)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowAttendanceForm(false)}
+                >
                   ×
                 </Button>
               </div>
