@@ -1,13 +1,13 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { supabase } from "@/lib/supabase"
-import { getMembersLegacyFormat, getAppConfig } from "@/lib/database-utils"
+import { useState, useEffect } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import * as z from 'zod'
+import { supabase } from '@/lib/supabase'
+import { getMembersLegacyFormat, getAppConfig } from '@/lib/database-utils'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -23,16 +23,15 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { MemberCombobox } from "@/components/ui/member-combobox"
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { MemberCombobox } from '@/components/ui/member-combobox'
 
 const ministrySchema = z.object({
-  name: z.string().min(1, "Ministry name is required"),
+  name: z.string().min(1, 'Ministry name is required'),
   description: z.string().optional(),
-  leader: z.string().optional(),
   leader_id: z.string().optional(),
   active: z.boolean().default(true),
 })
@@ -56,7 +55,12 @@ interface MinistryDialogProps {
   onSuccess?: () => void
 }
 
-export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: MinistryDialogProps) {
+export function MinistryDialog({
+  open,
+  onOpenChange,
+  ministry,
+  onSuccess,
+}: MinistryDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [members, setMembers] = useState<any[]>([])
   const [ministryTerm, setMinistryTerm] = useState('Ministry')
@@ -65,10 +69,9 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
   const form = useForm<MinistryFormData>({
     resolver: zodResolver(ministrySchema),
     defaultValues: {
-      name: "",
-      description: "",
-      leader: "",
-      leader_id: "none",
+      name: '',
+      description: '',
+      leader_id: 'none',
       active: true,
     },
   })
@@ -79,17 +82,15 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
       if (ministry) {
         form.reset({
           name: ministry.name,
-          description: ministry.description || "",
-          leader: ministry.leader || "",
-          leader_id: ministry.leader_id || "none",
+          description: ministry.description || '',
+          leader_id: ministry.leader_id || 'none',
           active: ministry.active,
         })
       } else {
         form.reset({
-          name: "",
-          description: "",
-          leader: "",
-          leader_id: "none",
+          name: '',
+          description: '',
+          leader_id: 'none',
           active: true,
         })
       }
@@ -102,11 +103,12 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
       if (!open) return
 
       try {
-        const [membersData, ministryTermData, leaderTermData] = await Promise.all([
-          getMembersLegacyFormat(),
-          getAppConfig('ministry_term'),
-          getAppConfig('ministry_leader_term')
-        ])
+        const [membersData, ministryTermData, leaderTermData] =
+          await Promise.all([
+            getMembersLegacyFormat(),
+            getAppConfig('ministry_term'),
+            getAppConfig('ministry_leader_term'),
+          ])
 
         setMembers(membersData)
         setMinistryTerm(ministryTermData || 'Ministry')
@@ -122,42 +124,60 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
   const onSubmit = async (data: MinistryFormData) => {
     setIsLoading(true)
     try {
+      let ministryId = ministry?.id
+      let leaderId = data.leader_id === 'none' ? null : data.leader_id || null
+
       if (ministry) {
         // Update existing ministry
         const { error } = await supabase
-          .from("ministries")
+          .from('ministries')
           .update({
             name: data.name,
             description: data.description || null,
-            leader: data.leader || null,
-            leader_id: data.leader_id === "none" ? null : data.leader_id || null,
+            leader_id: leaderId,
             active: data.active,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", ministry.id)
-
+          .eq('id', ministry.id)
         if (error) throw error
+        ministryId = ministry.id
       } else {
         // Create new ministry
-        const { error } = await supabase
-          .from("ministries")
+        const { data: insertData, error } = await supabase
+          .from('ministries')
           .insert({
             name: data.name,
             description: data.description || null,
-            leader: data.leader || null,
-            leader_id: data.leader_id === "none" ? null : data.leader_id || null,
+            leader_id: leaderId,
             active: data.active,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-
+          .select('id')
+          .single()
         if (error) throw error
+        ministryId = insertData?.id
+      }
+
+      // Sync member_ministry_leadership table
+      if (ministryId) {
+        // Remove all leaderships for this ministry
+        await supabase
+          .from('member_ministry_leadership')
+          .delete()
+          .eq('ministry_id', ministryId)
+        // Add new leader if set
+        if (leaderId) {
+          await supabase
+            .from('member_ministry_leadership')
+            .insert({ member_id: leaderId, ministry_id: ministryId })
+        }
       }
 
       onSuccess?.()
       onOpenChange(false)
     } catch (error: any) {
-      console.error("Error saving ministry:", error)
+      console.error('Error saving ministry:', error)
       // You could add toast notification here
     } finally {
       setIsLoading(false)
@@ -174,8 +194,7 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
           <DialogDescription>
             {ministry
               ? `Update the ${ministryTerm.toLowerCase()} information below.`
-              : `Create a new ${ministryTerm.toLowerCase()} for your organization.`
-            }
+              : `Create a new ${ministryTerm.toLowerCase()} for your organization.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -188,7 +207,10 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
                 <FormItem>
                   <FormLabel>{ministryTerm} Name</FormLabel>
                   <FormControl>
-                    <Input placeholder={`e.g., Youth ${ministryTerm}`} {...field} />
+                    <Input
+                      placeholder={`e.g., Youth ${ministryTerm}`}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -241,7 +263,8 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
                   <div className="space-y-0.5">
                     <FormLabel>Active Status</FormLabel>
                     <div className="text-sm text-muted-foreground">
-                      Enable this {ministryTerm.toLowerCase()} for member assignments
+                      Enable this {ministryTerm.toLowerCase()} for member
+                      assignments
                     </div>
                   </div>
                   <FormControl>
@@ -264,7 +287,7 @@ export function MinistryDialog({ open, onOpenChange, ministry, onSuccess }: Mini
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : ministry ? "Update" : "Create"}
+                {isLoading ? 'Saving...' : ministry ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>
           </form>

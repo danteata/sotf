@@ -1,13 +1,13 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { supabase } from "@/lib/supabase"
-import { getMembersLegacyFormat, getAppConfig } from "@/lib/database-utils"
+import { useState, useEffect } from 'react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useForm } from 'react-hook-form'
+import * as z from 'zod'
+import { supabase } from '@/lib/supabase'
+import { getMembersLegacyFormat, getAppConfig } from '@/lib/database-utils'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   Form,
   FormControl,
@@ -23,14 +23,14 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { MemberCombobox } from "@/components/ui/member-combobox"
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { MemberCombobox } from '@/components/ui/member-combobox'
 
 const regionSchema = z.object({
-  name: z.string().min(1, "Region name is required"),
+  name: z.string().min(1, 'Region name is required'),
   description: z.string().optional(),
   regional_minister_id: z.string().optional(),
   active: z.boolean().default(true),
@@ -54,18 +54,24 @@ interface RegionDialogProps {
   onSuccess?: () => void
 }
 
-export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDialogProps) {
+export function RegionDialog({
+  open,
+  onOpenChange,
+  region,
+  onSuccess,
+}: RegionDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [members, setMembers] = useState<any[]>([])
   const [regionTerm, setRegionTerm] = useState('Region')
-  const [regionalLeaderTerm, setRegionalLeaderTerm] = useState('Regional Minister')
+  const [regionalLeaderTerm, setRegionalLeaderTerm] =
+    useState('Regional Minister')
 
   const form = useForm<RegionFormData>({
     resolver: zodResolver(regionSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      regional_minister_id: "none",
+      name: '',
+      description: '',
+      regional_minister_id: 'none',
       active: true,
     },
   })
@@ -76,15 +82,15 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
       if (region) {
         form.reset({
           name: region.name,
-          description: region.description || "",
-          regional_minister_id: region.regional_minister_id || "none",
+          description: region.description || '',
+          regional_minister_id: region.regional_minister_id || 'none',
           active: region.active,
         })
       } else {
         form.reset({
-          name: "",
-          description: "",
-          regional_minister_id: "none",
+          name: '',
+          description: '',
+          regional_minister_id: 'none',
           active: true,
         })
       }
@@ -97,11 +103,12 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
       if (!open) return
 
       try {
-        const [membersData, regionTermData, regionalLeaderTermData] = await Promise.all([
-          getMembersLegacyFormat(),
-          getAppConfig('region_term'),
-          getAppConfig('regional_leader_term')
-        ])
+        const [membersData, regionTermData, regionalLeaderTermData] =
+          await Promise.all([
+            getMembersLegacyFormat(),
+            getAppConfig('region_term'),
+            getAppConfig('regional_leader_term'),
+          ])
 
         setMembers(membersData)
         setRegionTerm(regionTermData || 'Region')
@@ -117,40 +124,63 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
   const onSubmit = async (data: RegionFormData) => {
     setIsLoading(true)
     try {
+      let regionId = region?.id
+      let ministerId =
+        data.regional_minister_id === 'none'
+          ? null
+          : data.regional_minister_id || null
+
       if (region) {
         // Update existing region
         const { error } = await supabase
-          .from("regions")
+          .from('regions')
           .update({
             name: data.name,
             description: data.description || null,
-            regional_minister_id: data.regional_minister_id === "none" ? null : data.regional_minister_id || null,
+            regional_minister_id: ministerId,
             active: data.active,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", region.id)
-
+          .eq('id', region.id)
         if (error) throw error
+        regionId = region.id
       } else {
         // Create new region
-        const { error } = await supabase
-          .from("regions")
+        const { data: insertData, error } = await supabase
+          .from('regions')
           .insert({
             name: data.name,
             description: data.description || null,
-            regional_minister_id: data.regional_minister_id === "none" ? null : data.regional_minister_id || null,
+            regional_minister_id: ministerId,
             active: data.active,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-
+          .select('id')
+          .single()
         if (error) throw error
+        regionId = insertData?.id
+      }
+
+      // Sync member_region_leadership table
+      if (regionId) {
+        // Remove all leaderships for this region
+        await supabase
+          .from('member_region_leadership')
+          .delete()
+          .eq('region_id', regionId)
+        // Add new leader if set
+        if (ministerId) {
+          await supabase
+            .from('member_region_leadership')
+            .insert({ member_id: ministerId, region_id: regionId })
+        }
       }
 
       onSuccess?.()
       onOpenChange(false)
     } catch (error: any) {
-      console.error("Error saving region:", error)
+      console.error('Error saving region:', error)
       // You could add toast notification here
     } finally {
       setIsLoading(false)
@@ -167,8 +197,7 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
           <DialogDescription>
             {region
               ? `Update the ${regionTerm.toLowerCase()} information below.`
-              : `Create a new ${regionTerm.toLowerCase()} for your organization.`
-            }
+              : `Create a new ${regionTerm.toLowerCase()} for your organization.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -181,7 +210,10 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
                 <FormItem>
                   <FormLabel>{regionTerm} Name</FormLabel>
                   <FormControl>
-                    <Input placeholder={`e.g., Northern ${regionTerm}`} {...field} />
+                    <Input
+                      placeholder={`e.g., Northern ${regionTerm}`}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -234,7 +266,8 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
                   <div className="space-y-0.5">
                     <FormLabel>Active Status</FormLabel>
                     <div className="text-sm text-muted-foreground">
-                      Enable this {regionTerm.toLowerCase()} for member assignments
+                      Enable this {regionTerm.toLowerCase()} for member
+                      assignments
                     </div>
                   </div>
                   <FormControl>
@@ -257,7 +290,7 @@ export function RegionDialog({ open, onOpenChange, region, onSuccess }: RegionDi
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : region ? "Update" : "Create"}
+                {isLoading ? 'Saving...' : region ? 'Update' : 'Create'}
               </Button>
             </DialogFooter>
           </form>

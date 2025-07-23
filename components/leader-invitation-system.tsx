@@ -1,42 +1,128 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Mail, UserPlus, Search, Send, CheckCircle, Clock, AlertCircle, Link, Copy } from "lucide-react"
-import { supabase } from "@/lib/supabase"
-import { useTerminology } from "@/hooks/use-terminology"
-import { useToast } from "@/components/ui/use-toast"
+import { useState, useEffect } from 'react'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Mail,
+  UserPlus,
+  Search,
+  Send,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Link,
+  Copy,
+} from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { useTerminology } from '@/hooks/use-terminology'
+import { useToast } from '@/components/ui/use-toast'
 
 interface PotentialLeader {
   id: string
+  clerk_user_id: string
   name: string
   first_name: string
   last_name: string
-  email: string
-  phone?: string
-  region_name?: string
-  ministry_names?: string[]
+  email: string | null
+  phone: string | null
+  region_name: string | null
+  ministry_names: string[]
   has_account: boolean
-  invitation_status?: 'pending' | 'sent' | 'accepted' | null
+  invitation_status: string | null
   invitation_sent_at?: string
+  led_ministry_ids: string[]
+  led_ministry_names: string[]
+  led_region_ids: string[]
+  led_region_names: string[]
 }
 
 export function LeaderInvitationSystem() {
+  // --- Utility Functions ---
+  // Send invitations to selected leaders
+  const sendInvitations = async () => {
+    setIsSendingInvites(true)
+    try {
+      // Placeholder: Implement actual invitation logic here
+      console.log('Bulk sending email invitations to:', selectedLeaders)
+      toast({
+        title: 'Invitations Sent',
+        description: `Successfully sent ${selectedLeaders.length} email invitation(s)`,
+      })
+      setSelectedLeaders([])
+      await loadPotentialLeaders()
+    } catch (error) {
+      console.error('Error sending invitations:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to send invitations',
+      })
+    } finally {
+      setIsSendingInvites(false)
+    }
+  }
+
+  // Generate invitation link for a leader
+  const generateInvitationLink = (leaderId: string) => {
+    // Placeholder: Replace with actual link generation logic
+    const link = `${window.location.origin}/invite/${leaderId}`
+    setGeneratedLink(link)
+    setIsInviteLinkDialogOpen(true)
+  }
+
+  // Copy invitation link to clipboard
+  const copyToClipboard = () => {
+    if (generatedLink) {
+      navigator.clipboard.writeText(generatedLink)
+      toast({
+        title: 'Copied',
+        description: 'Invitation link copied to clipboard',
+      })
+    }
+  }
   const { terminology } = useTerminology()
   const { toast } = useToast()
-  
-  const [potentialLeaders, setPotentialLeaders] = useState<PotentialLeader[]>([])
+
+  const [potentialLeaders, setPotentialLeaders] = useState<PotentialLeader[]>(
+    []
+  )
   const [isLoading, setIsLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [roleFilter, setRoleFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
   const [selectedLeaders, setSelectedLeaders] = useState<string[]>([])
   const [isSendingInvites, setIsSendingInvites] = useState(false)
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
@@ -49,213 +135,149 @@ export function LeaderInvitationSystem() {
   const loadPotentialLeaders = async () => {
     setIsLoading(true)
     try {
-      // Get members who could be leaders (have leadership roles in ministries/regions)
+      // Get ministries and regions with leaders
+      const { data: ministries, error: ministriesError } = await supabase
+        .from('ministries')
+        .select('id, name, leader_id')
+        .not('leader_id', 'is', null)
+      if (ministriesError) throw ministriesError
+
+      const { data: regions, error: regionsError } = await supabase
+        .from('regions')
+        .select('id, name, regional_minister_id')
+        .not('regional_minister_id', 'is', null)
+      if (regionsError) throw regionsError
+
+      // Collect all unique leader_ids from both tables
+      const ministryLeaderIds = ministries?.map((m) => m.leader_id) || []
+      const regionLeaderIds = regions?.map((r) => r.regional_minister_id) || []
+      const allLeaderIds = Array.from(
+        new Set([...ministryLeaderIds, ...regionLeaderIds])
+      )
+      if (allLeaderIds.length === 0) {
+        setPotentialLeaders([])
+        setIsLoading(false)
+        return
+      }
+
+      // Fetch only those members
       const { data: membersData, error: membersError } = await supabase
         .from('members_with_details')
         .select('*')
-
+        .in('id', allLeaderIds)
       if (membersError) throw membersError
 
       // Get existing users to check who already has accounts
       const { data: usersData, error: usersError } = await supabase
         .from('users')
-        .select('email, clerk_user_id')
-
+        .select('id, email, clerk_user_id')
       if (usersError) throw usersError
+      const existingUserClerkIds = new Set(
+        usersData?.map((u) => u.clerk_user_id).filter(Boolean) || []
+      )
+      const existingUserEmails = new Set(
+        usersData?.map((u) => u.email?.toLowerCase()).filter(Boolean) || []
+      )
 
-      const existingUserEmails = new Set(usersData?.map(u => u.email.toLowerCase()) || [])
+      // Build leader maps for ministries and regions
+      const ministryLeaders: Record<string, { id: string; name: string }[]> = {}
+      ministries?.forEach((min) => {
+        if (min.leader_id) {
+          if (!ministryLeaders[min.leader_id])
+            ministryLeaders[min.leader_id] = []
+          ministryLeaders[min.leader_id].push({ id: min.id, name: min.name })
+        }
+      })
 
-      // Get ministry leaders from ministries table
-      const { data: ministriesData, error: ministriesError } = await supabase
-        .from('ministries')
-        .select('leader_id, name')
-        .not('leader_id', 'is', null)
-
-      if (ministriesError) throw ministriesError
-
-      // Get region leaders from regions table  
-      const { data: regionsData, error: regionsError } = await supabase
-        .from('regions')
-        .select('regional_minister_id, name')
-        .not('regional_minister_id', 'is', null)
-
-      if (regionsError) throw regionsError
+      const regionLeaders: Record<string, { id: string; name: string }[]> = {}
+      regions?.forEach((reg) => {
+        if (reg.regional_minister_id) {
+          if (!regionLeaders[reg.regional_minister_id])
+            regionLeaders[reg.regional_minister_id] = []
+          regionLeaders[reg.regional_minister_id].push({
+            id: reg.id,
+            name: reg.name,
+          })
+        }
+      })
 
       // Create a map of potential leaders
       const leaderMap = new Map<string, PotentialLeader>()
-
-      // Add members who are mentioned as ministry leaders
-      ministriesData?.forEach(ministry => {
-        const leaderId = ministry.leader_id
-        if (leaderId) {
-          // Find member by ID
-          const member = membersData?.find(m => m.id === leaderId)
-          
-          if (member && member.email) {
-            const key = member.email.toLowerCase()
-            if (!leaderMap.has(key)) {
-              leaderMap.set(key, {
-                id: member.id,
-                name: member.name,
-                first_name: member.first_name,
-                last_name: member.last_name,
-                email: member.email,
-                phone: member.phone,
-                region_name: member.region_name,
-                ministry_names: [],
-                has_account: existingUserEmails.has(key),
-                invitation_status: null
-              })
-            }
-            leaderMap.get(key)!.ministry_names!.push(ministry.name)
-          }
-        }
+      membersData?.forEach((member) => {
+        const key = member.id
+        const ledMinistries = ministryLeaders[member.id] || []
+        const ledRegions = regionLeaders[member.id] || []
+        leaderMap.set(key, {
+          id: member.id,
+          clerk_user_id: member.clerk_user_id,
+          name: member.name,
+          first_name: member.first_name,
+          last_name: member.last_name,
+          email: member.email,
+          phone: member.phone,
+          region_name: member.region_name,
+          ministry_names: member.ministries || [],
+          has_account:
+            (member.clerk_user_id &&
+              existingUserClerkIds.has(member.clerk_user_id)) ||
+            (member.email &&
+              existingUserEmails.has(member.email.toLowerCase())),
+          invitation_status: null,
+          led_ministry_ids: ledMinistries.map((m) => m.id),
+          led_ministry_names: ledMinistries.map((m) => m.name),
+          led_region_ids: ledRegions.map((r) => r.id),
+          led_region_names: ledRegions.map((r) => r.name),
+        })
       })
-
-      // Add members who are mentioned as region leaders
-      regionsData?.forEach(region => {
-        const leaderId = region.regional_minister_id
-        if (leaderId) {
-          const member = membersData?.find(m => m.id === leaderId)
-          
-          if (member && member.email) {
-            const key = member.email.toLowerCase()
-            if (!leaderMap.has(key)) {
-              leaderMap.set(key, {
-                id: member.id,
-                name: member.name,
-                first_name: member.first_name,
-                last_name: member.last_name,
-                email: member.email,
-                phone: member.phone,
-                region_name: member.region_name,
-                ministry_names: [],
-                has_account: existingUserEmails.has(key),
-                invitation_status: null
-              })
-            }
-            // Note: This member is a region leader for this region
-            if (!leaderMap.get(key)!.region_name) {
-              leaderMap.get(key)!.region_name = region.name
-            }
-          }
-        }
-      })
-
       setPotentialLeaders(Array.from(leaderMap.values()))
     } catch (error) {
       console.error('Error loading potential leaders:', error)
       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load potential leaders"
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load potential leaders',
       })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const generateInvitationLink = async (leaderId: string) => {
-    const leader = potentialLeaders.find(l => l.id === leaderId)
-    if (!leader) {
-      toast({ variant: "destructive", title: "Error", description: "Leader not found" })
-      return
-    }
-
-    try {
-      const { data, error } = await supabase.rpc('create_invitation', {
-        p_email: leader.email,
-        p_member_id: leader.id,
-        p_invited_by: null, // You might want to pass the current user's ID here
-        p_intended_role: 'member', // Or determine role based on leadership
-        p_intended_ministries: [],
-        p_intended_regions: []
-      })
-
-      if (error) throw error
-
-      const token = data[0].invitation_token
-      const link = `${window.location.origin}/accept-invitation?token=${token}`
-      setGeneratedLink(link)
-      setIsInviteLinkDialogOpen(true)
-    } catch (error) {
-      console.error('Error generating invitation link:', error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to generate invitation link."
-      })
-    }
-  }
-
-  const copyToClipboard = () => {
-    if (generatedLink) {
-      navigator.clipboard.writeText(generatedLink)
-      toast({ title: "Copied!", description: "Invitation link copied to clipboard." })
-    }
-  }
-
-  const sendInvitations = async () => {
-    if (selectedLeaders.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please select at least one leader to invite"
-      })
-      return
-    }
-
-    setIsSendingInvites(true)
-    try {
-      // This function would now be used for bulk email invitations
-      // For now, it's a placeholder
-      console.log("Bulk sending email invitations to:", selectedLeaders)
-      toast({
-        title: "Invitations Sent",
-        description: `Successfully sent ${selectedLeaders.length} email invitation(s)`
-      })
-      setSelectedLeaders([])
-      await loadPotentialLeaders()
-    } catch (error) {
-      console.error('Error sending invitations:', error)
-      toast({
-        variant: "destructive",
-        title: "Error", 
-        description: "Failed to send invitations"
-      })
-    } finally {
-      setIsSendingInvites(false)
-    }
-  }
-
-  const filteredLeaders = potentialLeaders.filter(leader => {
-    const matchesSearch = searchQuery === "" || 
+  const filteredLeaders = potentialLeaders.filter((leader) => {
+    const matchesSearch =
+      searchQuery === '' ||
       leader.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      leader.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (leader.email
+        ? leader.email.toLowerCase().includes(searchQuery.toLowerCase())
+        : false)
 
-    const matchesRole = roleFilter === "all" ||
-      (roleFilter === "no_account" && !leader.has_account) ||
-      (roleFilter === "has_account" && leader.has_account) ||
-      (roleFilter === "ministry_leader" && leader.ministry_names && leader.ministry_names.length > 0) ||
-      (roleFilter === "region_leader" && leader.region_name)
+    const matchesRole =
+      roleFilter === 'all' ||
+      (roleFilter === 'no_account' && !leader.has_account) ||
+      (roleFilter === 'has_account' && leader.has_account) ||
+      (roleFilter === 'ministry_leader' &&
+        leader.led_ministry_names &&
+        leader.led_ministry_names.length > 0) ||
+      (roleFilter === 'region_leader' &&
+        leader.led_region_names &&
+        leader.led_region_names.length > 0)
 
     return matchesSearch && matchesRole
   })
 
   const handleSelectLeader = (leaderId: string) => {
     if (selectedLeaders.includes(leaderId)) {
-      setSelectedLeaders(selectedLeaders.filter(id => id !== leaderId))
+      setSelectedLeaders(selectedLeaders.filter((id) => id !== leaderId))
     } else {
       setSelectedLeaders([...selectedLeaders, leaderId])
     }
   }
 
   const handleSelectAll = () => {
-    const eligibleLeaders = filteredLeaders.filter(l => !l.has_account)
+    const eligibleLeaders = filteredLeaders.filter((l) => !l.has_account)
     if (selectedLeaders.length === eligibleLeaders.length) {
       setSelectedLeaders([])
     } else {
-      setSelectedLeaders(eligibleLeaders.map(l => l.id))
+      setSelectedLeaders(eligibleLeaders.map((l) => l.id))
     }
   }
 
@@ -268,7 +290,8 @@ export function LeaderInvitationSystem() {
             Leader Invitation System
           </CardTitle>
           <CardDescription>
-            Invite ministry and region leaders to create accounts and access their dashboards
+            Invite ministry and region leaders to create accounts and access
+            their dashboards
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -290,17 +313,21 @@ export function LeaderInvitationSystem() {
                 <SelectItem value="all">All Leaders</SelectItem>
                 <SelectItem value="no_account">No Account</SelectItem>
                 <SelectItem value="has_account">Has Account</SelectItem>
-                <SelectItem value="ministry_leader">{terminology.ministry_term} Leaders</SelectItem>
+                <SelectItem value="ministry_leader">
+                  {terminology.ministry_term} Leaders
+                </SelectItem>
                 <SelectItem value="region_leader">Region Leaders</SelectItem>
               </SelectContent>
             </Select>
-            <Button 
+            <Button
               onClick={sendInvitations}
               disabled={selectedLeaders.length === 0 || isSendingInvites}
               className="flex items-center gap-2"
             >
               <Send className="h-4 w-4" />
-              {isSendingInvites ? 'Sending...' : `Send Email Invites (${selectedLeaders.length})`}
+              {isSendingInvites
+                ? 'Sending...'
+                : `Send Email Invites (${selectedLeaders.length})`}
             </Button>
           </div>
 
@@ -311,7 +338,12 @@ export function LeaderInvitationSystem() {
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={selectedLeaders.length === filteredLeaders.filter(l => !l.has_account).length && filteredLeaders.filter(l => !l.has_account).length > 0}
+                      checked={
+                        selectedLeaders.length ===
+                          filteredLeaders.filter((l) => !l.has_account)
+                            .length &&
+                        filteredLeaders.filter((l) => !l.has_account).length > 0
+                      }
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
@@ -334,7 +366,10 @@ export function LeaderInvitationSystem() {
                   </TableRow>
                 ) : filteredLeaders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
                       No leaders found
                     </TableCell>
                   </TableRow>
@@ -348,30 +383,48 @@ export function LeaderInvitationSystem() {
                           disabled={leader.has_account}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{leader.name}</TableCell>
+                      <TableCell className="font-medium">
+                        {leader.name}
+                      </TableCell>
                       <TableCell>{leader.email}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {leader.ministry_names && leader.ministry_names.map((ministry, index) => (
-                            <Badge key={index} variant="default" className="text-xs">
-                              {ministry}
-                            </Badge>
-                          ))}
-                          {leader.region_name && (
-                            <Badge variant="secondary" className="text-xs">
-                              {leader.region_name}
-                            </Badge>
-                          )}
+                          {leader.led_ministry_names &&
+                            leader.led_ministry_names.map((ministry, index) => (
+                              <Badge
+                                key={index}
+                                variant="default"
+                                className="text-xs"
+                              >
+                                {ministry}
+                              </Badge>
+                            ))}
+                          {leader.led_region_names &&
+                            leader.led_region_names.map((region, index) => (
+                              <Badge
+                                key={index}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {region}
+                              </Badge>
+                            ))}
                         </div>
                       </TableCell>
                       <TableCell>
                         {leader.has_account ? (
-                          <Badge variant="default" className="flex items-center gap-1">
+                          <Badge
+                            variant="default"
+                            className="flex items-center gap-1"
+                          >
                             <CheckCircle className="h-3 w-3" />
                             Has Account
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="flex items-center gap-1">
+                          <Badge
+                            variant="outline"
+                            className="flex items-center gap-1"
+                          >
                             <AlertCircle className="h-3 w-3" />
                             No Account
                           </Badge>
@@ -379,7 +432,9 @@ export function LeaderInvitationSystem() {
                       </TableCell>
                       <TableCell>
                         {leader.has_account ? (
-                          <span className="text-sm text-muted-foreground">Already registered</span>
+                          <span className="text-sm text-muted-foreground">
+                            Already registered
+                          </span>
                         ) : (
                           <Button
                             variant="outline"
@@ -401,7 +456,10 @@ export function LeaderInvitationSystem() {
         </CardContent>
       </Card>
 
-      <Dialog open={isInviteLinkDialogOpen} onOpenChange={setIsInviteLinkDialogOpen}>
+      <Dialog
+        open={isInviteLinkDialogOpen}
+        onOpenChange={setIsInviteLinkDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Invitation Link Generated</DialogTitle>
@@ -410,7 +468,7 @@ export function LeaderInvitationSystem() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center space-x-2">
-            <Input value={generatedLink || ""} readOnly />
+            <Input value={generatedLink || ''} readOnly />
             <Button type="button" size="sm" onClick={copyToClipboard}>
               <Copy className="h-4 w-4" />
             </Button>
