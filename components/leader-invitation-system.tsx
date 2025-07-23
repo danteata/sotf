@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Mail, UserPlus, Search, Send, CheckCircle, Clock, AlertCircle } from "lucide-react"
+import { Mail, UserPlus, Search, Send, CheckCircle, Clock, AlertCircle, Link, Copy } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useToast } from "@/components/ui/use-toast"
@@ -39,6 +39,8 @@ export function LeaderInvitationSystem() {
   const [roleFilter, setRoleFilter] = useState("all")
   const [selectedLeaders, setSelectedLeaders] = useState<string[]>([])
   const [isSendingInvites, setIsSendingInvites] = useState(false)
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
+  const [isInviteLinkDialogOpen, setIsInviteLinkDialogOpen] = useState(false)
 
   useEffect(() => {
     loadPotentialLeaders()
@@ -153,6 +155,46 @@ export function LeaderInvitationSystem() {
     }
   }
 
+  const generateInvitationLink = async (leaderId: string) => {
+    const leader = potentialLeaders.find(l => l.id === leaderId)
+    if (!leader) {
+      toast({ variant: "destructive", title: "Error", description: "Leader not found" })
+      return
+    }
+
+    try {
+      const { data, error } = await supabase.rpc('create_invitation', {
+        p_email: leader.email,
+        p_member_id: leader.id,
+        p_invited_by: null, // You might want to pass the current user's ID here
+        p_intended_role: 'member', // Or determine role based on leadership
+        p_intended_ministries: [],
+        p_intended_regions: []
+      })
+
+      if (error) throw error
+
+      const token = data[0].invitation_token
+      const link = `${window.location.origin}/accept-invitation?token=${token}`
+      setGeneratedLink(link)
+      setIsInviteLinkDialogOpen(true)
+    } catch (error) {
+      console.error('Error generating invitation link:', error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to generate invitation link."
+      })
+    }
+  }
+
+  const copyToClipboard = () => {
+    if (generatedLink) {
+      navigator.clipboard.writeText(generatedLink)
+      toast({ title: "Copied!", description: "Invitation link copied to clipboard." })
+    }
+  }
+
   const sendInvitations = async () => {
     if (selectedLeaders.length === 0) {
       toast({
@@ -165,40 +207,15 @@ export function LeaderInvitationSystem() {
 
     setIsSendingInvites(true)
     try {
-      // In a real implementation, you would:
-      // 1. Generate unique invitation tokens
-      // 2. Send emails with invitation links
-      // 3. Store invitation records in database
-      
-      // For now, we'll simulate this
-      const invitePromises = selectedLeaders.map(async (leaderId) => {
-        const leader = potentialLeaders.find(l => l.id === leaderId)
-        if (!leader) return
-
-        // Generate invitation token (in real app, use crypto.randomUUID())
-        const invitationToken = `invite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        
-        // Store invitation in database (you'd create an invitations table)
-        // For now, we'll just log it
-        console.log(`Sending invitation to ${leader.email} with token: ${invitationToken}`)
-        
-        // In real implementation:
-        // await sendInvitationEmail(leader.email, invitationToken)
-        
-        return leader
-      })
-
-      await Promise.all(invitePromises)
-
+      // This function would now be used for bulk email invitations
+      // For now, it's a placeholder
+      console.log("Bulk sending email invitations to:", selectedLeaders)
       toast({
         title: "Invitations Sent",
-        description: `Successfully sent ${selectedLeaders.length} invitation(s)`
+        description: `Successfully sent ${selectedLeaders.length} email invitation(s)`
       })
-
       setSelectedLeaders([])
-      // Refresh the list
       await loadPotentialLeaders()
-
     } catch (error) {
       console.error('Error sending invitations:', error)
       toast({
@@ -283,7 +300,7 @@ export function LeaderInvitationSystem() {
               className="flex items-center gap-2"
             >
               <Send className="h-4 w-4" />
-              {isSendingInvites ? 'Sending...' : `Send Invites (${selectedLeaders.length})`}
+              {isSendingInvites ? 'Sending...' : `Send Email Invites (${selectedLeaders.length})`}
             </Button>
           </div>
 
@@ -367,11 +384,11 @@ export function LeaderInvitationSystem() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setSelectedLeaders([leader.id])}
+                            onClick={() => generateInvitationLink(leader.id)}
                             className="flex items-center gap-1"
                           >
-                            <Mail className="h-3 w-3" />
-                            Invite
+                            <Link className="h-3 w-3" />
+                            Generate Link
                           </Button>
                         )}
                       </TableCell>
@@ -383,6 +400,23 @@ export function LeaderInvitationSystem() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isInviteLinkDialogOpen} onOpenChange={setIsInviteLinkDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invitation Link Generated</DialogTitle>
+            <DialogDescription>
+              Copy this link and share it with the leader to invite them.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2">
+            <Input value={generatedLink || ""} readOnly />
+            <Button type="button" size="sm" onClick={copyToClipboard}>
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -39,8 +39,7 @@ export function ClerkProviderWithKey({
 CLERK_SECRET_KEY=your_secret_key
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard`}
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard`}
             </pre>
             <p>After setting up these variables, restart your development server to enable authentication features.</p>
           </div>
