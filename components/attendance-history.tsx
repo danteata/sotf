@@ -39,43 +39,55 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { Eye } from 'lucide-react'
 import { format, subDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useEventTypes } from '@/hooks/use-event-types'
 
 import type { DateRange } from 'react-day-picker'
 import { Input } from './ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 
-type AttendanceSource = 'ministry' | 'region' | 'all';
-interface AttendanceHistoryProps {
-  ministries?: string[]
-  regions?: string[]
-  source?: AttendanceSource
-}
+import { AttendeesDialog } from './attendees-dialog'
 
 export function AttendanceHistory({
   ministries,
   regions,
   source = 'all',
-}: AttendanceHistoryProps = {}) {
+}: any) {
+  const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  const [viewingRecord, setViewingRecord] = useState<any | null>(null)
   const [attendanceData, setAttendanceData] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [eventType, setEventType] = useState('all')
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
+
+  const handleViewAttendees = (record: any) => {
+    setViewingRecord(record)
+    setViewDialogOpen(true)
+  }
 
   useEffect(() => {
     const fetchAttendance = async () => {
       setLoading(true)
       setError(null)
       try {
-        let query;
+        let query
         if (source === 'ministry') {
           query = supabase
             .from('ministry_attendance_history')
-            .select('attendance_id, date, event_type_value, event_type_label, ministry_id, ministry_name, ministry_attendance_count')
+            .select(
+              'attendance_id, date, event_type_value, event_type_label, ministry_id, ministry_name, ministry_attendance_count'
+            )
             .order('date', { ascending: false })
           if (ministries && ministries.length > 0) {
             query = query.in('ministry_name', ministries)
@@ -83,7 +95,9 @@ export function AttendanceHistory({
         } else if (source === 'region') {
           query = supabase
             .from('region_attendance_history')
-            .select('attendance_id, date, event_type_value, event_type_label, region_id, region_name, region_attendance_count')
+            .select(
+              'attendance_id, date, event_type_value, event_type_label, region_id, region_name, region_attendance_count'
+            )
             .order('date', { ascending: false })
           if (regions && regions.length > 0) {
             query = query.in('region_name', regions)
@@ -91,7 +105,9 @@ export function AttendanceHistory({
         } else {
           query = supabase
             .from('attendance_with_type')
-            .select('id, date, event_type_value, event_type_label, count, percent_change, notes')
+            .select(
+              'id, date, event_type_value, event_type_label, count, percent_change, notes'
+            )
             .order('date', { ascending: false })
         }
 
@@ -120,7 +136,6 @@ export function AttendanceHistory({
         setLoading(false)
       }
     }
-
     fetchAttendance()
   }, [dateRange, ministries, regions, source])
 
@@ -243,12 +258,28 @@ export function AttendanceHistory({
                           record.event_type_value ||
                           'Unknown'}
                       </TableCell>
-                      {source === 'ministry' && <TableCell>{record.ministry_name}</TableCell>}
-                      {source === 'region' && <TableCell>{record.region_name}</TableCell>}
+                      {source === 'ministry' && (
+                        <TableCell>{record.ministry_name}</TableCell>
+                      )}
+                      {source === 'region' && (
+                        <TableCell>{record.region_name}</TableCell>
+                      )}
                       <TableCell className="text-right font-medium">
-                        {record.ministry_attendance_count ?? record.region_attendance_count ?? record.count}
+                        {record.ministry_attendance_count ??
+                          record.region_attendance_count ??
+                          record.count}
                       </TableCell>
-                      <TableCell>{record.notes}</TableCell>
+                      <TableCell className="flex gap-2 items-center">
+                        {record.notes}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="View attendees"
+                          onClick={() => handleViewAttendees(record)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -257,6 +288,17 @@ export function AttendanceHistory({
           </div>
         </div>
       </CardContent>
+      {/* View Attendees Dialog */}
+      <AttendeesDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        record={viewingRecord}
+        ministryId={
+          source === 'ministry' ? viewingRecord?.ministry_id : undefined
+        }
+        regions={source === 'region' ? regions : undefined}
+        source={source}
+      />
     </Card>
   )
 }
