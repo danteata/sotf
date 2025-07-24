@@ -133,7 +133,9 @@ export function AttendeesDialog({
             <ul className="space-y-2">
               {attendees.map((a, idx) => (
                 <li key={a.member_id} className="border-b pb-1 flex gap-2">
-                  <span className="text-xs text-muted-foreground w-6 text-right select-none">{idx + 1}.</span>
+                  <span className="text-xs text-muted-foreground w-6 text-right select-none">
+                    {idx + 1}.
+                  </span>
                   <div className="flex-1">
                     <div className="font-medium">
                       {a.members?.name || 'Unknown'}
