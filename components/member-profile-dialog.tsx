@@ -117,6 +117,12 @@ export function MemberProfileDialog({
                   </span>
                 </div>
               )}
+              {member.plus_code && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{member.plus_code}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase"
 import { getMinistries, getRegions, updateMemberWithMinistries, getMemberMinistries } from "@/lib/database-utils"
 import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { useToast } from "@/components/ui/use-toast"
+import { convertPlusCodeToLatLng } from "@/lib/google-maps-utils"
 
 import {
   Dialog,
@@ -59,6 +60,7 @@ const memberSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   country: z.string().optional(),
+  plus_code: z.string().optional(),
   // skills: z.string().optional(),
   avatar: z.string().optional(),
 })
@@ -115,6 +117,7 @@ export function MemberEditDialog({
       state: member.state || "",
       zip: member.zip || "",
       country: member.country || "United States",
+      plus_code: member.plus_code || "",
       ministries: memberMinistryIds,
       region: member.region || "",
       avatar: member.avatar || "",
@@ -136,12 +139,32 @@ export function MemberEditDialog({
         setMinistries(ministriesData)
         setRegions(regionsData)
 
-        // Extract ministry IDs from member's current ministries
         const ministryIds = memberMinistries?.map((mm: any) => mm.ministry?.id || mm.ministry_id).filter(Boolean) || []
         setMemberMinistryIds(ministryIds)
 
-        // Update form with ministry IDs
-        form.setValue('ministries', ministryIds)
+        // Reset the form with the latest member data
+        form.reset({
+          title: member.title || "",
+          first_name: member.first_name || firstName,
+          last_name: member.last_name || lastName,
+          email: member.email,
+          phone: member.phone,
+          dob: member.dob || "",
+          birth_month: member.birth_month || undefined,
+          birth_day: member.birth_day || undefined,
+          gender: member.gender || "",
+          status: member.status,
+          joined_date: member.joined_date,
+          address: member.address || "",
+          city: member.city || "",
+          state: member.state || "",
+          zip: member.zip || "",
+          country: member.country || "United States",
+          plus_code: member.plus_code || "",
+          ministries: ministryIds,
+          region: member.region || "",
+          avatar: member.avatar || "",
+        });
 
         console.log('Loaded member ministries:', memberMinistries)
         console.log('Ministry IDs:', ministryIds)
@@ -153,7 +176,7 @@ export function MemberEditDialog({
     if (open) {
       loadData()
     }
-  }, [open, member.id, form])
+  }, [open, member, form])
 
   async function onSubmit(data: MemberFormValues) {
     console.log("Edit form submitted with data:", data); // Debug log
@@ -162,6 +185,11 @@ export function MemberEditDialog({
     try {
       // Generate initials from first and last name
       const initials = `${data.first_name[0]}${data.last_name[0]}`.toUpperCase()
+
+      let latLng: { lat: number; lng: number } | null = null;
+      if (data.plus_code) {
+        latLng = await convertPlusCodeToLatLng(data.plus_code);
+      }
 
       const memberData = {
         title: data.title,
@@ -182,6 +210,9 @@ export function MemberEditDialog({
         zip: data.zip,
         region: data.region,
         country: data.country,
+        plus_code: data.plus_code,
+        latitude: latLng?.lat,
+        longitude: latLng?.lng,
         avatar: data.avatar,
         initials,
         updated_at: new Date().toISOString(),
@@ -505,6 +536,20 @@ export function MemberEditDialog({
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="plus_code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Google Plus Code</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
 
               <TabsContent value="ministry" className="space-y-4">

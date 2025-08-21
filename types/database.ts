@@ -27,6 +27,9 @@ export interface Member {
   initials: string
   created_at: string
   updated_at: string
+  latitude?: number
+  longitude?: number
+  plus_code?: string
 }
 
 // New interfaces for the improved database structure
@@ -261,6 +264,9 @@ export interface Database {
           title: string | null
           updated_at: string
           zip: string | null
+          latitude: number | null
+          longitude: number | null
+          plus_code: string | null
         }
         Insert: {
           address?: string | null
@@ -290,6 +296,9 @@ export interface Database {
           title?: string | null
           updated_at?: string
           zip?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          plus_code?: string | null
         }
         Update: {
           address?: string | null
@@ -319,6 +328,9 @@ export interface Database {
           title?: string | null
           updated_at?: string
           zip?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          plus_code?: string | null
         }
         Relationships: []
       }

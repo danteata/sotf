@@ -38,6 +38,7 @@
     "@radix-ui/react-toggle": "^1.1.1",
     "@radix-ui/react-toggle-group": "^1.1.1",
     "@radix-ui/react-tooltip": "^1.1.8",
+    "@react-google-maps/api": "^2.20.7",
     "@supabase/supabase-js": "^2.49.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
@@ -72,6 +73,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "postcss": "^8",
+    "supabase": "^2.31.4",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
   }
