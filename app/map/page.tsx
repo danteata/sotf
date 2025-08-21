@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { getMembersWithDetails, getMinistries } from '@/lib/database-utils'
+import { getMembersWithDetails, getMinistries, getRegions } from '@/lib/database-utils'
 import MapView from '@/components/map-view'
 import {
   Select,
@@ -22,6 +22,7 @@ export default function MapPage() {
   // State for filters
   const [statusFilter, setStatusFilter] = useState('all')
   const [ministryFilter, setMinistryFilter] = useState('all')
+  const [regionFilter, setRegionFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   
   // Fetch members and ministries data
@@ -33,6 +34,11 @@ export default function MapPage() {
   const { data: ministriesData = [] } = useQuery({
     queryKey: ['ministries'],
     queryFn: getMinistries,
+  })
+
+  const { data: regionsData = [] } = useQuery({
+    queryKey: ['regions'],
+    queryFn: getRegions,
   })
 
   const filteredMembers = useMemo(() => {
@@ -56,6 +62,11 @@ export default function MapPage() {
       });
     }
 
+    // Apply region filter
+    if (regionFilter !== 'all') {
+      filtered = filtered.filter(member => member.region_name === regionFilter);
+    }
+
     // Apply search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -70,7 +81,7 @@ export default function MapPage() {
     filtered = filtered.filter(member => member.latitude && member.longitude);
 
     return filtered;
-  }, [members, statusFilter, ministryFilter, searchQuery]);
+  }, [members, statusFilter, ministryFilter, searchQuery, regionFilter]);
 
   const totalMembers = filteredMembers.length;
 
@@ -81,7 +92,7 @@ export default function MapPage() {
         
         {/* Filter controls */}
         <div className="flex flex-col gap-4 mb-6">
-          {/* Status and Ministry filters */}
+          {/* Status, Ministry and Region filters */}
           <div className="flex flex-col sm:flex-row gap-2">
             <Select
               value={statusFilter}
@@ -110,6 +121,23 @@ export default function MapPage() {
                 {ministriesData.map((ministry) => (
                   <SelectItem key={ministry.id} value={ministry.name}>
                     {ministry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={regionFilter}
+              onValueChange={setRegionFilter}
+            >
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by Region" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Regions</SelectItem>
+                {regionsData.map((region) => (
+                  <SelectItem key={region.id} value={region.name}>
+                    {region.name}
                   </SelectItem>
                 ))}
               </SelectContent>
