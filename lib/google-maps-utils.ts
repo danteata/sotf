@@ -16,6 +16,7 @@ export async function convertPlusCodeToLatLng(plusCode: string): Promise<{ lat: 
 
     if (data.status === 'OK') {
       const location = data.results[0].geometry.location;
+      console.log('Converted plus code:', plusCode, 'to:', location);
       return { lat: location.lat, lng: location.lng };
     } else {
       console.error('Geocoding API error:', data.status, data.error_message);

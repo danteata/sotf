@@ -2,21 +2,21 @@
 
 import { useState, useEffect } from 'react'
 import { Member } from '@/types/database'
-import { supabase } from '@/lib/supabase'
+import { getMembersWithDetails } from '@/lib/database-utils'
+import { LayoutWrapper } from '@/components/layout-wrapper'
 import MapView from '@/components/map-view'
-
-import { LayoutWrapper } from "@/components/layout-wrapper"
 
 export default function MapPage() {
   const [members, setMembers] = useState<Member[]>([])
 
   useEffect(() => {
     const fetchMembers = async () => {
-      const { data, error } = await supabase.from('members').select('*')
-      if (error) {
+      try {
+        const data = await getMembersWithDetails()
+        setMembers(data)
+        console.log('Fetched members for map:', data)
+      } catch (error) {
         console.error('Error fetching members:', error)
-      } else {
-        setMembers(data as Member[])
       }
     }
 
