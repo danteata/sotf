@@ -2,6 +2,7 @@ import { type Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import QueryProvider from '@/components/query-provider'
 
 const font = Inter({
   variable: '--font-inter',
@@ -22,7 +23,9 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${font.variable} antialiased`}>
-          {children}
+          <QueryProvider>
+            {children}
+          </QueryProvider>
         </body>
       </html>
     </ClerkProvider>
