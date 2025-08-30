@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -19,51 +20,163 @@ import {
   Pie,
   Cell,
 } from "recharts"
+import { supabase } from "@/lib/supabase"
+import { format, subWeeks, startOfWeek, subMonths, startOfMonth } from "date-fns"
 
-// Sample data for attendance trends
-const weeklyData = [
-  { name: "Jan 7", count: 780 },
-  { name: "Jan 14", count: 795 },
-  { name: "Jan 21", count: 810 },
-  { name: "Jan 28", count: 800 },
-  { name: "Feb 4", count: 815 },
-  { name: "Feb 11", count: 825 },
-  { name: "Feb 18", count: 830 },
-  { name: "Feb 25", count: 820 },
-  { name: "Mar 3", count: 800 },
-  { name: "Mar 10", count: 814 },
-  { name: "Mar 17", count: 856 },
-]
+interface AttendanceData {
+  name: string
+  count: number
+  [key: string]: any
+}
 
-const monthlyData = [
-  { name: "Apr", count: 750 },
-  { name: "May", count: 765 },
-  { name: "Jun", count: 780 },
-  { name: "Jul", count: 790 },
-  { name: "Aug", count: 810 },
-  { name: "Sep", count: 825 },
-  { name: "Oct", count: 815 },
-  { name: "Nov", count: 830 },
-  { name: "Dec", count: 845 },
-  { name: "Jan", count: 805 },
-  { name: "Feb", count: 825 },
-  { name: "Mar", count: 856 },
-]
-
-const eventComparisonData = [
-  { name: "Jan", "Sunday Service": 780, "Bible Study": 38, "Youth Group": 95, "Children's Ministry": 145 },
-  { name: "Feb", "Sunday Service": 825, "Bible Study": 42, "Youth Group": 105, "Children's Ministry": 155 },
-  { name: "Mar", "Sunday Service": 856, "Bible Study": 45, "Youth Group": 124, "Children's Ministry": 168 },
-]
-
-const demographicData = [
-  { name: "Adults", value: 560 },
-  { name: "Youth", value: 124 },
-  { name: "Children", value: 168 },
-  { name: "Seniors", value: 104 },
-]
+interface EventComparisonData {
+  name: string
+  "Sunday Service": number
+  "Bible Study": number
+  "Youth Group": number
+  "Children's Ministry": number
+}
 
 export function AttendanceTrends() {
+  const [weeklyData, setWeeklyData] = useState<AttendanceData[]>([])
+  const [monthlyData, setMonthlyData] = useState<AttendanceData[]>([])
+  const [eventComparisonData, setEventComparisonData] = useState<EventComparisonData[]>([])
+  const [demographicData, setDemographicData] = useState<AttendanceData[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchAttendanceTrends()
+  }, [])
+
+  const fetchAttendanceTrends = async () => {
+    try {
+      setLoading(true)
+
+      // Get event type IDs
+      const { data: eventTypes } = await supabase
+        .from("event_types")
+        .select("id, value")
+
+      const sundayServiceType = eventTypes?.find(et => et.value === "sunday-service")
+      const youthGroupType = eventTypes?.find(et => et.value === "youth-group")
+      const childrenMinistryType = eventTypes?.find(et => et.value === "children-ministry")
+      const bibleStudyType = eventTypes?.find(et => et.value === "bible-study")
+
+      // Fetch weekly data (last 11 weeks)
+      const weeklyPromises = []
+      for (let i = 10; i >= 0; i--) {
+        const weekStart = startOfWeek(subWeeks(new Date(), i), { weekStartsOn: 0 })
+        weeklyPromises.push(
+          supabase
+            .from("attendance")
+            .select("count")
+            .eq("date", format(weekStart, "yyyy-MM-dd"))
+            .eq("event_type_id", sundayServiceType?.id)
+            .single()
+        )
+      }
+
+      const weeklyResults = await Promise.all(weeklyPromises)
+      const weeklyProcessed = weeklyResults.map((result, index) => ({
+        name: format(startOfWeek(subWeeks(new Date(), 10 - index), { weekStartsOn: 0 }), "MMM dd"),
+        count: result.data?.count || 0
+      }))
+      setWeeklyData(weeklyProcessed)
+
+      // Fetch monthly data (last 12 months)
+      const monthlyPromises = []
+      for (let i = 11; i >= 0; i--) {
+        const monthStart = startOfMonth(subMonths(new Date(), i))
+        monthlyPromises.push(
+          supabase
+            .from("attendance")
+            .select("count")
+            .gte("date", format(monthStart, "yyyy-MM-dd"))
+            .lt("date", format(startOfMonth(subMonths(new Date(), i - 1)), "yyyy-MM-dd"))
+            .eq("event_type_id", sundayServiceType?.id)
+        )
+      }
+
+      const monthlyResults = await Promise.all(monthlyPromises)
+      const monthlyProcessed = monthlyResults.map((result, index) => ({
+        name: format(startOfMonth(subMonths(new Date(), 11 - index)), "MMM"),
+        count: result.data?.reduce((sum, record) => sum + record.count, 0) || 0
+      }))
+      setMonthlyData(monthlyProcessed)
+
+      // Fetch event comparison data (last 3 months)
+      const eventComparisonPromises = []
+      for (let i = 2; i >= 0; i--) {
+        const monthStart = startOfMonth(subMonths(new Date(), i))
+        const monthEnd = startOfMonth(subMonths(new Date(), i - 1))
+
+        const monthPromises = [
+          // Sunday Service
+          supabase
+            .from("attendance")
+            .select("count")
+            .gte("date", format(monthStart, "yyyy-MM-dd"))
+            .lt("date", format(monthEnd, "yyyy-MM-dd"))
+            .eq("event_type_id", sundayServiceType?.id),
+          // Bible Study
+          supabase
+            .from("attendance")
+            .select("count")
+            .gte("date", format(monthStart, "yyyy-MM-dd"))
+            .lt("date", format(monthEnd, "yyyy-MM-dd"))
+            .eq("event_type_id", bibleStudyType?.id),
+          // Youth Group
+          supabase
+            .from("attendance")
+            .select("count")
+            .gte("date", format(monthStart, "yyyy-MM-dd"))
+            .lt("date", format(monthEnd, "yyyy-MM-dd"))
+            .eq("event_type_id", youthGroupType?.id),
+          // Children's Ministry
+          supabase
+            .from("attendance")
+            .select("count")
+            .gte("date", format(monthStart, "yyyy-MM-dd"))
+            .lt("date", format(monthEnd, "yyyy-MM-dd"))
+            .eq("event_type_id", childrenMinistryType?.id)
+        ]
+
+        eventComparisonPromises.push(Promise.all(monthPromises))
+      }
+
+      const eventComparisonResults = await Promise.all(eventComparisonPromises)
+      const eventComparisonProcessed = eventComparisonResults.map((monthResults, index) => ({
+        name: format(startOfMonth(subMonths(new Date(), 2 - index)), "MMM"),
+        "Sunday Service": monthResults[0].data?.reduce((sum, record) => sum + record.count, 0) || 0,
+        "Bible Study": monthResults[1].data?.reduce((sum, record) => sum + record.count, 0) || 0,
+        "Youth Group": monthResults[2].data?.reduce((sum, record) => sum + record.count, 0) || 0,
+        "Children's Ministry": monthResults[3].data?.reduce((sum, record) => sum + record.count, 0) || 0
+      }))
+      setEventComparisonData(eventComparisonProcessed)
+
+      // Set demographic data (simplified - you might want to add demographic fields to your database)
+      setDemographicData([
+        { name: "Adults", count: Math.floor((weeklyProcessed[weeklyProcessed.length - 1]?.count || 0) * 0.65) },
+        { name: "Youth", count: Math.floor((weeklyProcessed[weeklyProcessed.length - 1]?.count || 0) * 0.15) },
+        { name: "Children", count: Math.floor((weeklyProcessed[weeklyProcessed.length - 1]?.count || 0) * 0.15) },
+        { name: "Seniors", count: Math.floor((weeklyProcessed[weeklyProcessed.length - 1]?.count || 0) * 0.05) }
+      ])
+
+    } catch (error) {
+      console.error("Error fetching attendance trends:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <Tabs defaultValue="weekly" className="w-full">
@@ -85,7 +198,7 @@ export function AttendanceTrends() {
                   <LineChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
-                    <YAxis domain={[700, 900]} />
+                    <YAxis />
                     <Tooltip />
                     <Legend />
                     <Line
@@ -114,7 +227,8 @@ export function AttendanceTrends() {
                     <BarChart
                       data={weeklyData.slice(1).map((week, index) => ({
                         name: week.name,
-                        growth: (((week.count - weeklyData[index].count) / weeklyData[index].count) * 100).toFixed(1),
+                        growth: weeklyData[index].count > 0 ?
+                          (((week.count - weeklyData[index].count) / weeklyData[index].count) * 100).toFixed(1) : "0.0"
                       }))}
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                     >
@@ -148,7 +262,7 @@ export function AttendanceTrends() {
                       <YAxis dataKey="name" type="category" />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="value" name="Attendees" fill="#4f46e5" />
+                      <Bar dataKey="count" name="Attendees" fill="#4f46e5" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -169,7 +283,7 @@ export function AttendanceTrends() {
                   <AreaChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
-                    <YAxis domain={[700, 900]} />
+                    <YAxis />
                     <Tooltip />
                     <Legend />
                     <Area
@@ -197,7 +311,7 @@ export function AttendanceTrends() {
                   <BarChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
-                    <YAxis domain={[700, 900]} />
+                    <YAxis />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="count" name="Attendance" fill="#4f46e5" />
@@ -243,11 +357,32 @@ export function AttendanceTrends() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={[
-                        { name: "Sunday Service", growth: 9.7 },
-                        { name: "Bible Study", growth: 18.4 },
-                        { name: "Youth Group", growth: 30.5 },
-                        { name: "Children's Ministry", growth: 15.9 },
+                      data={eventComparisonData.length >= 2 ? [
+                        {
+                          name: "Sunday Service",
+                          growth: eventComparisonData[0]["Sunday Service"] > 0 ?
+                            (((eventComparisonData[1]["Sunday Service"] - eventComparisonData[0]["Sunday Service"]) / eventComparisonData[0]["Sunday Service"]) * 100).toFixed(1) : "0.0"
+                        },
+                        {
+                          name: "Bible Study",
+                          growth: eventComparisonData[0]["Bible Study"] > 0 ?
+                            (((eventComparisonData[1]["Bible Study"] - eventComparisonData[0]["Bible Study"]) / eventComparisonData[0]["Bible Study"]) * 100).toFixed(1) : "0.0"
+                        },
+                        {
+                          name: "Youth Group",
+                          growth: eventComparisonData[0]["Youth Group"] > 0 ?
+                            (((eventComparisonData[1]["Youth Group"] - eventComparisonData[0]["Youth Group"]) / eventComparisonData[0]["Youth Group"]) * 100).toFixed(1) : "0.0"
+                        },
+                        {
+                          name: "Children's Ministry",
+                          growth: eventComparisonData[0]["Children's Ministry"] > 0 ?
+                            (((eventComparisonData[1]["Children's Ministry"] - eventComparisonData[0]["Children's Ministry"]) / eventComparisonData[0]["Children's Ministry"]) * 100).toFixed(1) : "0.0"
+                        }
+                      ] : [
+                        { name: "Sunday Service", growth: "0.0" },
+                        { name: "Bible Study", growth: "0.0" },
+                        { name: "Youth Group", growth: "0.0" },
+                        { name: "Children's Ministry", growth: "0.0" }
                       ]}
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                     >
@@ -275,12 +410,12 @@ export function AttendanceTrends() {
                       <Tooltip />
                       <Legend />
                       <Pie
-                        data={[
-                          { name: "Sunday Service", value: 856 },
-                          { name: "Bible Study", value: 45 },
-                          { name: "Youth Group", value: 124 },
-                          { name: "Children's Ministry", value: 168 },
-                        ]}
+                        data={eventComparisonData.length > 0 ? [
+                          { name: "Sunday Service", value: eventComparisonData[eventComparisonData.length - 1]["Sunday Service"] },
+                          { name: "Bible Study", value: eventComparisonData[eventComparisonData.length - 1]["Bible Study"] },
+                          { name: "Youth Group", value: eventComparisonData[eventComparisonData.length - 1]["Youth Group"] },
+                          { name: "Children's Ministry", value: eventComparisonData[eventComparisonData.length - 1]["Children's Ministry"] }
+                        ] : []}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -304,4 +439,3 @@ export function AttendanceTrends() {
     </div>
   )
 }
-

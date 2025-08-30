@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, Calendar, Users, History, LineChart, UserMinus, PlusCircle, RefreshCw } from "lucide-react"
+import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw } from "lucide-react"
 import { getAttendanceStats, getMinistries, getRegions } from "@/lib/database-utils"
 import { useUser } from "@clerk/nextjs"
 
@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
-import { AttendanceTrends } from "@/components/attendance-trends"
 import { AbsentMembers } from "@/components/absent-members"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -362,7 +361,7 @@ export function AttendanceContent() {
 
 
       <Tabs defaultValue="record" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full bg-muted p-1 rounded-md">
+        <TabsList className="grid grid-cols-3 w-full bg-muted p-1 rounded-md">
           {[
             {
               value: "record",
@@ -375,12 +374,6 @@ export function AttendanceContent() {
               icon: <History className="h-5 w-5 sm:h-4 sm:w-4" />,
               label: "History",
               prefix: "Attendance"
-            },
-            {
-              value: "trends",
-              icon: <LineChart className="h-5 w-5 sm:h-4 sm:w-4" />,
-              label: "Analytics",
-              prefix: "Trends &"
             },
             {
               value: "absent",
@@ -426,10 +419,6 @@ export function AttendanceContent() {
             availableRegions={availableRegions}
             filtersLoading={filtersLoading}
           />
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-4 pt-4">
-          <AttendanceTrends />
         </TabsContent>
 
         <TabsContent value="absent" className="space-y-4 pt-4">

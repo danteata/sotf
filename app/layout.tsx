@@ -10,8 +10,8 @@ const font = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'MKC Botwe Church Management System',
-  description: 'Church management system for Makarios Church',
+  title: 'MKC AshBotchWay - State of the Flock',
+  description: 'Church management system for Makarios Church AshBotchWay',
 }
 
 export default function RootLayout({
