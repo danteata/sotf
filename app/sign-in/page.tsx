@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react"
 import { Church } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,7 +16,7 @@ const SignIn = dynamic(() => import("@clerk/nextjs").then((mod) => mod.SignIn), 
   loading: () => <div className="p-4">Loading sign-in form...</div>,
 })
 
-export default function SignInPage() {
+function SignInContent() {
   const searchParams = useSearchParams()
   const redirectUrl = searchParams.get('redirect_url') || '/'
 
@@ -84,5 +85,21 @@ export default function SignInPage() {
         path="/sign-in"
       />
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
+        <div className="mb-8 flex items-center gap-2">
+          <Church className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl font-bold">Makarios Church</h1>
+        </div>
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 }
