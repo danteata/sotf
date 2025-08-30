@@ -99,7 +99,7 @@ export function AttendanceContent() {
         .from('users')
         .select('id, role')
         .eq('clerk_user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (userError) {
         console.error('Error fetching user record:', userError)
@@ -407,7 +407,7 @@ export function AttendanceContent() {
         </TabsList>
         <TabsContent value="record" className="space-y-4 pt-4">
           <AttendanceForm
-            availableMembers={[]}  // Pass empty for now, or implement member filtering
+            availableMembers={undefined}  // Let the form fetch all members
             availableMinistries={availableMinistries}
             availableRegions={availableRegions}
           />

@@ -91,12 +91,92 @@ export function AttendanceHistory({
     setViewDialogOpen(true)
   }
 
-  // Remove the data fetching from AttendanceHistory since it's not needed
-  // The component should only display data passed from parent
+  // Fetch attendance history data
   useEffect(() => {
-    // Component is ready - data will be passed via props
-    console.log('AttendanceHistory - Component ready, waiting for props')
-  }, [])
+    fetchAttendanceHistory()
+  }, [eventType, ministryFilter, regionFilter, dateRange])
+
+  const fetchAttendanceHistory = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      console.log('Fetching attendance history with filters:', {
+        eventType,
+        ministryFilter,
+        regionFilter,
+        dateRange
+      })
+
+      let query = supabase
+        .from('attendance')
+        .select(`
+          id,
+          date,
+          count,
+          notes,
+          event_type_id,
+          event_types (
+            id,
+            value,
+            label
+          )
+        `)
+        .order('date', { ascending: false })
+
+      // Apply event type filter
+      if (eventType !== 'all') {
+        // Get event type ID first
+        const { data: eventTypeData } = await supabase
+          .from('event_types')
+          .select('id')
+          .eq('value', eventType)
+          .single()
+
+        if (eventTypeData) {
+          query = query.eq('event_type_id', eventTypeData.id)
+        }
+      }
+
+      // Apply date range filter
+      if (dateRange?.from) {
+        query = query.gte('date', format(dateRange.from, 'yyyy-MM-dd'))
+      }
+      if (dateRange?.to) {
+        query = query.lte('date', format(dateRange.to, 'yyyy-MM-dd'))
+      }
+
+      const { data: attendanceRecords, error: fetchError } = await query
+
+      if (fetchError) {
+        throw fetchError
+      }
+
+      console.log('Fetched attendance records:', attendanceRecords)
+
+      // Transform the data to match expected format
+      const transformedData = (attendanceRecords || []).map(record => ({
+        id: record.id,
+        attendance_id: record.id,
+        date: record.date,
+        count: record.count,
+        notes: record.notes,
+        event_type_value: record.event_types?.value,
+        event_type_label: record.event_types?.label,
+        event_type_id: record.event_type_id
+      }))
+
+      console.log('Transformed attendance data:', transformedData)
+      setAttendanceData(transformedData)
+
+    } catch (error: any) {
+      console.error('Error fetching attendance history:', error)
+      setError(error.message || 'Failed to fetch attendance history')
+      setAttendanceData([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredRecords = attendanceData.filter((record) => {
     // Event type filter
@@ -160,7 +240,7 @@ export function AttendanceHistory({
                       No event types configured
                     </SelectItem>
                   ) : (
-                    eventTypes.map((eventType) => (
+                    eventTypes.map((eventType: any) => (
                       <SelectItem key={eventType.value} value={eventType.value}>
                         {eventType.label}
                       </SelectItem>

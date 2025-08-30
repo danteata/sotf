@@ -31,10 +31,7 @@ interface AttendanceData {
 
 interface EventComparisonData {
   name: string
-  "Sunday Service": number
-  "Bible Study": number
-  "Youth Group": number
-  "Children's Ministry": number
+  [key: string]: string | number
 }
 
 export function AttendanceTrends() {
@@ -43,6 +40,7 @@ export function AttendanceTrends() {
   const [eventComparisonData, setEventComparisonData] = useState<EventComparisonData[]>([])
   const [demographicData, setDemographicData] = useState<AttendanceData[]>([])
   const [loading, setLoading] = useState(true)
+  const [availableEventTypes, setAvailableEventTypes] = useState<any[]>([])
 
   useEffect(() => {
     fetchAttendanceTrends()
@@ -52,10 +50,22 @@ export function AttendanceTrends() {
     try {
       setLoading(true)
 
-      // Get event type IDs
-      const { data: eventTypes } = await supabase
+      // Get event type IDs - fetch all active event types
+      const { data: eventTypes, error: eventTypesError } = await supabase
         .from("event_types")
-        .select("id, value")
+        .select("id, value, label")
+        .eq("is_active", true)
+        .order("sort_order")
+
+      if (eventTypesError) {
+        console.error("Error fetching event types:", eventTypesError)
+        return
+      }
+
+      console.log("Available event types:", eventTypes)
+
+      // Store available event types for dynamic rendering
+      setAvailableEventTypes(eventTypes || [])
 
       const sundayServiceType = eventTypes?.find(et => et.value === "sunday-service")
       const youthGroupType = eventTypes?.find(et => et.value === "youth-group")
@@ -63,96 +73,95 @@ export function AttendanceTrends() {
       const bibleStudyType = eventTypes?.find(et => et.value === "bible-study")
 
       // Fetch weekly data (last 11 weeks)
-      const weeklyPromises = []
-      for (let i = 10; i >= 0; i--) {
-        const weekStart = startOfWeek(subWeeks(new Date(), i), { weekStartsOn: 0 })
-        weeklyPromises.push(
-          supabase
-            .from("attendance")
-            .select("count")
-            .eq("date", format(weekStart, "yyyy-MM-dd"))
-            .eq("event_type_id", sundayServiceType?.id)
-            .single()
-        )
-      }
+      let weeklyProcessed: AttendanceData[] = []
+      if (sundayServiceType?.id) {
+        const weeklyPromises = []
+        for (let i = 10; i >= 0; i--) {
+          const weekStart = startOfWeek(subWeeks(new Date(), i), { weekStartsOn: 0 })
+          weeklyPromises.push(
+            supabase
+              .from("attendance")
+              .select("count")
+              .eq("date", format(weekStart, "yyyy-MM-dd"))
+              .eq("event_type_id", sundayServiceType.id)
+          )
+        }
 
-      const weeklyResults = await Promise.all(weeklyPromises)
-      const weeklyProcessed = weeklyResults.map((result, index) => ({
-        name: format(startOfWeek(subWeeks(new Date(), 10 - index), { weekStartsOn: 0 }), "MMM dd"),
-        count: result.data?.count || 0
-      }))
+        const weeklyResults = await Promise.all(weeklyPromises)
+        weeklyProcessed = weeklyResults.map((result, index) => {
+          const totalCount = result.data?.reduce((sum, record) => sum + record.count, 0) || 0
+          return {
+            name: format(startOfWeek(subWeeks(new Date(), 10 - index), { weekStartsOn: 0 }), "MMM dd"),
+            count: totalCount
+          }
+        })
+      }
       setWeeklyData(weeklyProcessed)
 
       // Fetch monthly data (last 12 months)
-      const monthlyPromises = []
-      for (let i = 11; i >= 0; i--) {
-        const monthStart = startOfMonth(subMonths(new Date(), i))
-        monthlyPromises.push(
-          supabase
-            .from("attendance")
-            .select("count")
-            .gte("date", format(monthStart, "yyyy-MM-dd"))
-            .lt("date", format(startOfMonth(subMonths(new Date(), i - 1)), "yyyy-MM-dd"))
-            .eq("event_type_id", sundayServiceType?.id)
-        )
-      }
+      let monthlyProcessed: AttendanceData[] = []
+      if (sundayServiceType?.id) {
+        const monthlyPromises = []
+        for (let i = 11; i >= 0; i--) {
+          const monthStart = startOfMonth(subMonths(new Date(), i))
+          monthlyPromises.push(
+            supabase
+              .from("attendance")
+              .select("count")
+              .gte("date", format(monthStart, "yyyy-MM-dd"))
+              .lt("date", format(startOfMonth(subMonths(new Date(), i - 1)), "yyyy-MM-dd"))
+              .eq("event_type_id", sundayServiceType.id)
+          )
+        }
 
-      const monthlyResults = await Promise.all(monthlyPromises)
-      const monthlyProcessed = monthlyResults.map((result, index) => ({
-        name: format(startOfMonth(subMonths(new Date(), 11 - index)), "MMM"),
-        count: result.data?.reduce((sum, record) => sum + record.count, 0) || 0
-      }))
+        const monthlyResults = await Promise.all(monthlyPromises)
+        monthlyProcessed = monthlyResults.map((result, index) => ({
+          name: format(startOfMonth(subMonths(new Date(), 11 - index)), "MMM"),
+          count: result.data?.reduce((sum, record) => sum + record.count, 0) || 0
+        }))
+      }
       setMonthlyData(monthlyProcessed)
 
-      // Fetch event comparison data (last 3 months)
+      // Fetch event comparison data (last 3 months) - dynamic based on available event types
       const eventComparisonPromises = []
       for (let i = 2; i >= 0; i--) {
         const monthStart = startOfMonth(subMonths(new Date(), i))
         const monthEnd = startOfMonth(subMonths(new Date(), i - 1))
 
-        const monthPromises = [
-          // Sunday Service
-          supabase
+        // Create promises for each event type dynamically
+        const monthPromises = availableEventTypes.map(eventType => {
+          if (!eventType?.id) {
+            return Promise.resolve({ data: [], error: null })
+          }
+          return supabase
             .from("attendance")
             .select("count")
             .gte("date", format(monthStart, "yyyy-MM-dd"))
             .lt("date", format(monthEnd, "yyyy-MM-dd"))
-            .eq("event_type_id", sundayServiceType?.id),
-          // Bible Study
-          supabase
-            .from("attendance")
-            .select("count")
-            .gte("date", format(monthStart, "yyyy-MM-dd"))
-            .lt("date", format(monthEnd, "yyyy-MM-dd"))
-            .eq("event_type_id", bibleStudyType?.id),
-          // Youth Group
-          supabase
-            .from("attendance")
-            .select("count")
-            .gte("date", format(monthStart, "yyyy-MM-dd"))
-            .lt("date", format(monthEnd, "yyyy-MM-dd"))
-            .eq("event_type_id", youthGroupType?.id),
-          // Children's Ministry
-          supabase
-            .from("attendance")
-            .select("count")
-            .gte("date", format(monthStart, "yyyy-MM-dd"))
-            .lt("date", format(monthEnd, "yyyy-MM-dd"))
-            .eq("event_type_id", childrenMinistryType?.id)
-        ]
+            .eq("event_type_id", eventType.id)
+        })
 
         eventComparisonPromises.push(Promise.all(monthPromises))
       }
 
       const eventComparisonResults = await Promise.all(eventComparisonPromises)
-      const eventComparisonProcessed = eventComparisonResults.map((monthResults, index) => ({
-        name: format(startOfMonth(subMonths(new Date(), 2 - index)), "MMM"),
-        "Sunday Service": monthResults[0].data?.reduce((sum, record) => sum + record.count, 0) || 0,
-        "Bible Study": monthResults[1].data?.reduce((sum, record) => sum + record.count, 0) || 0,
-        "Youth Group": monthResults[2].data?.reduce((sum, record) => sum + record.count, 0) || 0,
-        "Children's Ministry": monthResults[3].data?.reduce((sum, record) => sum + record.count, 0) || 0
-      }))
+      const eventComparisonProcessed = eventComparisonResults.map((monthResults, index) => {
+        const monthData: EventComparisonData = {
+          name: format(startOfMonth(subMonths(new Date(), 2 - index)), "MMM")
+        }
+
+        // Map results to event type labels dynamically
+        availableEventTypes.forEach((eventType, eventIndex) => {
+          const result = monthResults[eventIndex]
+          const count = result?.data?.reduce((sum, record) => sum + record.count, 0) || 0
+          monthData[eventType.label] = count
+        })
+
+        console.log(`Event comparison data for ${monthData.name}:`, monthData)
+        return monthData
+      })
       setEventComparisonData(eventComparisonProcessed)
+      console.log("Final event comparison data:", eventComparisonProcessed)
 
       // Set demographic data (simplified - you might want to add demographic fields to your database)
       setDemographicData([
@@ -337,10 +346,13 @@ export function AttendanceTrends() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="Sunday Service" fill="#4f46e5" />
-                    <Bar dataKey="Bible Study" fill="#10b981" />
-                    <Bar dataKey="Youth Group" fill="#f59e0b" />
-                    <Bar dataKey="Children's Ministry" fill="#ef4444" />
+                    {availableEventTypes.map((eventType, index) => (
+                      <Bar
+                        key={eventType.id}
+                        dataKey={eventType.label}
+                        fill={`hsl(${index * 90}, 70%, 50%)`}
+                      />
+                    ))}
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -357,33 +369,17 @@ export function AttendanceTrends() {
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={eventComparisonData.length >= 2 ? [
-                        {
-                          name: "Sunday Service",
-                          growth: eventComparisonData[0]["Sunday Service"] > 0 ?
-                            (((eventComparisonData[1]["Sunday Service"] - eventComparisonData[0]["Sunday Service"]) / eventComparisonData[0]["Sunday Service"]) * 100).toFixed(1) : "0.0"
-                        },
-                        {
-                          name: "Bible Study",
-                          growth: eventComparisonData[0]["Bible Study"] > 0 ?
-                            (((eventComparisonData[1]["Bible Study"] - eventComparisonData[0]["Bible Study"]) / eventComparisonData[0]["Bible Study"]) * 100).toFixed(1) : "0.0"
-                        },
-                        {
-                          name: "Youth Group",
-                          growth: eventComparisonData[0]["Youth Group"] > 0 ?
-                            (((eventComparisonData[1]["Youth Group"] - eventComparisonData[0]["Youth Group"]) / eventComparisonData[0]["Youth Group"]) * 100).toFixed(1) : "0.0"
-                        },
-                        {
-                          name: "Children's Ministry",
-                          growth: eventComparisonData[0]["Children's Ministry"] > 0 ?
-                            (((eventComparisonData[1]["Children's Ministry"] - eventComparisonData[0]["Children's Ministry"]) / eventComparisonData[0]["Children's Ministry"]) * 100).toFixed(1) : "0.0"
-                        }
-                      ] : [
-                        { name: "Sunday Service", growth: "0.0" },
-                        { name: "Bible Study", growth: "0.0" },
-                        { name: "Youth Group", growth: "0.0" },
-                        { name: "Children's Ministry", growth: "0.0" }
-                      ]}
+                      data={eventComparisonData.length >= 2 ? availableEventTypes.map(eventType => ({
+                        name: eventType.label,
+                        growth: (() => {
+                          const prev = Number(eventComparisonData[0][eventType.label]);
+                          const curr = Number(eventComparisonData[1][eventType.label]);
+                          return prev > 0 ? (((curr - prev) / prev) * 100).toFixed(1) : "0.0";
+                        })()
+                      })) : availableEventTypes.map(eventType => ({
+                        name: eventType.label,
+                        growth: "0.0"
+                      }))}
                       margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -410,12 +406,10 @@ export function AttendanceTrends() {
                       <Tooltip />
                       <Legend />
                       <Pie
-                        data={eventComparisonData.length > 0 ? [
-                          { name: "Sunday Service", value: eventComparisonData[eventComparisonData.length - 1]["Sunday Service"] },
-                          { name: "Bible Study", value: eventComparisonData[eventComparisonData.length - 1]["Bible Study"] },
-                          { name: "Youth Group", value: eventComparisonData[eventComparisonData.length - 1]["Youth Group"] },
-                          { name: "Children's Ministry", value: eventComparisonData[eventComparisonData.length - 1]["Children's Ministry"] }
-                        ] : []}
+                        data={eventComparisonData.length > 0 ? availableEventTypes.map((eventType, index) => ({
+                          name: eventType.label,
+                          value: eventComparisonData[eventComparisonData.length - 1][eventType.label] || 0
+                        })) : []}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
@@ -423,10 +417,9 @@ export function AttendanceTrends() {
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        <Cell fill="#4f46e5" />
-                        <Cell fill="#10b981" />
-                        <Cell fill="#f59e0b" />
-                        <Cell fill="#ef4444" />
+                        {availableEventTypes.map((_, index) => (
+                          <Cell key={index} fill={`hsl(${index * 90}, 70%, 50%)`} />
+                        ))}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
