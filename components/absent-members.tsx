@@ -30,7 +30,9 @@ interface Member {
 interface AttendanceRecord {
   id: string;
   date: string; // Store dates as ISO strings
-  event: string;
+  event?: string;
+  event_type_value?: string;
+  event_type_label?: string;
   members: string[]; // Array of member IDs
 }
 
@@ -80,18 +82,59 @@ export function AbsentMembers() {
       setLoading(true)
       setError(null)
       try {
-        const { data: attendanceData, error: fetchError } = await supabase
-          .from("attendance_with_type")
-          .select("id, date, event_type_value, event_type_label, members")
+        // First, get all attendance records with event type information
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from("attendance")
+          .select(`
+            id,
+            date,
+            event_type_id,
+            event_types (
+              id,
+              value,
+              label
+            )
+          `)
           .order("date", { ascending: false })
 
-        if (fetchError) {
-          throw fetchError
+        if (attendanceError) {
+          throw attendanceError
         }
 
-        setAttendanceRecords(attendanceData)
+        // Then, for each attendance record, get the list of attendees
+        const attendanceWithMembers = await Promise.all(
+          (attendanceData || []).map(async (record) => {
+            const { data: memberAttendanceData, error: memberError } = await supabase
+              .from("member_attendance")
+              .select("member_id")
+              .eq("attendance_id", record.id)
+
+            if (memberError) {
+              console.error("Error fetching member attendance:", memberError)
+              return {
+                id: record.id,
+                date: record.date,
+                event_type_value: (record.event_types as any)?.value,
+                event_type_label: (record.event_types as any)?.label,
+                members: [] // Empty array if error
+              }
+            }
+
+            return {
+              id: record.id,
+              date: record.date,
+              event_type_value: (record.event_types as any)?.value,
+              event_type_label: (record.event_types as any)?.label,
+              members: (memberAttendanceData || []).map(ma => ma.member_id)
+            }
+          })
+        )
+
+        console.log("Fetched attendance records with members:", attendanceWithMembers)
+        setAttendanceRecords(attendanceWithMembers)
 
       } catch (error: any) {
+        console.error("Error fetching attendance data:", error)
         setError(error.message)
       } finally {
         setLoading(false)
