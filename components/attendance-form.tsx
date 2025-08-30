@@ -71,142 +71,7 @@ export function AttendanceForm({
     }
   }, [availableMembers, availableMinistries, availableRegions])
 
-  // Filter available ministries and regions based on user's leadership roles
-  useEffect(() => {
-    const filterLeadershipOptions = async () => {
-      if (availableMinistries && availableRegions) return // Already filtered
 
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        // Get user role
-        const { data: userRecord } = await supabase
-          .from('users')
-          .select('id, role')
-          .eq('clerk_user_id', user.id)
-          .single()
-
-        if (!userRecord) return
-
-        // If admin, don't filter - show all
-        if (userRecord.role === 'admin') return
-
-        // Get user's leadership roles
-        const { data: ministryLeaderships } = await supabase
-          .from('user_ministry_leadership')
-          .select('ministry_id')
-          .eq('user_id', userRecord.id)
-
-        const { data: regionLeaderships } = await supabase
-          .from('user_region_leadership')
-          .select('region_id')
-          .eq('user_id', userRecord.id)
-
-        const userMinistryIds = ministryLeaderships?.map(ml => ml.ministry_id) || []
-        const userRegionIds = regionLeaderships?.map(rl => rl.region_id) || []
-
-        // Always filter to user's leadership scope - empty arrays for no access
-        const filteredMinistries = ministries.filter(ministry =>
-          userMinistryIds.includes(ministry.id)
-        )
-        setMinistries(filteredMinistries) // Will be empty if no ministry leadership
-
-        const filteredRegions = regions.filter(region =>
-          userRegionIds.includes(region.id)
-        )
-        setRegions(filteredRegions) // Will be empty if no region leadership
-
-        // Reset filters if they don't match user's scope
-        if (ministryFilter !== 'all' && !userMinistryIds.includes(ministryFilter)) {
-          setMinistryFilter('all')
-        }
-        if (regionFilter !== 'all' && !userRegionIds.includes(regionFilter)) {
-          setRegionFilter('all')
-        }
-
-      } catch (error) {
-        console.error('Error filtering leadership options:', error)
-        // On error, show empty lists to be safe
-        setMinistries([])
-        setRegions([])
-      }
-    }
-
-    if (ministries.length > 0 && regions.length > 0 && !availableMinistries && !availableRegions) {
-      filterLeadershipOptions()
-    }
-  }, [ministries, regions, availableMinistries, availableRegions, ministryFilter, regionFilter])
-
-  // Filter members based on user's leadership roles
-  useEffect(() => {
-    const filterMembersForLeadership = async () => {
-      if (availableMembers) return // Already filtered
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        // Get user role
-        const { data: userRecord } = await supabase
-          .from('users')
-          .select('id, role')
-          .eq('clerk_user_id', user.id)
-          .single()
-
-        if (!userRecord) return
-
-        // If admin, don't filter
-        if (userRecord.role === 'admin') return
-
-        // Get leadership roles
-        const { data: ministryLeaderships } = await supabase
-          .from('user_ministry_leadership')
-          .select('ministry_id')
-          .eq('user_id', userRecord.id)
-
-        const { data: regionLeaderships } = await supabase
-          .from('user_region_leadership')
-          .select('region_id')
-          .eq('user_id', userRecord.id)
-
-        const ministryIds = ministryLeaderships?.map(ml => ml.ministry_id) || []
-        const regionIds = regionLeaderships?.map(rl => rl.region_id) || []
-
-        // Filter members based on leadership
-        if (ministryIds.length > 0 || regionIds.length > 0) {
-          const filteredMembers = members.filter(member => {
-            // Check if member belongs to user's ministries
-            if (ministryIds.length > 0) {
-              const memberMinistryIds = member.ministries?.map((m: any) => m.id) || []
-              if (memberMinistryIds.some((id: string) => ministryIds.includes(id))) {
-                return true
-              }
-            }
-
-            // Check if member belongs to user's regions
-            if (regionIds.length > 0) {
-              // Get region ID for this member
-              const memberRegion = regions.find((r: any) => r.name === member.region)
-              if (memberRegion && regionIds.includes(memberRegion.id)) {
-                return true
-              }
-            }
-
-            return false
-          })
-
-          setMembers(filteredMembers)
-        }
-      } catch (error) {
-        console.error('Error filtering members for leadership:', error)
-      }
-    }
-
-    if (members.length > 0 && !availableMembers) {
-      filterMembersForLeadership()
-    }
-  }, [members, regions, availableMembers])
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -613,11 +478,16 @@ export function AttendanceForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Ministries</SelectItem>
-                  {ministries.map((ministry: any) => (
+                  {ministries.map((ministry) => (
                     <SelectItem key={ministry.id} value={ministry.name}>
                       {ministry.name}
                     </SelectItem>
                   ))}
+                  {ministries.length === 0 && (
+                    <SelectItem value="no-ministries" disabled>
+                      No ministries available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>

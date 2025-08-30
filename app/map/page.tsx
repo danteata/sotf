@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input'
 import { Search } from 'lucide-react'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { MemberWithDetails, Ministry } from '@/types/database'
+import { useUser } from '@clerk/nextjs'
+import { supabase } from '@/lib/supabase'
 
 export default function MapPage() {
   // State for filters
@@ -25,21 +27,81 @@ export default function MapPage() {
   const [regionFilter, setRegionFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   
+  // User authentication
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
+
   // Fetch members and ministries data
   const { data: members = [] } = useQuery({
     queryKey: ['members'],
     queryFn: getMembersWithDetails,
   })
 
-  const { data: ministriesData = [] } = useQuery({
+  const { data: allMinistries = [] } = useQuery({
     queryKey: ['ministries'],
-    queryFn: getMinistries,
+    queryFn: () => getMinistries(true), // Only active ministries
   })
 
-  const { data: regionsData = [] } = useQuery({
+  const { data: allRegions = [] } = useQuery({
     queryKey: ['regions'],
-    queryFn: getRegions,
+    queryFn: () => getRegions(true), // Only active regions
   })
+
+  // Filter ministries and regions based on user leadership
+  const { data: userFilters } = useQuery({
+    queryKey: ['user-filters', clerkUser?.id],
+    queryFn: async () => {
+      if (!clerkLoaded || !clerkUser) {
+        return { ministries: [], regions: [] }
+      }
+
+      const userId = clerkUser.id
+
+      const { data: userRecord, error: userError } = await supabase
+        .from('users')
+        .select('id, role')
+        .eq('clerk_user_id', userId)
+        .single()
+
+      if (userError || !userRecord) {
+        return { ministries: [], regions: [] }
+      }
+
+      // If admin, return all ministries and regions
+      if (userRecord.role === 'admin') {
+        return { ministries: allMinistries, regions: allRegions }
+      }
+
+      // For non-admin users, get their leadership roles
+      const { data: ministryLeaderships } = await supabase
+        .from('user_ministry_leadership')
+        .select('ministry_id')
+        .eq('user_id', userRecord.id)
+
+      const { data: regionLeaderships } = await supabase
+        .from('user_region_leadership')
+        .select('region_id')
+        .eq('user_id', userRecord.id)
+
+      const userMinistryIds = ministryLeaderships?.map(ml => ml.ministry_id) || []
+      const userRegionIds = regionLeaderships?.map(rl => rl.region_id) || []
+
+      // Filter ministries and regions to user's scope
+      const userMinistries = allMinistries.filter(ministry =>
+        userMinistryIds.includes(ministry.id)
+      )
+
+      const userRegions = allRegions.filter(region =>
+        userRegionIds.includes(region.id)
+      )
+
+      return { ministries: userMinistries, regions: userRegions }
+    },
+    enabled: clerkLoaded && !!allMinistries.length && !!allRegions.length,
+  })
+
+  // Extract filtered data
+  const ministriesData = userFilters?.ministries || []
+  const regionsData = userFilters?.regions || []
 
   const filteredMembers = useMemo(() => {
     let filtered = [...members];
@@ -123,6 +185,11 @@ export default function MapPage() {
                     {ministry.name}
                   </SelectItem>
                 ))}
+                {ministriesData.length === 0 && (
+                  <SelectItem value="no-ministries" disabled>
+                    No ministries available
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
 
@@ -140,6 +207,11 @@ export default function MapPage() {
                     {region.name}
                   </SelectItem>
                 ))}
+                {regionsData.length === 0 && (
+                  <SelectItem value="no-regions" disabled>
+                    No regions available
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>

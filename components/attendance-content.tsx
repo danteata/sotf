@@ -143,18 +143,51 @@ export function AttendanceContent() {
       const userMinistryIds = ministryLeaderships?.map(ml => ml.ministry_id) || []
       const userRegionIds = regionLeaderships?.map(rl => rl.region_id) || []
 
+      console.log('User leadership data:', {
+        userId: userRecord.id,
+        role: userRecord.role,
+        ministryLeaderships,
+        regionLeaderships,
+        userMinistryIds,
+        userRegionIds
+      })
+
       // Load all ministries/regions and filter to user's scope
       const [allMinistries, allRegions] = await Promise.all([
         getMinistries(true),
         getRegions(true)
       ])
 
-      const filteredMinistries = allMinistries.filter(ministry =>
-        userMinistryIds.includes(ministry.id)
-      )
-      const filteredRegions = allRegions.filter(region =>
-        userRegionIds.includes(region.id)
-      )
+      console.log('All ministries and regions:', {
+        allMinistries,
+        allRegions
+      })
+
+      let filteredMinistries: any[] = []
+      let filteredRegions: any[] = []
+
+      if (userMinistryIds.length > 0) {
+        filteredMinistries = allMinistries.filter(ministry =>
+          userMinistryIds.includes(ministry.id)
+        )
+      } else {
+        // No ministry leadership - show empty array
+        filteredMinistries = []
+      }
+
+      if (userRegionIds.length > 0) {
+        filteredRegions = allRegions.filter(region =>
+          userRegionIds.includes(region.id)
+        )
+      } else {
+        // No region leadership - show empty array
+        filteredRegions = []
+      }
+
+      console.log('Filtered results:', {
+        filteredMinistries,
+        filteredRegions
+      })
 
       setAvailableMinistries(filteredMinistries)
       setAvailableRegions(filteredRegions)
@@ -273,6 +306,9 @@ export function AttendanceContent() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Filters</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Filter attendance data by ministry and region scope
+          </p>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -322,6 +358,8 @@ export function AttendanceContent() {
           </div>
         </CardContent>
       </Card>
+
+
 
       <Tabs defaultValue="record" className="w-full">
         <TabsList className="grid grid-cols-4 w-full bg-muted p-1 rounded-md">
@@ -375,11 +413,19 @@ export function AttendanceContent() {
           ))}
         </TabsList>
         <TabsContent value="record" className="space-y-4 pt-4">
-          <AttendanceForm />
+          <AttendanceForm
+            availableMembers={[]}  // Pass empty for now, or implement member filtering
+            availableMinistries={availableMinistries}
+            availableRegions={availableRegions}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 pt-4">
-          <AttendanceHistory />
+          <AttendanceHistory
+            availableMinistries={availableMinistries}
+            availableRegions={availableRegions}
+            filtersLoading={filtersLoading}
+          />
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-4 pt-4">
