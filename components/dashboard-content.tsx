@@ -7,38 +7,71 @@ import { Overview } from "@/components/overview"
 import { RecentMembers } from "@/components/recent-members"
 import { UpcomingEvents } from "@/components/upcoming-events"
 import { supabase } from "@/lib/supabase"
+import { useUserRole } from "@/hooks/use-user-role"
 import type { Member, AttendanceRecord, Event } from "@/types/database"
 
 export function DashboardContent() {
+  const { user, role, isAdmin, isMinistryLeader, isRegionLeader, ministryLeaderships, regionLeaderships, isLoading: roleLoading } = useUserRole()
+
   const [stats, setStats] = useState({
     totalMembers: 0,
+    scopedMembers: 0,
     newMembersThisMonth: 0,
     weeklyAttendance: 0,
     attendanceChange: 0,
-    monthlyGiving: 0,
-    givingChange: 0,
     upcomingEventsCount: 0,
     nextEventName: ''
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [scopedEvents, setScopedEvents] = useState<any[]>([])
 
   useEffect(() => {
+    if (roleLoading) return
+
     async function fetchDashboardData() {
       try {
         setLoading(true)
 
-        // Fetch total members and new members this month
-        const { data: members, error: membersError } = await supabase
+        let membersQuery = supabase
+          .from('members')
+          .select('id, joined_date, status, region_id')
+          .eq('status', 'active')
+
+        // Filter members based on user role
+        if (isRegionLeader && !isAdmin) {
+          const regionIds = regionLeaderships.map(r => r.id)
+          membersQuery = membersQuery.in('region_id', regionIds)
+        } else if (isMinistryLeader && !isAdmin && !isRegionLeader) {
+          // For ministry leaders, we need to get members through member_ministries
+          const ministryIds = ministryLeaderships.map(m => m.id)
+          const { data: memberMinistries } = await supabase
+            .from('member_ministries')
+            .select('member_id')
+            .in('ministry_id', ministryIds)
+
+          const memberIds = memberMinistries?.map(mm => mm.member_id) || []
+          if (memberIds.length > 0) {
+            membersQuery = membersQuery.in('id', memberIds)
+          } else {
+            // No members in user's ministries
+            membersQuery = membersQuery.eq('id', 'non-existent-id')
+          }
+        }
+
+        const { data: scopedMembers, error: membersError } = await membersQuery
+
+        if (membersError) throw membersError
+
+        // Also get total members for comparison
+        const { data: totalMembersData } = await supabase
           .from('members')
           .select('id, joined_date, status')
           .eq('status', 'active')
 
-        if (membersError) throw membersError
-
         const now = new Date()
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-        const newMembers = members?.filter(m =>
+        const newMembers = totalMembersData?.filter(m =>
           new Date(m.joined_date) >= firstDayOfMonth
         ).length || 0
 
@@ -49,43 +82,117 @@ export function DashboardContent() {
           .eq('value', 'sunday-service')
           .single()
 
-        // Fetch latest attendance record
-        const { data: latestAttendance, error: attendanceError } = await supabase
+        // Fetch attendance records filtered by user's scope
+        let attendanceQuery = supabase
           .from('attendance')
           .select('*')
           .eq('event_type_id', sundayServiceType?.id)
           .order('date', { ascending: false })
           .limit(2)
 
+        // For non-admin users, we need to filter attendance based on their leadership scope
+        if (!isAdmin) {
+          // Get members under user's leadership
+          let scopedMemberIds: string[] = []
+
+          if (isRegionLeader) {
+            const regionIds = regionLeaderships.map(r => r.id)
+            const { data: regionMembers } = await supabase
+              .from('members')
+              .select('id')
+              .in('region_id', regionIds)
+
+            scopedMemberIds = regionMembers?.map(m => m.id) || []
+          } else if (isMinistryLeader) {
+            const ministryIds = ministryLeaderships.map(m => m.id)
+            const { data: memberMinistries } = await supabase
+              .from('member_ministries')
+              .select('member_id')
+              .in('ministry_id', ministryIds)
+
+            scopedMemberIds = memberMinistries?.map(mm => mm.member_id) || []
+          }
+
+          if (scopedMemberIds.length > 0) {
+            // Get attendance for these specific members
+            attendanceQuery = supabase
+              .from('member_attendance')
+              .select(`
+                attendance_id,
+                attendance (
+                  id,
+                  date,
+                  count,
+                  percent_change,
+                  notes,
+                  event_type_id
+                )
+              `)
+              .in('member_id', scopedMemberIds)
+              .order('attendance(date)', { ascending: false })
+              .limit(2)
+          }
+        }
+
+        const { data: latestAttendance, error: attendanceError } = await attendanceQuery
+
         if (attendanceError) throw attendanceError
 
-        // Fetch upcoming events
-        const { data: events, error: eventsError } = await supabase
+        // Fetch upcoming events (filter by user's scope if needed)
+        let eventsQuery = supabase
           .from('events_with_type')
           .select('*')
           .gte('date', new Date().toISOString())
           .order('date', { ascending: true })
           .limit(10)
 
+        const { data: events, error: eventsError } = await eventsQuery
+
         if (eventsError) throw eventsError
 
-        // Fetch monthly giving
-        const { data: giving, error: givingError } = await supabase
-          .from('giving')
-          .select('amount')
-          .gte('date', firstDayOfMonth.toISOString())
+        // Store scoped events for UpcomingEvents component
+        setScopedEvents(events || [])
 
-        if (givingError) throw givingError
+        // Skip giving data for now as requested
 
-        const monthlyGivingTotal = giving?.reduce((sum, record) => sum + record.amount, 0) || 0
+        // Calculate attendance stats based on data structure
+        let weeklyAttendance = 0
+        let attendanceChange = 0
+
+        if (isAdmin) {
+          weeklyAttendance = latestAttendance?.[0]?.count || 0
+          attendanceChange = latestAttendance?.[0]?.percent_change || 0
+        } else {
+          // For non-admin, aggregate attendance from member_attendance
+          if (latestAttendance && latestAttendance.length > 0) {
+            // Group by attendance record and sum counts
+            const attendanceMap = new Map()
+            latestAttendance.forEach((record: any) => {
+              const attendance = record.attendance
+              if (attendance) {
+                const key = attendance.id
+                if (!attendanceMap.has(key)) {
+                  attendanceMap.set(key, {
+                    date: attendance.date,
+                    count: attendance.count,
+                    percent_change: attendance.percent_change
+                  })
+                }
+              }
+            })
+
+            const attendanceRecords = Array.from(attendanceMap.values())
+            weeklyAttendance = attendanceRecords[0]?.count || 0
+            attendanceChange = attendanceRecords[0]?.percent_change || 0
+          }
+        }
 
         setStats({
-          totalMembers: members?.length || 0,
+          totalMembers: totalMembersData?.length || 0,
+          scopedMembers: scopedMembers?.length || 0,
           newMembersThisMonth: newMembers,
-          weeklyAttendance: latestAttendance?.[0]?.count || 0,
-          attendanceChange: latestAttendance?.[0]?.percent_change || 0,
-          monthlyGiving: monthlyGivingTotal,
-          givingChange: 0, // You'll need to calculate this based on previous month
+          weeklyAttendance,
+          attendanceChange,
           upcomingEventsCount: events?.length || 0,
           nextEventName: events?.[0]?.title || 'No upcoming events'
         })
@@ -98,7 +205,7 @@ export function DashboardContent() {
     }
 
     fetchDashboardData()
-  }, [])
+  }, [roleLoading, role, isAdmin, isMinistryLeader, isRegionLeader, ministryLeaderships, regionLeaderships])
 
   if (loading) {
     return <div>Loading dashboard data...</div>
@@ -137,15 +244,34 @@ export function DashboardContent() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Monthly Giving</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">
+              {isAdmin
+                ? "Active Ministries"
+                : isRegionLeader
+                ? "My Region Members"
+                : isMinistryLeader
+                ? "My Ministry Members"
+                : "Total Members"
+              }
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${stats.monthlyGiving.toLocaleString()}
+              {isAdmin
+                ? (ministryLeaderships?.length || 0)
+                : `${stats.scopedMembers}/${stats.totalMembers}`
+              }
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.givingChange >= 0 ? '+' : ''}{stats.givingChange}% from last month
+              {isAdmin
+                ? "Active ministry groups"
+                : isRegionLeader
+                ? `${regionLeaderships.map(r => r.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
+                : isMinistryLeader
+                ? `${ministryLeaderships.map(m => m.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
+                : `+${stats.newMembersThisMonth} new this month`
+              }
             </p>
           </CardContent>
         </Card>
@@ -189,11 +315,10 @@ export function DashboardContent() {
             <CardDescription>Events scheduled for the next 30 days</CardDescription>
           </CardHeader>
           <CardContent>
-            <UpcomingEvents />
+            <UpcomingEvents events={scopedEvents} />
           </CardContent>
         </Card>
       </div>
     </>
   )
 }
-

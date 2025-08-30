@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { supabase } from "@/lib/supabase"
+import { useUserRole } from "@/hooks/use-user-role"
 
 interface Member {
   id: string
@@ -15,22 +16,49 @@ interface Member {
 }
 
 export function RecentMembers() {
+  const { isAdmin, isMinistryLeader, isRegionLeader, ministryLeaderships, regionLeaderships, isLoading: roleLoading } = useUserRole()
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (roleLoading) return
+
     const fetchRecentMembers = async () => {
       try {
-        const { data, error } = await supabase
+        setLoading(true)
+
+        let membersQuery = supabase
           .from("members")
-          .select("id, name, email, joined_date, avatar, initials")
+          .select("id, name, email, joined_date, avatar, initials, region_id")
           .order("joined_date", { ascending: false })
-          .limit(5)
+
+        // Filter members based on user role
+        if (isRegionLeader && !isAdmin) {
+          const regionIds = regionLeaderships.map(r => r.id)
+          membersQuery = membersQuery.in('region_id', regionIds)
+        } else if (isMinistryLeader && !isAdmin && !isRegionLeader) {
+          // For ministry leaders, we need to get members through member_ministries
+          const ministryIds = ministryLeaderships.map(m => m.id)
+          const { data: memberMinistries } = await supabase
+            .from('member_ministries')
+            .select('member_id')
+            .in('ministry_id', ministryIds)
+
+          const memberIds = memberMinistries?.map(mm => mm.member_id) || []
+          if (memberIds.length > 0) {
+            membersQuery = membersQuery.in('id', memberIds)
+          } else {
+            // No members in user's ministries
+            membersQuery = membersQuery.eq('id', 'non-existent-id')
+          }
+        }
+
+        const { data, error } = await membersQuery.limit(5)
 
         if (error) throw error
 
-        setMembers(data)
+        setMembers(data || [])
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -39,7 +67,7 @@ export function RecentMembers() {
     }
 
     fetchRecentMembers()
-  }, [])
+  }, [roleLoading, isAdmin, isMinistryLeader, isRegionLeader, ministryLeaderships, regionLeaderships])
 
   if (loading) {
     return (
@@ -81,4 +109,3 @@ export function RecentMembers() {
     </div>
   )
 }
-
