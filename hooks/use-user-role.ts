@@ -59,7 +59,7 @@ export function useUserRole(): UserRoleData {
             .insert({
               clerk_user_id: clerkUser.id,
               email: clerkUser.emailAddresses[0]?.emailAddress || '',
-              name: clerkUser.fullName || clerkUser.firstName || 'Unknown User',
+              name: clerkUser.fullName || clerkUser.firstName || clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Unknown User',
               role: 'member'
             })
             .select()
@@ -71,6 +71,20 @@ export function useUserRole(): UserRoleData {
           throw userError
         } else {
           user = existingUser
+          // Update user name if it's still "Unknown User" and we now have better name info
+          const betterName = clerkUser.fullName || clerkUser.firstName || clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress?.split('@')[0]
+          if (user.name === 'Unknown User' && betterName) {
+            const { data: updatedUser, error: updateError } = await supabase
+              .from('users')
+              .update({ name: betterName })
+              .eq('id', user.id)
+              .select()
+              .single()
+
+            if (!updateError && updatedUser) {
+              user = updatedUser
+            }
+          }
         }
 
         setUserData(user)
@@ -78,7 +92,6 @@ export function useUserRole(): UserRoleData {
 
         // Load ministry leaderships if user is a ministry leader
         if (user.role === 'ministry_leader' || user.role === 'admin') {
-          console.log('Loading ministry leaderships for user:', user.id)
           const { data: ministryData, error: ministryError } = await supabase
             .from('user_ministry_leadership')
             .select(`
@@ -95,18 +108,14 @@ export function useUserRole(): UserRoleData {
             `)
             .eq('user_id', user.id)
 
-          console.log('Ministry leadership query result:', { ministryData, ministryError })
-
           if (ministryError) throw ministryError
 
           const ministries = ministryData?.map(item => item.ministries).filter(Boolean).flat() || []
           setMinistryLeaderships(ministries as unknown as Ministry[])
-          console.log('Set ministry leaderships:', ministries)
         }
 
         // Load region leaderships if user is a region leader
         if (user.role === 'region_leader' || user.role === 'admin') {
-          console.log('Loading region leaderships for user:', user.id)
           const { data: regionData, error: regionError } = await supabase
             .from('user_region_leadership')
             .select(`
@@ -122,13 +131,10 @@ export function useUserRole(): UserRoleData {
             `)
             .eq('user_id', user.id)
 
-          console.log('Region leadership query result:', { regionData, regionError })
-
           if (regionError) throw regionError
 
           const regions = regionData?.map(item => item.regions).filter(Boolean).flat() || []
           setRegionLeaderships(regions as unknown as Region[])
-          console.log('Set region leaderships:', regions)
         }
 
       } catch (err) {

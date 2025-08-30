@@ -290,6 +290,52 @@ export async function getMembersLegacyFormat(): Promise<Member[]> {
   }
 }
 
+// Helper function to get current user's leadership roles
+async function getCurrentUserLeadership() {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { ministryIds: [], regionIds: [], isAdmin: false }
+
+    // Get user record
+    const { data: userRecord, error: userError } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('clerk_user_id', user.id)
+      .single()
+
+    if (userError || !userRecord) {
+      return { ministryIds: [], regionIds: [], isAdmin: false }
+    }
+
+    const isAdmin = userRecord.role === 'admin'
+
+    if (isAdmin) {
+      return { ministryIds: [], regionIds: [], isAdmin: true }
+    }
+
+    // Get ministry leaderships
+    const { data: ministryLeaderships } = await supabase
+      .from('user_ministry_leadership')
+      .select('ministry_id')
+      .eq('user_id', userRecord.id)
+
+    // Get region leaderships
+    const { data: regionLeaderships } = await supabase
+      .from('user_region_leadership')
+      .select('region_id')
+      .eq('user_id', userRecord.id)
+
+    return {
+      ministryIds: ministryLeaderships?.map(ml => ml.ministry_id) || [],
+      regionIds: regionLeaderships?.map(rl => rl.region_id) || [],
+      isAdmin
+    }
+  } catch (error) {
+    console.error('Error getting user leadership:', error)
+    return { ministryIds: [], regionIds: [], isAdmin: false }
+  }
+}
+
 // Attendance statistics functions
 // App Configuration functions
 export async function getAppConfig(key?: string) {

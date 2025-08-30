@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { Download, Calendar, Users, History, LineChart, UserMinus, PlusCircle, RefreshCw } from "lucide-react"
-import { getAttendanceStats } from "@/lib/database-utils"
+import { getAttendanceStats, getMinistries, getRegions } from "@/lib/database-utils"
+import { useUser } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +13,9 @@ import { AttendanceHistory } from "@/components/attendance-history"
 import { AttendanceTrends } from "@/components/attendance-trends"
 import { AbsentMembers } from "@/components/absent-members"
 import { cn } from "@/lib/utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { supabase } from "@/lib/supabase"
 
 interface AttendanceStats {
   lastSunday: {
@@ -33,6 +37,8 @@ interface AttendanceStats {
 }
 
 export function AttendanceContent() {
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
+
   const [stats, setStats] = useState<AttendanceStats>({
     lastSunday: { count: 0, percentChange: 0 },
     fourWeekAverage: { count: 0, percentChange: 0 },
@@ -43,9 +49,22 @@ export function AttendanceContent() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Filter state
+  const [ministryFilter, setMinistryFilter] = useState("all")
+  const [regionFilter, setRegionFilter] = useState("all")
+  const [availableMinistries, setAvailableMinistries] = useState<any[]>([])
+  const [availableRegions, setAvailableRegions] = useState<any[]>([])
+  const [filtersLoading, setFiltersLoading] = useState(false)
+
   useEffect(() => {
     fetchAttendanceStats()
   }, [])
+
+  useEffect(() => {
+    if (clerkLoaded) {
+      loadAvailableFilters()
+    }
+  }, [clerkLoaded, clerkUser])
 
   const fetchAttendanceStats = async () => {
     try {
@@ -57,6 +76,95 @@ export function AttendanceContent() {
       setError(err instanceof Error ? err.message : "Failed to fetch attendance statistics")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAvailableFilters = async () => {
+    try {
+      setFiltersLoading(true)
+
+      // Wait for Clerk to load
+      if (!clerkLoaded) {
+        return
+      }
+
+      if (!clerkUser) {
+        setAvailableMinistries([])
+        setAvailableRegions([])
+        return
+      }
+
+      const userId = clerkUser.id
+
+      const { data: userRecord, error: userError } = await supabase
+        .from('users')
+        .select('id, role')
+        .eq('clerk_user_id', userId)
+        .single()
+
+      if (userError) {
+        console.error('Error fetching user record:', userError)
+        setAvailableMinistries([])
+        setAvailableRegions([])
+        return
+      }
+
+      if (!userRecord) {
+        setAvailableMinistries([])
+        setAvailableRegions([])
+        return
+      }
+
+      // If admin, load all ministries and regions
+      if (userRecord.role === 'admin') {
+        const [ministriesData, regionsData] = await Promise.all([
+          getMinistries(true),
+          getRegions(true)
+        ])
+        setAvailableMinistries(ministriesData)
+        setAvailableRegions(regionsData)
+        return
+      }
+
+      // For non-admin users, get their leadership roles
+      const { data: ministryLeaderships, error: ministryError } = await supabase
+        .from('user_ministry_leadership')
+        .select('ministry_id')
+        .eq('user_id', userRecord.id)
+
+      const { data: regionLeaderships, error: regionError } = await supabase
+        .from('user_region_leadership')
+        .select('region_id')
+        .eq('user_id', userRecord.id)
+
+      if (ministryError) console.error('Error fetching ministry leaderships:', ministryError)
+      if (regionError) console.error('Error fetching region leaderships:', regionError)
+
+      const userMinistryIds = ministryLeaderships?.map(ml => ml.ministry_id) || []
+      const userRegionIds = regionLeaderships?.map(rl => rl.region_id) || []
+
+      // Load all ministries/regions and filter to user's scope
+      const [allMinistries, allRegions] = await Promise.all([
+        getMinistries(true),
+        getRegions(true)
+      ])
+
+      const filteredMinistries = allMinistries.filter(ministry =>
+        userMinistryIds.includes(ministry.id)
+      )
+      const filteredRegions = allRegions.filter(region =>
+        userRegionIds.includes(region.id)
+      )
+
+      setAvailableMinistries(filteredMinistries)
+      setAvailableRegions(filteredRegions)
+
+    } catch (error) {
+      console.error('Error loading filters:', error)
+      setAvailableMinistries([])
+      setAvailableRegions([])
+    } finally {
+      setFiltersLoading(false)
     }
   }
 
@@ -160,6 +268,60 @@ export function AttendanceContent() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Global Filters Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Filters</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="space-y-2 flex-1">
+              <Label>Filter by Ministry</Label>
+              <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+                <SelectTrigger disabled={filtersLoading}>
+                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Select ministry"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Ministries</SelectItem>
+                  {availableMinistries.map((ministry: any) => (
+                    <SelectItem key={ministry.id} value={ministry.name}>
+                      {ministry.name}
+                    </SelectItem>
+                  ))}
+                  {availableMinistries.length === 0 && !filtersLoading && (
+                    <SelectItem value="no-ministries" disabled>
+                      No ministries available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 flex-1">
+              <Label>Filter by Region</Label>
+              <Select value={regionFilter} onValueChange={setRegionFilter}>
+                <SelectTrigger disabled={filtersLoading}>
+                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Select region"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Regions</SelectItem>
+                  {availableRegions.map((region: any) => (
+                    <SelectItem key={region.id} value={region.name}>
+                      {region.name}
+                    </SelectItem>
+                  ))}
+                  {availableRegions.length === 0 && !filtersLoading && (
+                    <SelectItem value="no-regions" disabled>
+                      No regions available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="record" className="w-full">
         <TabsList className="grid grid-cols-4 w-full bg-muted p-1 rounded-md">

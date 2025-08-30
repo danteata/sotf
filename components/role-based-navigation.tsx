@@ -187,21 +187,21 @@ export function RoleIndicator() {
   const roleInfo = getRoleDisplay()
 
   return (
-    <div className="p-3 border-t">
-      <div className="flex items-center space-x-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{user.name}</p>
-          <div className="flex items-center gap-2">
-            <Badge variant={roleInfo.color} className="text-xs">
-              {roleInfo.label}
-            </Badge>
-          </div>
-          {roleInfo.subtitle && (
-            <p className="text-xs text-muted-foreground truncate mt-1">
-              {roleInfo.subtitle}
-            </p>
-          )}
+    <div className="p-4 border-t bg-muted/30">
+      <div className="flex flex-col items-center text-center space-y-2">
+        <div className="flex flex-col items-center space-y-1">
+          <p className="text-sm font-semibold truncate max-w-full">
+            {user.name || 'Unknown User'}
+          </p>
+          <Badge variant={roleInfo.color} className="text-xs px-2 py-0.5">
+            {roleInfo.label}
+          </Badge>
         </div>
+        {roleInfo.subtitle && (
+          <p className="text-xs text-muted-foreground truncate max-w-full leading-tight">
+            {roleInfo.subtitle}
+          </p>
+        )}
       </div>
     </div>
   )

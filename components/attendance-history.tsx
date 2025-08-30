@@ -81,41 +81,135 @@ export function AttendanceHistory({
       setLoading(true)
       setError(null)
       try {
+        // Get current user's leadership roles
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setAttendanceData([])
+          return
+        }
+
+        // Get user record and role
+        const { data: userRecord } = await supabase
+          .from('users')
+          .select('id, role')
+          .eq('clerk_user_id', user.id)
+          .single()
+
+        if (!userRecord) {
+          setAttendanceData([])
+          return
+        }
+
         let query
-        if (source === 'ministry') {
+
+        if (userRecord.role === 'admin') {
+          // Admin can see all attendance
           query = supabase
-            .from('ministry_attendance_history')
-            .select(
-              'attendance_id, date, event_type_value, event_type_label, ministry_id, ministry_name, ministry_attendance_count'
-            )
+            .from('attendance')
+            .select(`
+              id,
+              date,
+              count,
+              percent_change,
+              notes,
+              event_type_id,
+              event_types (
+                value,
+                label
+              )
+            `)
             .order('date', { ascending: false })
-          if (ministries && ministries.length > 0) {
-            query = query.in('ministry_name', ministries)
-          }
-        } else if (source === 'region') {
-          query = supabase
-            .from('region_attendance_history')
-            .select(
-              'attendance_id, date, event_type_value, event_type_label, region_id, region_name, region_attendance_count'
-            )
-            .order('date', { ascending: false })
-          if (regions && regions.length > 0) {
-            query = query.in('region_name', regions)
-          }
         } else {
+          // Non-admin users need role-based filtering
+          // Get user's leadership roles
+          const { data: ministryLeaderships } = await supabase
+            .from('user_ministry_leadership')
+            .select('ministry_id')
+            .eq('user_id', userRecord.id)
+
+          const { data: regionLeaderships } = await supabase
+            .from('user_region_leadership')
+            .select('region_id')
+            .eq('user_id', userRecord.id)
+
+          const ministryIds = ministryLeaderships?.map(ml => ml.ministry_id) || []
+          const regionIds = regionLeaderships?.map(rl => rl.region_id) || []
+
+          if (ministryIds.length === 0 && regionIds.length === 0) {
+            // User has no leadership roles, show empty
+            setAttendanceData([])
+            return
+          }
+
+          // Build query to get attendance for members in user's ministries/regions
+          let memberIds: string[] = []
+
+          if (ministryIds.length > 0) {
+            // Get members from user's ministries
+            const { data: ministryMembers } = await supabase
+              .from('member_ministries')
+              .select('member_id')
+              .in('ministry_id', ministryIds)
+
+            const ministryMemberIds = ministryMembers?.map(mm => mm.member_id) || []
+            memberIds = [...memberIds, ...ministryMemberIds]
+          }
+
+          if (regionIds.length > 0) {
+            // Get members from user's regions
+            const { data: regionMembers } = await supabase
+              .from('members')
+              .select('id')
+              .in('region_id', regionIds)
+
+            const regionMemberIds = regionMembers?.map(m => m.id) || []
+            memberIds = [...memberIds, ...regionMemberIds]
+          }
+
+          // Remove duplicates
+          memberIds = [...new Set(memberIds)]
+
+          if (memberIds.length === 0) {
+            setAttendanceData([])
+            return
+          }
+
+          // Get attendance records for these members
           query = supabase
-            .from('attendance_with_type')
-            .select(
-              'id, date, event_type_value, event_type_label, count, percent_change, notes'
-            )
-            .order('date', { ascending: false })
+            .from('member_attendance')
+            .select(`
+              attendance_id,
+              attendance (
+                id,
+                date,
+                count,
+                percent_change,
+                notes,
+                event_type_id,
+                event_types (
+                  value,
+                  label
+                )
+              )
+            `)
+            .in('member_id', memberIds)
+            .order('attendance(date)', { ascending: false })
         }
 
         if (dateRange?.from) {
-          query = query.gte('date', format(dateRange.from, 'yyyy-MM-dd'))
+          if (userRecord.role === 'admin') {
+            query = query.gte('date', format(dateRange.from, 'yyyy-MM-dd'))
+          } else {
+            // For non-admin, filter by attendance date
+            query = query.gte('attendance.date', format(dateRange.from, 'yyyy-MM-dd'))
+          }
         }
         if (dateRange?.to) {
-          query = query.lte('date', format(dateRange.to, 'yyyy-MM-dd'))
+          if (userRecord.role === 'admin') {
+            query = query.lte('date', format(dateRange.to, 'yyyy-MM-dd'))
+          } else {
+            query = query.lte('attendance.date', format(dateRange.to, 'yyyy-MM-dd'))
+          }
         }
 
         const { data, error: fetchError } = await query
@@ -123,15 +217,49 @@ export function AttendanceHistory({
         if (fetchError) {
           throw fetchError
         }
-        // Convert date strings to formatted strings
-        const formattedData = data.map((record: any) => ({
-          ...record,
-          date: format(new Date(record.date), 'MMM dd, yyyy'),
-        }))
+
+        // Process and format the data
+        let formattedData: any[] = []
+
+        if (userRecord.role === 'admin') {
+          formattedData = data.map((record: any) => ({
+            id: record.id,
+            date: format(new Date(record.date), 'MMM dd, yyyy'),
+            event_type_value: record.event_types?.value,
+            event_type_label: record.event_types?.label,
+            count: record.count,
+            percent_change: record.percent_change,
+            notes: record.notes
+          }))
+        } else {
+          // Group by attendance record for non-admin users
+          const attendanceMap = new Map()
+
+          data.forEach((record: any) => {
+            const attendance = record.attendance
+            if (attendance) {
+              const key = attendance.id
+              if (!attendanceMap.has(key)) {
+                attendanceMap.set(key, {
+                  id: attendance.id,
+                  date: format(new Date(attendance.date), 'MMM dd, yyyy'),
+                  event_type_value: attendance.event_types?.value,
+                  event_type_label: attendance.event_types?.label,
+                  count: attendance.count,
+                  percent_change: attendance.percent_change,
+                  notes: attendance.notes
+                })
+              }
+            }
+          })
+
+          formattedData = Array.from(attendanceMap.values())
+        }
 
         setAttendanceData(formattedData)
       } catch (error: any) {
         setError(error.message)
+        console.error('Error fetching attendance:', error)
       } finally {
         setLoading(false)
       }
