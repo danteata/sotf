@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
@@ -234,129 +235,162 @@ export function AttendanceContent() {
         </div>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center p-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      )}
-
       {error && (
         <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-md">
           {error}
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Last Sunday</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.lastSunday.count}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.lastSunday.percentChange > 0 ? "+" : ""}
-              {stats.lastSunday.percentChange.toFixed(1)}% from previous week
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Average (4 weeks)</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.fourWeekAverage.count}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.fourWeekAverage.percentChange > 0 ? "+" : ""}
-              {stats.fourWeekAverage.percentChange.toFixed(1)}% from previous month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Youth Group</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.youthGroup.count}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.youthGroup.percentChange > 0 ? "+" : ""}
-              {stats.youthGroup.percentChange.toFixed(1)}% from previous week
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Children's Ministry</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.childrenMinistry.count}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.childrenMinistry.percentChange > 0 ? "+" : ""}
-              {stats.childrenMinistry.percentChange.toFixed(1)}% from previous week
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Stats Cards Skeleton or Content */}
+      {loading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Last Sunday</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.lastSunday.count}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.lastSunday.percentChange > 0 ? "+" : ""}
+                {stats.lastSunday.percentChange.toFixed(1)}% from previous week
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Average (4 weeks)</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.fourWeekAverage.count}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.fourWeekAverage.percentChange > 0 ? "+" : ""}
+                {stats.fourWeekAverage.percentChange.toFixed(1)}% from previous month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Youth Group</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.youthGroup.count}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.youthGroup.percentChange > 0 ? "+" : ""}
+                {stats.youthGroup.percentChange.toFixed(1)}% from previous week
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Children's Ministry</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.childrenMinistry.count}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.childrenMinistry.percentChange > 0 ? "+" : ""}
+                {stats.childrenMinistry.percentChange.toFixed(1)}% from previous week
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Global Filters Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Filter attendance data by ministry and region scope
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="space-y-2 flex-1">
-              <Label>Filter by Ministry</Label>
-              <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                <SelectTrigger disabled={filtersLoading}>
-                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Select ministry"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Ministries</SelectItem>
-                  {availableMinistries.map((ministry: any) => (
-                    <SelectItem key={ministry.id} value={ministry.name}>
-                      {ministry.name}
-                    </SelectItem>
-                  ))}
-                  {availableMinistries.length === 0 && !filtersLoading && (
-                    <SelectItem value="no-ministries" disabled>
-                      No ministries available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+      {filtersLoading ? (
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Filters</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Filter attendance data by ministry and region scope
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="space-y-2 flex-1">
+                <Label>Filter by Ministry</Label>
+                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+                  <SelectTrigger disabled={filtersLoading}>
+                    <SelectValue placeholder={filtersLoading ? "Loading..." : "Select ministry"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Ministries</SelectItem>
+                    {availableMinistries.map((ministry: any) => (
+                      <SelectItem key={ministry.id} value={ministry.name}>
+                        {ministry.name}
+                      </SelectItem>
+                    ))}
+                    {availableMinistries.length === 0 && !filtersLoading && (
+                      <SelectItem value="no-ministries" disabled>
+                        No ministries available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2 flex-1">
-              <Label>Filter by Region</Label>
-              <Select value={regionFilter} onValueChange={setRegionFilter}>
-                <SelectTrigger disabled={filtersLoading}>
-                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Select region"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {availableRegions.map((region: any) => (
-                    <SelectItem key={region.id} value={region.name}>
-                      {region.name}
-                    </SelectItem>
-                  ))}
-                  {availableRegions.length === 0 && !filtersLoading && (
-                    <SelectItem value="no-regions" disabled>
-                      No regions available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2 flex-1">
+                <Label>Filter by Region</Label>
+                <Select value={regionFilter} onValueChange={setRegionFilter}>
+                  <SelectTrigger disabled={filtersLoading}>
+                    <SelectValue placeholder={filtersLoading ? "Loading..." : "Select region"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Regions</SelectItem>
+                    {availableRegions.map((region: any) => (
+                      <SelectItem key={region.id} value={region.name}>
+                        {region.name}
+                      </SelectItem>
+                    ))}
+                    {availableRegions.length === 0 && !filtersLoading && (
+                      <SelectItem value="no-regions" disabled>
+                        No regions available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
 
 

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { format, isSameDay } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "./ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useEventTypes } from "@/hooks/use-event-types"
 
 interface AttendanceFormProps {
@@ -478,7 +479,7 @@ export function AttendanceForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Ministries</SelectItem>
-                  {ministries.map((ministry) => (
+                  {ministries.map((ministry: any) => (
                     <SelectItem key={ministry.id} value={ministry.name}>
                       {ministry.name}
                     </SelectItem>
@@ -559,13 +560,29 @@ export function AttendanceForm({
                 </TableHeader>
                 <TableBody className="[&_tr:not(:last-child)]:border-b">
                   {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    // Skeleton rows for member table
+                    [...Array(5)].map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-4" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Skeleton className="h-8 w-8 rounded-full" />
+                            <Skeleton className="h-4 w-32" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Skeleton className="h-4 w-20" />
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Skeleton className="h-4 w-16" />
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Skeleton className="h-6 w-12 rounded-full" />
+                        </TableCell>
+                      </TableRow>
+                    ))
                   ) : filteredMembers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
