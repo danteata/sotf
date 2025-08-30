@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 
 // Dynamically import SignIn to avoid errors when Clerk is not configured
@@ -15,6 +16,9 @@ const SignIn = dynamic(() => import("@clerk/nextjs").then((mod) => mod.SignIn), 
 })
 
 export default function SignInPage() {
+  const searchParams = useSearchParams()
+  const redirectUrl = searchParams.get('redirect_url') || '/'
+
   // Check if Clerk is configured
   const isClerkConfigured =
     typeof process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === "string" &&
@@ -46,7 +50,7 @@ export default function SignInPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button className="w-full" onClick={() => (window.location.href = "/dashboard")}>
+            <Button className="w-full" onClick={() => (window.location.href = redirectUrl)}>
               Sign In
             </Button>
             <p className="text-center text-sm text-muted-foreground">
@@ -75,8 +79,10 @@ export default function SignInPage() {
             formButtonPrimary: "bg-primary hover:bg-primary/90",
           },
         }}
+        redirectUrl={redirectUrl}
+        routing="path"
+        path="/sign-in"
       />
     </div>
   )
 }
-

@@ -191,18 +191,30 @@ export default function AcceptInvitationClient() {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Sign In Required</CardTitle>
+            <CardTitle>Create Account Required</CardTitle>
             <CardDescription>
-              Please sign in to accept this invitation
+              Please create an account to accept this invitation
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              You need to sign in or create an account to accept this leadership invitation.
+              You need to create an account to accept this leadership invitation. After creating your account, you'll be automatically redirected back here to complete the invitation acceptance.
             </p>
-            <Button onClick={() => router.push('/sign-in')} className="w-full">
-              Sign In
-            </Button>
+            <div className="space-y-2">
+              <Button
+                onClick={() => router.push(`/sign-up?redirect_url=${encodeURIComponent(window.location.href)}`)}
+                className="w-full"
+              >
+                Create Account
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`)}
+                className="w-full"
+              >
+                Already have an account? Sign In
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

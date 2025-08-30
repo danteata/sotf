@@ -97,11 +97,50 @@ export function LeaderInvitationSystem() {
   }
 
   // Generate invitation link for a leader
-  const generateInvitationLink = (leaderId: string) => {
-    // Placeholder: Replace with actual link generation logic
-    const link = `${window.location.origin}/invite/${leaderId}`
-    setGeneratedLink(link)
-    setIsInviteLinkDialogOpen(true)
+  const generateInvitationLink = async (leaderId: string) => {
+    try {
+      // Find the leader in potentialLeaders to get their email
+      const leader = potentialLeaders.find(l => l.id === leaderId)
+      if (!leader || !leader.email) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Leader email not found',
+        })
+        return
+      }
+
+      // Create invitation in database
+      const { data, error } = await supabase.rpc('create_invitation', {
+        p_email: leader.email,
+        p_member_id: leaderId,
+        p_invited_by: null, // Could be current user ID if available
+        p_intended_role: leader.led_ministry_names.length > 0 ? 'ministry_leader' : 'region_leader',
+        p_intended_ministries: leader.led_ministry_ids,
+        p_intended_regions: leader.led_region_ids
+      })
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        const token = data[0].invitation_token
+        const link = `${window.location.origin}/invite/${token}`
+        setGeneratedLink(link)
+        setIsInviteLinkDialogOpen(true)
+
+        toast({
+          title: 'Invitation Created',
+          description: 'Invitation link generated successfully',
+        })
+      }
+    } catch (error) {
+      console.error('Error creating invitation:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to create invitation',
+      })
+    }
   }
 
   // Copy invitation link to clipboard
