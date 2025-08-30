@@ -89,6 +89,12 @@ export function RoleBasedNavigation() {
       roles: ["admin"]
     },
     {
+      title: "Map",
+      href: "/map",
+      icon: MapPin,
+      roles: ["admin", "ministry_leader", "region_leader"]
+    },
+    {
       title: "User Management",
       href: "/user-management",
       icon: Shield,
