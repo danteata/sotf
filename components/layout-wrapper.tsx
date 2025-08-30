@@ -69,7 +69,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">M</span>
             </div>
-            <span className="font-semibold text-gray-900">MKCBOTWE</span>
+            <span className="font-semibold text-gray-900">State of the Flock</span>
           </div>
           <Button
             variant="ghost"
@@ -110,15 +110,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
               <Menu className="h-4 w-4" />
             </Button>
 
-            {showSearch && (isClerkConfigured ? isSignedIn : true) && (
-              <div className="relative w-full max-w-sm">
-                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  className="pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-                  placeholder="Search..."
-                />
-              </div>
-            )}
+            {/* Search bar removed as it's not currently functional */}
           </div>
 
           {/* Right section */}

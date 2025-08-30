@@ -20,7 +20,8 @@ export function DashboardContent() {
     weeklyAttendance: 0,
     attendanceChange: 0,
     upcomingEventsCount: 0,
-    nextEventName: ''
+    nextEventName: '',
+    activeMinistries: 0
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +69,12 @@ export function DashboardContent() {
           .from('members')
           .select('id, joined_date, status')
           .eq('status', 'active')
+
+        // Get active ministries count for admin dashboard
+        const { data: activeMinistriesData } = await supabase
+          .from('ministries')
+          .select('id')
+          .eq('active', true)
 
         const now = new Date()
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -194,7 +201,8 @@ export function DashboardContent() {
           weeklyAttendance,
           attendanceChange,
           upcomingEventsCount: events?.length || 0,
-          nextEventName: events?.[0]?.title || 'No upcoming events'
+          nextEventName: events?.[0]?.title || 'No upcoming events',
+          activeMinistries: activeMinistriesData?.length || 0
         })
 
       } catch (err) {
@@ -259,7 +267,7 @@ export function DashboardContent() {
           <CardContent>
             <div className="text-2xl font-bold">
               {isAdmin
-                ? (ministryLeaderships?.length || 0)
+                ? stats.activeMinistries
                 : `${stats.scopedMembers}/${stats.totalMembers}`
               }
             </div>
