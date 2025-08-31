@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
-import { Bell } from "lucide-react"; // import Bell icon
+
 
 // Conditionally import Clerk hooks to avoid errors when not configured
 let useUser: any = () => ({ isLoaded: true, isSignedIn: false, user: null })
@@ -79,38 +79,31 @@ export function UserNav() {
       : user.emailAddresses[0]?.emailAddress?.substring(0, 2).toUpperCase() || "U"
 
   return (
-    <div className="flex items-center gap-4"> {/* wrap avatar and notification icon in a div */}
-      <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full"> {/* notification icon button */}
-        <Bell className="h-5 w-5 text-muted-foreground" />
-      </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.fullName || user.username}</p>
-              <p className="text-xs leading-none text-muted-foreground">{user.primaryEmailAddress?.emailAddress}</p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => router.push("/profile")}>Profile</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/settings")}>Settings</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/notifications")}>Notifications</DropdownMenuItem>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => signOut(() => router.push("/"))} className="text-red-600 focus:text-red-600">
-            Log out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user.fullName || user.username}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user.primaryEmailAddress?.emailAddress}</p>
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => router.push("/profile")}>Profile</DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut(() => router.push("/"))} className="text-red-600 focus:text-red-600">
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
