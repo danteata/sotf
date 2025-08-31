@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { format, subWeeks, startOfWeek } from 'date-fns'
+import { format, subWeeks, startOfWeek, subDays } from 'date-fns'
 import type { Member, Ministry, Region, MemberWithDetails, MemberMinistry } from '@/types/database'
 
 /**
@@ -511,6 +511,89 @@ export async function getAttendanceStats() {
   } catch (error) {
     console.error('Error fetching attendance stats:', error)
     throw error
+  }
+}
+
+// Enhanced attendance statistics for more meaningful cards
+export async function getEnhancedAttendanceStats() {
+  const today = new Date()
+  const thisWeekStart = format(startOfWeek(today, { weekStartsOn: 0 }), 'yyyy-MM-dd')
+  const lastWeekStart = format(startOfWeek(subWeeks(today, 1), { weekStartsOn: 0 }), 'yyyy-MM-dd')
+  const twoWeeksAgoStart = format(startOfWeek(subWeeks(today, 2), { weekStartsOn: 0 }), 'yyyy-MM-dd')
+
+  try {
+    // Get all event types
+    const { data: eventTypes } = await supabase
+      .from("event_types")
+      .select("id, value, label")
+      .eq("is_active", true)
+
+    // Get total active members
+    const { data: membersData } = await supabase
+      .from("members")
+      .select("id", { count: 'exact' })
+
+    const totalActiveMembers = membersData?.length || 0
+
+    // Get this week's total attendance across all services
+    const { data: thisWeekAttendance } = await supabase
+      .from("attendance")
+      .select("count")
+      .gte("date", thisWeekStart)
+
+    const thisWeekTotal = thisWeekAttendance?.reduce((sum, record) => sum + record.count, 0) || 0
+
+    // Get last week's total attendance
+    const { data: lastWeekAttendance } = await supabase
+      .from("attendance")
+      .select("count")
+      .gte("date", lastWeekStart)
+      .lt("date", thisWeekStart)
+
+    const lastWeekTotal = lastWeekAttendance?.reduce((sum, record) => sum + record.count, 0) || 0
+
+    // Calculate weekly growth rate
+    const weeklyGrowthRate = lastWeekTotal > 0 ?
+      ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100 : 0
+
+    // Calculate attendance rate (this week vs total members)
+    const attendanceRate = totalActiveMembers > 0 ?
+      (thisWeekTotal / totalActiveMembers) * 100 : 0
+
+    // Get recent attendance activity (last 30 days)
+    const thirtyDaysAgo = format(subDays(today, 30), 'yyyy-MM-dd')
+    const { data: recentAttendance } = await supabase
+      .from("attendance")
+      .select("date", { count: 'exact' })
+      .gte("date", thirtyDaysAgo)
+
+    const recentActivityDays = recentAttendance?.length || 0
+
+    // Get total attendance records count
+    const { data: totalAttendanceRecords } = await supabase
+      .from("attendance")
+      .select("id", { count: 'exact' })
+
+    const totalRecords = totalAttendanceRecords?.length || 0
+
+    return {
+      totalActiveMembers,
+      thisWeekTotal,
+      weeklyGrowthRate,
+      attendanceRate,
+      recentActivityDays,
+      totalRecords
+    }
+  } catch (error) {
+    console.error('Error fetching enhanced attendance stats:', error)
+    return {
+      totalActiveMembers: 0,
+      thisWeekTotal: 0,
+      weeklyGrowthRate: 0,
+      attendanceRate: 0,
+      recentActivityDays: 0,
+      totalRecords: 0
+    }
   }
 }
 

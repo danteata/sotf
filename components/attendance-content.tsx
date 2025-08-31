@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw } from "lucide-react"
-import { getAttendanceStats, getMinistries, getRegions } from "@/lib/database-utils"
+import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3 } from "lucide-react"
+import { getAttendanceStats, getMinistries, getRegions, getMembersLegacyFormat, getEnhancedAttendanceStats } from "@/lib/database-utils"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useUser } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Skeleton } from "@/components/ui/skeleton"
 import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
@@ -36,6 +36,15 @@ interface AttendanceStats {
   }
 }
 
+interface EnhancedAttendanceStats {
+  totalActiveMembers: number
+  thisWeekTotal: number
+  weeklyGrowthRate: number
+  attendanceRate: number
+  recentActivityDays: number
+  totalRecords: number
+}
+
 export function AttendanceContent() {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser()
 
@@ -44,6 +53,14 @@ export function AttendanceContent() {
     fourWeekAverage: { count: 0, percentChange: 0 },
     youthGroup: { count: 0, percentChange: 0 },
     childrenMinistry: { count: 0, percentChange: 0 }
+  })
+  const [enhancedStats, setEnhancedStats] = useState<EnhancedAttendanceStats>({
+    totalActiveMembers: 0,
+    thisWeekTotal: 0,
+    weeklyGrowthRate: 0,
+    attendanceRate: 0,
+    recentActivityDays: 0,
+    totalRecords: 0
   })
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -69,8 +86,12 @@ export function AttendanceContent() {
   const fetchAttendanceStats = async () => {
     try {
       setLoading(true)
-      const statsData = await getAttendanceStats()
+      const [statsData, enhancedStatsData] = await Promise.all([
+        getAttendanceStats(),
+        getEnhancedAttendanceStats()
+      ])
       setStats(statsData)
+      setEnhancedStats(enhancedStatsData)
     } catch (err) {
       console.error("Error fetching attendance stats:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch attendance statistics")
@@ -204,8 +225,12 @@ export function AttendanceContent() {
   const refreshStats = async () => {
     try {
       setIsRefreshing(true)
-      const statsData = await getAttendanceStats()
+      const [statsData, enhancedStatsData] = await Promise.all([
+        getAttendanceStats(),
+        getEnhancedAttendanceStats()
+      ])
       setStats(statsData)
+      setEnhancedStats(enhancedStatsData)
     } catch (err) {
       console.error("Error refreshing attendance stats:", err)
       setError(err instanceof Error ? err.message : "Failed to refresh attendance statistics")
@@ -243,8 +268,8 @@ export function AttendanceContent() {
 
       {/* Stats Cards Skeleton or Content */}
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {[...Array(6)].map((_, i) => (
             <Card key={i}>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <Skeleton className="h-4 w-24" />
@@ -258,56 +283,90 @@ export function AttendanceContent() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {/* Total Active Members */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Last Sunday</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{enhancedStats.totalActiveMembers}</div>
+              <p className="text-xs text-muted-foreground">
+                Active church members
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* This Week's Attendance */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">This Week</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.lastSunday.count}</div>
+              <div className="text-2xl font-bold">{enhancedStats.thisWeekTotal}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.lastSunday.percentChange > 0 ? "+" : ""}
-                {stats.lastSunday.percentChange.toFixed(1)}% from previous week
+                Total attendance this week
               </p>
             </CardContent>
           </Card>
+
+          {/* Weekly Growth Rate */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Average (4 weeks)</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.fourWeekAverage.count}</div>
+              <div className={`text-2xl font-bold ${enhancedStats.weeklyGrowthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {enhancedStats.weeklyGrowthRate > 0 ? "+" : ""}
+                {enhancedStats.weeklyGrowthRate.toFixed(1)}%
+              </div>
               <p className="text-xs text-muted-foreground">
-                {stats.fourWeekAverage.percentChange > 0 ? "+" : ""}
-                {stats.fourWeekAverage.percentChange.toFixed(1)}% from previous month
+                Week-over-week change
               </p>
             </CardContent>
           </Card>
+
+          {/* Attendance Rate */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Youth Group</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.youthGroup.count}</div>
+              <div className="text-2xl font-bold">{enhancedStats.attendanceRate.toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">
-                {stats.youthGroup.percentChange > 0 ? "+" : ""}
-                {stats.youthGroup.percentChange.toFixed(1)}% from previous week
+                Of total members
               </p>
             </CardContent>
           </Card>
+
+          {/* Recent Activity */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Children's Ministry</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.childrenMinistry.count}</div>
+              <div className="text-2xl font-bold">{enhancedStats.recentActivityDays}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.childrenMinistry.percentChange > 0 ? "+" : ""}
-                {stats.childrenMinistry.percentChange.toFixed(1)}% from previous week
+                Active days (30 days)
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Total Records */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Total Records</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{enhancedStats.totalRecords}</div>
+              <p className="text-xs text-muted-foreground">
+                Attendance records
               </p>
             </CardContent>
           </Card>
