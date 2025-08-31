@@ -13,8 +13,7 @@ import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
 import { cn } from "@/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
+
 import { supabase } from "@/lib/supabase"
 
 interface AttendanceStats {
@@ -66,9 +65,7 @@ export function AttendanceContent() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Filter state
-  const [ministryFilter, setMinistryFilter] = useState("all")
-  const [regionFilter, setRegionFilter] = useState("all")
+  // Filter state for tab components
   const [availableMinistries, setAvailableMinistries] = useState<any[]>([])
   const [availableRegions, setAvailableRegions] = useState<any[]>([])
   const [filtersLoading, setFiltersLoading] = useState(false)
@@ -373,83 +370,7 @@ export function AttendanceContent() {
         </div>
       )}
 
-      {/* Global Filters Section */}
-      {filtersLoading ? (
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-20" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filters</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Filter attendance data by ministry and region scope
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <div className="space-y-2 flex-1">
-                <Label>Filter by Ministry</Label>
-                <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                  <SelectTrigger disabled={filtersLoading}>
-                    <SelectValue placeholder={filtersLoading ? "Loading..." : "Select ministry"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Ministries</SelectItem>
-                    {availableMinistries.map((ministry: any) => (
-                      <SelectItem key={ministry.id} value={ministry.name}>
-                        {ministry.name}
-                      </SelectItem>
-                    ))}
-                    {availableMinistries.length === 0 && !filtersLoading && (
-                      <SelectItem value="no-ministries" disabled>
-                        No ministries available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
 
-              <div className="space-y-2 flex-1">
-                <Label>Filter by Region</Label>
-                <Select value={regionFilter} onValueChange={setRegionFilter}>
-                  <SelectTrigger disabled={filtersLoading}>
-                    <SelectValue placeholder={filtersLoading ? "Loading..." : "Select region"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Regions</SelectItem>
-                    {availableRegions.map((region: any) => (
-                      <SelectItem key={region.id} value={region.name}>
-                        {region.name}
-                      </SelectItem>
-                    ))}
-                    {availableRegions.length === 0 && !filtersLoading && (
-                      <SelectItem value="no-regions" disabled>
-                        No regions available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
 
 
