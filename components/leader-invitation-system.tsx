@@ -46,6 +46,7 @@ import {
   AlertCircle,
   Link,
   Copy,
+  Users,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useTerminology } from '@/hooks/use-terminology'
@@ -153,6 +154,91 @@ export function LeaderInvitationSystem() {
       })
     }
   }
+
+  // Handle admin invitation link generation
+  const handleAdminInvite = async () => {
+    if (!adminInviteForm.email || !adminInviteForm.firstName || !adminInviteForm.lastName) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please fill in all required fields',
+      })
+      return
+    }
+
+    try {
+      // Create invitation for admin
+      const memberId = adminInviteMode === 'existing' ? selectedMemberId : null
+      const { data, error } = await supabase.rpc('create_invitation', {
+        p_email: adminInviteForm.email,
+        p_member_id: memberId,
+        p_invited_by: null,
+        p_intended_role: 'admin',
+        p_intended_ministries: [],
+        p_intended_regions: []
+      })
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        const token = data[0].invitation_token
+        const link = `${window.location.origin}/invite/${token}`
+        setGeneratedLink(link)
+        setIsInviteLinkDialogOpen(true)
+        setIsAdminInviteDialogOpen(false)
+
+        // Reset form
+        setAdminInviteForm({ firstName: '', lastName: '', email: '', phone: '' })
+        setSelectedMemberId(null)
+        setAdminInviteMode('new')
+        setMemberSearchQuery('')
+
+        toast({
+          title: 'Admin Invitation Link Generated',
+          description: 'Invitation link created successfully',
+        })
+      }
+    } catch (error) {
+      console.error('Error creating admin invitation:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to create admin invitation',
+      })
+    }
+  }
+
+  // Load all members for admin invitation selection
+  const loadAllMembers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('members_with_details')
+        .select('*')
+        .order('name')
+
+      if (error) throw error
+      setAllMembers(data || [])
+    } catch (error) {
+      console.error('Error loading members:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load members',
+      })
+    }
+  }
+
+  // Handle member selection for admin invitation
+  const handleMemberSelect = (member: any) => {
+    setSelectedMemberId(member.id)
+    setAdminInviteForm({
+      firstName: member.first_name || '',
+      lastName: member.last_name || '',
+      email: member.email || '',
+      phone: member.phone || ''
+    })
+  }
+
   const { terminology } = useTerminology()
   const { toast } = useToast()
 
@@ -166,10 +252,28 @@ export function LeaderInvitationSystem() {
   const [isSendingInvites, setIsSendingInvites] = useState(false)
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [isInviteLinkDialogOpen, setIsInviteLinkDialogOpen] = useState(false)
+  const [isAdminInviteDialogOpen, setIsAdminInviteDialogOpen] = useState(false)
+  const [adminInviteMode, setAdminInviteMode] = useState<'new' | 'existing'>('new')
+  const [adminInviteForm, setAdminInviteForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  })
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [allMembers, setAllMembers] = useState<any[]>([])
+  const [memberSearchQuery, setMemberSearchQuery] = useState('')
 
   useEffect(() => {
     loadPotentialLeaders()
   }, [])
+
+  // Load members when admin invite dialog opens
+  useEffect(() => {
+    if (isAdminInviteDialogOpen && adminInviteMode === 'existing') {
+      loadAllMembers()
+    }
+  }, [isAdminInviteDialogOpen, adminInviteMode])
 
   const loadPotentialLeaders = async () => {
     setIsLoading(true)
@@ -324,14 +428,26 @@ export function LeaderInvitationSystem() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Leader Invitation System
-          </CardTitle>
-          <CardDescription>
-            Invite ministry and region leaders to create accounts and access
-            their dashboards
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Leader Invitation System
+              </CardTitle>
+              <CardDescription>
+                Invite ministry and region leaders to create accounts and access
+                their dashboards
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setIsAdminInviteDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Mail className="h-4 w-4" />
+              Invite Admin
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Filters and Actions */}
@@ -510,6 +626,185 @@ export function LeaderInvitationSystem() {
             <Input value={generatedLink || ''} readOnly />
             <Button type="button" size="sm" onClick={copyToClipboard}>
               <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Invitation Dialog */}
+      <Dialog
+        open={isAdminInviteDialogOpen}
+        onOpenChange={setIsAdminInviteDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Invite Administrator</DialogTitle>
+            <DialogDescription>
+              Create an invitation for a new administrator. They will receive full access to the system.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Mode Selection Tabs */}
+          <div className="flex space-x-1 mb-4 bg-muted p-1 rounded-md">
+            <Button
+              variant={adminInviteMode === 'new' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setAdminInviteMode('new')}
+              className="flex-1"
+            >
+              <Mail className="mr-2 h-4 w-4" />
+              New Admin
+            </Button>
+            <Button
+              variant={adminInviteMode === 'existing' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setAdminInviteMode('existing')}
+              className="flex-1"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Existing Member
+            </Button>
+          </div>
+
+          {adminInviteMode === 'new' ? (
+            /* New Admin Form */
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="firstName" className="text-right">
+                  First Name
+                </Label>
+                <Input
+                  id="firstName"
+                  value={adminInviteForm.firstName}
+                  onChange={(e) => setAdminInviteForm(prev => ({ ...prev, firstName: e.target.value }))}
+                  className="col-span-3"
+                  placeholder="Enter first name"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="lastName" className="text-right">
+                  Last Name
+                </Label>
+                <Input
+                  id="lastName"
+                  value={adminInviteForm.lastName}
+                  onChange={(e) => setAdminInviteForm(prev => ({ ...prev, lastName: e.target.value }))}
+                  className="col-span-3"
+                  placeholder="Enter last name"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={adminInviteForm.email}
+                  onChange={(e) => setAdminInviteForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="col-span-3"
+                  placeholder="Enter email address"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="text-right">
+                  Phone
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={adminInviteForm.phone}
+                  onChange={(e) => setAdminInviteForm(prev => ({ ...prev, phone: e.target.value }))}
+                  className="col-span-3"
+                  placeholder="Enter phone number (optional)"
+                />
+              </div>
+            </div>
+          ) : (
+            /* Existing Member Selection */
+            <div className="space-y-4">
+              {/* Search Members */}
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search members..."
+                  value={memberSearchQuery}
+                  onChange={(e) => setMemberSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+
+              {/* Members List */}
+              <div className="max-h-60 overflow-y-auto border rounded-md">
+                {allMembers.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No members found
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {allMembers
+                      .filter(member =>
+                        member.name.toLowerCase().includes(memberSearchQuery.toLowerCase()) ||
+                        (member.email && member.email.toLowerCase().includes(memberSearchQuery.toLowerCase()))
+                      )
+                      .map((member) => (
+                        <div
+                          key={member.id}
+                          className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${
+                            selectedMemberId === member.id ? 'bg-primary/10 border-primary' : ''
+                          }`}
+                          onClick={() => handleMemberSelect(member)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{member.name}</div>
+                              <div className="text-sm text-muted-foreground">{member.email}</div>
+                            </div>
+                            {selectedMemberId === member.id && (
+                              <CheckCircle className="h-5 w-5 text-primary" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Member Info */}
+              {selectedMemberId && (
+                <div className="p-4 bg-muted/50 rounded-md">
+                  <h4 className="font-medium mb-2">Selected Member:</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="font-medium">Name:</span> {adminInviteForm.firstName} {adminInviteForm.lastName}</div>
+                    <div><span className="font-medium">Email:</span> {adminInviteForm.email}</div>
+                    {adminInviteForm.phone && (
+                      <div><span className="font-medium">Phone:</span> {adminInviteForm.phone}</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAdminInviteDialogOpen(false)
+                setAdminInviteMode('new')
+                setSelectedMemberId(null)
+                setMemberSearchQuery('')
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAdminInvite}
+              disabled={adminInviteMode === 'existing' && !selectedMemberId}
+              className="flex items-center gap-1"
+            >
+              <Link className="h-3 w-3" />
+              Generate Link
             </Button>
           </div>
         </DialogContent>
