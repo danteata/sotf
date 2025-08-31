@@ -5,13 +5,12 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { 
-  Home, 
-  Users, 
-  Calendar, 
-  BarChart3, 
-  Settings, 
-  Church,
+import {
+  Home,
+  Users,
+  Calendar,
+  BarChart3,
+  Settings,
   MapPin,
   UserCheck,
   Shield,
@@ -54,7 +53,7 @@ export function RoleBasedNavigation() {
     },
     {
       title: "My Region",
-      href: "/region-dashboard", 
+      href: "/region-dashboard",
       icon: MapPin,
       roles: ["region_leader"]
     },
@@ -75,18 +74,6 @@ export function RoleBasedNavigation() {
       href: "/reports",
       icon: BarChart3,
       roles: ["admin", "ministry_leader", "region_leader"]
-    },
-    {
-      title: `${terminology.ministry_term}s`,
-      href: "/ministries",
-      icon: Church,
-      roles: ["admin"]
-    },
-    {
-      title: "Regions",
-      href: "/regions",
-      icon: MapPin,
-      roles: ["admin"]
     },
     {
       title: "Map",
