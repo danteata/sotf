@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Overview } from "@/components/overview"
 import { RecentMembers } from "@/components/recent-members"
 import { UpcomingEvents } from "@/components/upcoming-events"
+import { BirthdayWidget } from "@/components/birthday-widget"
 import { supabase } from "@/lib/supabase"
 import { useUserRole } from "@/hooks/use-user-role"
 import type { Member, AttendanceRecord, Event } from "@/types/database"
@@ -24,6 +25,7 @@ export function DashboardContent() {
     nextEventName: '',
     activeMinistries: 0
   })
+  const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scopedEvents, setScopedEvents] = useState<any[]>([])
@@ -70,6 +72,20 @@ export function DashboardContent() {
           .from('members')
           .select('id, joined_date, status')
           .eq('status', 'active')
+
+        // Fetch all members with birthday data for the birthday widget
+        const { data: allMembersData } = await supabase
+          .from('members')
+          .select(`
+            id, name, first_name, last_name, email, phone, dob, birth_month, birth_day,
+            avatar, initials, status, joined_date
+          `)
+          .eq('status', 'active')
+
+        // Set members data for birthday widget
+        if (allMembersData) {
+          setMembers(allMembersData as Member[])
+        }
 
         // Get active ministries count for admin dashboard
         const { data: activeMinistriesData } = await supabase
@@ -330,10 +346,10 @@ export function DashboardContent() {
               {isAdmin
                 ? "Active Ministries"
                 : isRegionLeader
-                ? "My Region Members"
-                : isMinistryLeader
-                ? "My Ministry Members"
-                : "Total Members"
+                  ? "My Region Members"
+                  : isMinistryLeader
+                    ? "My Ministry Members"
+                    : "Total Members"
               }
             </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -349,10 +365,10 @@ export function DashboardContent() {
               {isAdmin
                 ? "Active ministry groups"
                 : isRegionLeader
-                ? `${regionLeaderships.map(r => r.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
-                : isMinistryLeader
-                ? `${ministryLeaderships.map(m => m.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
-                : `+${stats.newMembersThisMonth} new this month`
+                  ? `${regionLeaderships.map(r => r.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
+                  : isMinistryLeader
+                    ? `${ministryLeaderships.map(m => m.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
+                    : `+${stats.newMembersThisMonth} new this month`
               }
             </p>
           </CardContent>
@@ -390,6 +406,11 @@ export function DashboardContent() {
           </CardContent>
         </Card>
       </div>
+      {/* Birthday Widget */}
+      <div className="mt-4">
+        <BirthdayWidget members={members} />
+      </div>
+
       <div className="mt-4">
         <Card>
           <CardHeader>

@@ -5,6 +5,7 @@ A comprehensive church management system built with Next.js 14, specifically des
 ## Features
 
 ### Core Technologies
+
 - 🔐 Authentication using Clerk
 - 📤 File uploads using Uploadthing
 - 🗄️ Database integration with Supabase
@@ -12,6 +13,7 @@ A comprehensive church management system built with Next.js 14, specifically des
 - 💅 Styling with Tailwind CSS
 
 ### Key Functionalities
+
 - 👥 Member management
 - ✓ Attendance tracking
 - 📅 Event management
@@ -41,12 +43,14 @@ The application is structured with a modern React architecture using TypeScript 
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/your-username/makarios-church-management.git
    cd makarios-church-management
    ```
 
 2. Install dependencies:
+
    ```bash
    pnpm install
    # or
@@ -75,6 +79,7 @@ The application is structured with a modern React architecture using TypeScript 
    ```
 
 4. Run the development server:
+
    ```bash
    pnpm dev
    # or
