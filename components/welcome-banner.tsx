@@ -3,36 +3,37 @@
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Church } from "lucide-react"
-
-// Conditionally import Clerk hooks to avoid errors when not configured
-let useUser: any = () => ({ isLoaded: true, isSignedIn: false, user: null })
-
-// Only import Clerk if we're in the browser and can check for environment variables
-if (typeof window !== "undefined") {
-  try {
-    const hasClerkKeys =
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
-
-    if (hasClerkKeys) {
-      // Dynamic import to avoid server-side errors
-      import("@clerk/nextjs").then((clerk) => {
-        useUser = clerk.useUser
-      })
-    }
-  } catch (error) {
-    console.error("Failed to import Clerk:", error)
-  }
-}
+import { useUser } from "@clerk/nextjs"
 
 export function WelcomeBanner() {
-  const { isSignedIn, user } = useUser()
+  const { isSignedIn, user, isLoaded } = useUser()
   const router = useRouter()
 
   // Check if Clerk is configured
   const isClerkConfigured =
     typeof process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === "string" &&
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
+
+  // Show loading skeleton while authentication is being determined
+  if (isClerkConfigured && !isLoaded) {
+    return (
+      <div className="mb-8 rounded-lg bg-primary/10 p-6 animate-pulse">
+        <div className="flex items-center gap-4">
+          <div className="rounded-full bg-primary/20 p-3">
+            <Church className="h-6 w-6 text-primary animate-pulse" />
+          </div>
+          <div className="flex-1 space-y-2">
+            <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+          </div>
+        </div>
+        <div className="mt-4 flex gap-3">
+          <div className="h-10 bg-gray-200 rounded w-32"></div>
+          <div className="h-10 bg-gray-200 rounded w-32"></div>
+        </div>
+      </div>
+    )
+  }
 
   // If Clerk is not configured, show a demo welcome banner
   if (!isClerkConfigured) {
@@ -99,4 +100,3 @@ export function WelcomeBanner() {
     </div>
   )
 }
-

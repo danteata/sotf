@@ -12,30 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useRouter } from "next/navigation"
-
-
-// Conditionally import Clerk hooks to avoid errors when not configured
-let useUser: any = () => ({ isLoaded: true, isSignedIn: false, user: null })
-let useClerk: any = () => ({ signOut: () => { } })
-
-// Only import Clerk if we're in the browser and can check for environment variables
-if (typeof window !== "undefined") {
-  try {
-    const hasClerkKeys =
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
-
-    if (hasClerkKeys) {
-      // Dynamic import to avoid server-side errors
-      import("@clerk/nextjs").then((clerk) => {
-        useUser = clerk.useUser
-        useClerk = clerk.useClerk
-      })
-    }
-  } catch (error) {
-    console.error("Failed to import Clerk:", error)
-  }
-}
+import { useUser, useClerk } from "@clerk/nextjs"
 
 export function UserNav() {
   const { user, isLoaded, isSignedIn } = useUser()
@@ -55,11 +32,12 @@ export function UserNav() {
     )
   }
 
+  // Show loading state while authentication is being determined
   if (!isLoaded) {
     return (
-      <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full">
+      <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full animate-pulse">
         <Avatar className="h-8 w-8">
-          <AvatarFallback>...</AvatarFallback>
+          <AvatarFallback className="bg-gray-200">...</AvatarFallback>
         </Avatar>
       </Button>
     )

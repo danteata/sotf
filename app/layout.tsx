@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import QueryProvider from '@/components/query-provider'
+import { AuthLoadingWrapper } from '@/components/auth-loading-wrapper'
 
 const font = Inter({
   variable: '--font-inter',
@@ -24,7 +25,9 @@ export default function RootLayout({
       <html lang="en">
         <body className={`${font.variable} antialiased`}>
           <QueryProvider>
-            {children}
+            <AuthLoadingWrapper>
+              {children}
+            </AuthLoadingWrapper>
           </QueryProvider>
         </body>
       </html>

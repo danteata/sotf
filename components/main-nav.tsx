@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Calendar, Heart, Home, MessageSquare, PieChart, Settings, Users, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUser } from "@clerk/nextjs"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -13,25 +14,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-
-// Conditionally import Clerk hooks
-let useUser: any = () => ({ isLoaded: true, isSignedIn: false })
-
-if (typeof window !== "undefined") {
-  try {
-    const hasClerkKeys =
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
-
-    if (hasClerkKeys) {
-      import("@clerk/nextjs").then((clerk) => {
-        useUser = clerk.useUser
-      })
-    }
-  } catch (error) {
-    console.error("Failed to import Clerk:", error)
-  }
-}
 
 const navigationItems = [
   { href: "/", label: "Dashboard", icon: Home, public: true },

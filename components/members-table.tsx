@@ -27,7 +27,6 @@ interface MembersTableProps {
 }
 
 export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
-  console.log('check members ', members)
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");

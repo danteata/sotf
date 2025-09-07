@@ -7,31 +7,13 @@ import {
   Menu,
   X
 } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 
 import { Input } from "@/components/ui/input"
 import { UserNav } from "@/components/user-nav"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { RoleBasedNavigation, RoleIndicator } from "@/components/role-based-navigation"
-
-// Conditionally import Clerk hooks
-let useUser: any = () => ({ isLoaded: true, isSignedIn: false })
-
-if (typeof window !== "undefined") {
-  try {
-    const hasClerkKeys =
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
-      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
-
-    if (hasClerkKeys) {
-      import("@clerk/nextjs").then((clerk) => {
-        useUser = clerk.useUser
-      })
-    }
-  } catch (error) {
-    console.error("Failed to import Clerk:", error)
-  }
-}
 
 
 
@@ -42,7 +24,7 @@ interface LayoutWrapperProps {
 
 export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { isSignedIn } = useUser()
+  const { isSignedIn, isLoaded } = useUser()
 
   const isClerkConfigured =
     typeof process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === "string" &&
