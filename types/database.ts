@@ -292,6 +292,55 @@ export interface MemberWithFinancials extends Member {
   transaction_count: number
 }
 
+// Labels/Tags System
+export interface Label {
+  id: string
+  name: string
+  description?: string
+  color: string // Hex color code for visual identification
+  category?: string // e.g., 'status', 'ministry', 'demographic', 'skill'
+  is_system_label: boolean // System labels can't be deleted
+  is_active: boolean
+  created_by?: string
+  created_by_name?: string
+  created_at: string
+  updated_at: string
+  usage_count?: number // How many members have this label
+}
+
+export interface MemberLabel {
+  id: string
+  member_id: string
+  label_id: string
+  assigned_by?: string
+  assigned_by_name?: string
+  assigned_at: string
+  notes?: string // Optional notes about why this label was assigned
+}
+
+// Extended member interface with labels
+export interface MemberWithLabels extends Member {
+  labels?: Label[]
+  label_ids?: string[]
+  label_names?: string[]
+}
+
+// Bulk label operations
+export interface BulkLabelOperation {
+  member_ids: string[]
+  label_ids: string[]
+  operation: 'add' | 'remove' | 'replace' // Replace will remove all existing labels first
+  assigned_by?: string
+  notes?: string
+}
+
+// Label management
+export interface LabelManagement {
+  create_labels?: Label[]
+  delete_labels?: string[] // Label IDs to delete
+  update_labels?: Partial<Label>[] // Labels to update
+}
+
 export interface Database {
   public: {
     Tables: {

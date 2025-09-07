@@ -40,6 +40,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Member, Ministry, Region } from "@/types/database"
 import { Badge } from "./ui/badge"
+import { MemberLabels, LabelSelector } from "./label-selector"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -91,7 +92,8 @@ export function MemberEditDialog({
   const regionLabels = getRegionLabels(terminology)
 
   // Split the name into first and last name
-  let firstName, lastName
+  let firstName: string = ""
+  let lastName: string = ""
   if (member.name) {
     const nameParts = member.name.split(" ")
     firstName = nameParts[0]
@@ -254,10 +256,11 @@ export function MemberEditDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
                 <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
                 <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
+                <TabsTrigger value="labels" className="text-xs sm:text-sm">Labels</TabsTrigger>
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4">
@@ -618,6 +621,19 @@ export function MemberEditDialog({
                     </FormItem>
                   )}
                 />
+              </TabsContent>
+
+              <TabsContent value="labels" className="space-y-4">
+                <div className="text-sm text-muted-foreground mb-4">
+                  Assign labels to categorize this member. Labels help you organize and filter your church members.
+                </div>
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <h4 className="font-medium mb-3">Member Labels</h4>
+                  <LabelSelector
+                    memberId={member.id}
+                    variant="full"
+                  />
+                </div>
               </TabsContent>
             </Tabs>
 
