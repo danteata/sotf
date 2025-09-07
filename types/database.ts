@@ -132,6 +132,7 @@ export interface EventType {
   icon?: string
   category?: string
   description?: string
+  status: 'active' | 'archived'
   is_active: boolean
   sort_order: number
   created_at: string
@@ -168,6 +169,128 @@ export type Json =
   | null
   | { [key: string]: Json | undefined }
   | Json[]
+
+// Financial Tracking Types
+export type TransactionType = 'income' | 'expense'
+export type TransactionCategory = 'tithe' | 'offering' | 'donation' | 'mission' | 'utilities' | 'maintenance' | 'supplies' | 'salary' | 'event' | 'other'
+export type PaymentMethod = 'cash' | 'check' | 'bank_transfer' | 'credit_card' | 'online' | 'other'
+
+export interface FinancialTransaction {
+  id: string
+  type: TransactionType
+  category: TransactionCategory
+  amount: number
+  description: string
+  date: string
+  payment_method: PaymentMethod
+  member_id?: string // For member-specific transactions (tithes, offerings)
+  member_name?: string
+  event_id?: string // For event-related transactions
+  event_name?: string
+  recorded_by: string
+  recorded_by_name: string
+  notes?: string
+  receipt_url?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface BudgetCategory {
+  id: string
+  name: string
+  category: TransactionCategory
+  budgeted_amount: number
+  actual_amount: number
+  fiscal_year: number
+  month: number
+  created_at: string
+  updated_at: string
+}
+
+export interface FinancialReport {
+  id: string
+  title: string
+  type: 'monthly' | 'quarterly' | 'annual' | 'custom'
+  start_date: string
+  end_date: string
+  total_income: number
+  total_expenses: number
+  net_amount: number
+  category_breakdown: Record<TransactionCategory, { income: number; expense: number; net: number }>
+  generated_by: string
+  generated_by_name: string
+  created_at: string
+}
+
+export interface FinancialGoal {
+  id: string
+  title: string
+  description: string
+  target_amount: number
+  current_amount: number
+  target_date: string
+  category: TransactionCategory
+  is_active: boolean
+  created_by: string
+  created_by_name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface FinancialWidget {
+  id: string
+  title: string
+  type: 'total_income' | 'total_expenses' | 'net_profit' | 'budget_vs_actual' | 'monthly_trend' | 'top_categories' | 'goals_progress'
+  period: 'month' | 'quarter' | 'year' | 'custom'
+  start_date?: string
+  end_date?: string
+  position: number
+  is_visible: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ServiceFinancialSummary {
+  id: string
+  service_date: string
+  service_type: string // Dynamic service types from event_types table
+  service_name?: string
+  event_id?: string // Link to events table if it's an event
+  total_attendance: number
+  tithe_payers: number
+  total_tithes: number
+  total_offerings: number
+  total_donations: number
+  special_offerings?: number
+  special_offering_description?: string
+  // Payment method breakdown
+  tithes_cash: number
+  tithes_electronic: number
+  offerings_cash: number
+  offerings_electronic: number
+  donations_cash: number
+  donations_electronic: number
+  special_offerings_cash?: number
+  special_offerings_electronic?: number
+  // Currency support
+  currency: string // e.g., 'GHS', 'USD', 'EUR'
+  // Treasurer tracking
+  recorded_by: string
+  recorded_by_name: string
+  witnessed_by?: string // Second treasurer for verification
+  witnessed_by_name?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+// Extended member interface with financial data
+export interface MemberWithFinancials extends Member {
+  total_tithes: number
+  total_offerings: number
+  last_transaction_date?: string
+  transaction_count: number
+}
 
 export interface Database {
   public: {

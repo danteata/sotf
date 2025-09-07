@@ -1,0 +1,653 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { FinancialTransactionDialog } from '@/components/financial-transaction-dialog'
+import { FinancialWidget } from '@/components/financial-widget'
+import { ServiceFinancialSummaryDialog } from '@/components/service-financial-summary-dialog'
+import { ServiceSummaryWidget } from '@/components/service-summary-widget'
+import {
+    Plus,
+    Search,
+    Filter,
+    Download,
+    MoreHorizontal,
+    Edit,
+    Trash2,
+    Eye,
+    DollarSign,
+    TrendingUp,
+    TrendingDown
+} from 'lucide-react'
+import { FinancialTransaction, ServiceFinancialSummary } from '@/types/database'
+import {
+    formatCurrency,
+    calculateTransactionTotals,
+    exportTransactionsToCSV,
+    TRANSACTION_CATEGORIES,
+    PAYMENT_METHODS
+} from '@/lib/financial-utils'
+import { supabase } from '@/lib/supabase'
+
+import { LayoutWrapper } from '@/components/layout-wrapper'
+
+export default function FinancialPage() {
+    const { user, isLoaded } = useUser()
+    const router = useRouter()
+    const [transactions, setTransactions] = useState<FinancialTransaction[]>([])
+    const [members, setMembers] = useState<Array<{ id: string; name: string }>>([])
+    const [events, setEvents] = useState<Array<{ id: string; title: string }>>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [searchTerm, setSearchTerm] = useState('')
+    const [categoryFilter, setCategoryFilter] = useState<string>('all')
+    const [typeFilter, setTypeFilter] = useState<string>('all')
+    const [dateRange, setDateRange] = useState<string>('all')
+    const [serviceSummaries, setServiceSummaries] = useState<ServiceFinancialSummary[]>([])
+    const [eventTypes, setEventTypes] = useState<Array<{ id: string; value: string; label: string; status: string }>>([])
+    const [showTransactionDialog, setShowTransactionDialog] = useState(false)
+    const [showSummaryDialog, setShowSummaryDialog] = useState(false)
+    const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null)
+    const [editingSummary, setEditingSummary] = useState<ServiceFinancialSummary | null>(null)
+
+    // Check user permissions
+    useEffect(() => {
+        if (isLoaded && !user) {
+            router.push('/sign-in')
+            return
+        }
+    }, [user, isLoaded, router])
+
+    // Load data
+    useEffect(() => {
+        if (user) {
+            loadFinancialData()
+            loadMembers()
+            loadEvents()
+            loadEventTypes()
+        }
+    }, [user])
+
+    const loadFinancialData = async () => {
+        try {
+            setIsLoading(true)
+            const { data, error } = await supabase
+                .from('financial_transactions')
+                .select('*')
+                .order('date', { ascending: false })
+                .order('created_at', { ascending: false })
+
+            if (error) throw error
+            setTransactions(data || [])
+        } catch (error) {
+            console.error('Error loading financial data:', error)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    const loadMembers = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('members')
+                .select('id, name, ministries')
+                .eq('status', 'active')
+                .order('name')
+
+            if (error) throw error
+            setMembers(data || [])
+        } catch (error) {
+            console.error('Error loading members:', error)
+        }
+    }
+
+    const loadEvents = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('events')
+                .select('id, title')
+                .order('date', { ascending: false })
+                .limit(50)
+
+            if (error) throw error
+            setEvents(data || [])
+        } catch (error) {
+            console.error('Error loading events:', error)
+        }
+    }
+
+    const loadEventTypes = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('event_types')
+                .select('id, value, label, status')
+                .order('sort_order')
+
+            if (error) throw error
+            setEventTypes(data || [])
+        } catch (error) {
+            console.error('Error loading event types:', error)
+        }
+    }
+
+    const handleSaveTransaction = async (transactionData: Omit<FinancialTransaction, 'id' | 'created_at' | 'updated_at'>) => {
+        try {
+            if (editingTransaction) {
+                // Update existing transaction
+                const { data, error } = await supabase
+                    .from('financial_transactions')
+                    .update({
+                        ...transactionData,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', editingTransaction.id)
+                    .select()
+                    .single()
+
+                if (error) throw error
+
+                setTransactions(prev =>
+                    prev.map(t => t.id === editingTransaction.id ? data : t)
+                )
+            } else {
+                // Create new transaction
+                const { data, error } = await supabase
+                    .from('financial_transactions')
+                    .insert([transactionData])
+                    .select()
+                    .single()
+
+                if (error) throw error
+
+                setTransactions(prev => [data, ...prev])
+            }
+
+            setShowTransactionDialog(false)
+            setEditingTransaction(null)
+        } catch (error) {
+            console.error('Error saving transaction:', error)
+            throw error
+        }
+    }
+
+    const handleEditTransaction = (transaction: FinancialTransaction) => {
+        setEditingTransaction(transaction)
+        setShowTransactionDialog(true)
+    }
+
+    const handleDeleteTransaction = async (transactionId: string) => {
+        if (!confirm('Are you sure you want to delete this transaction?')) return
+
+        try {
+            const { error } = await supabase
+                .from('financial_transactions')
+                .delete()
+                .eq('id', transactionId)
+
+            if (error) throw error
+
+            setTransactions(prev => prev.filter(t => t.id !== transactionId))
+        } catch (error) {
+            console.error('Error deleting transaction:', error)
+        }
+    }
+
+    const handleExportData = () => {
+        const csvContent = exportTransactionsToCSV(filteredTransactions)
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `financial-transactions-${new Date().toISOString().split('T')[0]}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+    }
+
+    // Filter transactions
+    const filteredTransactions = transactions.filter(transaction => {
+        const matchesSearch = searchTerm === '' ||
+            transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            transaction.member_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            transaction.event_name?.toLowerCase().includes(searchTerm.toLowerCase())
+
+        const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter
+        const matchesType = typeFilter === 'all' || transaction.type === typeFilter
+
+        let matchesDateRange = true
+        if (dateRange !== 'all') {
+            const transactionDate = new Date(transaction.date)
+            const now = new Date()
+
+            switch (dateRange) {
+                case 'today':
+                    matchesDateRange = transactionDate.toDateString() === now.toDateString()
+                    break
+                case 'week':
+                    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+                    matchesDateRange = transactionDate >= weekAgo
+                    break
+                case 'month':
+                    matchesDateRange = transactionDate.getMonth() === now.getMonth() &&
+                        transactionDate.getFullYear() === now.getFullYear()
+                    break
+                case 'quarter':
+                    const currentQuarter = Math.floor(now.getMonth() / 3)
+                    const transactionQuarter = Math.floor(transactionDate.getMonth() / 3)
+                    matchesDateRange = transactionQuarter === currentQuarter &&
+                        transactionDate.getFullYear() === now.getFullYear()
+                    break
+                case 'year':
+                    matchesDateRange = transactionDate.getFullYear() === now.getFullYear()
+                    break
+            }
+        }
+
+        return matchesSearch && matchesCategory && matchesType && matchesDateRange
+    })
+
+    const totals = calculateTransactionTotals(filteredTransactions)
+
+    if (!isLoaded || isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+            </div>
+        )
+    }
+
+    return (
+        <LayoutWrapper>
+            <div className="container mx-auto p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold">Financial Management</h1>
+                        <p className="text-muted-foreground">
+                            Track income, expenses, and financial performance
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="outline" onClick={handleExportData}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Export
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowSummaryDialog(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Service Summary
+                        </Button>
+                        <Button onClick={() => setShowTransactionDialog(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Transaction
+                        </Button>
+                    </div>
+                </div>
+
+                <Tabs defaultValue="overview" className="space-y-6">
+                    <TabsList>
+                        <TabsTrigger value="overview">Overview</TabsTrigger>
+                        <TabsTrigger value="transactions">Transactions</TabsTrigger>
+                        <TabsTrigger value="reports">Reports</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="overview" className="space-y-6">
+                        <FinancialWidget
+                            transactions={transactions}
+                            onAddTransaction={() => setShowTransactionDialog(true)}
+                        />
+
+                        {/* Quick Stats Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+                                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{transactions.length}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        All time
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">This Month</CardTitle>
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {transactions.filter(t => {
+                                            const date = new Date(t.date)
+                                            const now = new Date()
+                                            return date.getMonth() === now.getMonth() &&
+                                                date.getFullYear() === now.getFullYear()
+                                        }).length}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Transactions
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Largest Transaction</CardTitle>
+                                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {transactions.length > 0
+                                            ? formatCurrency(Math.max(...transactions.map(t => t.amount)))
+                                            : formatCurrency(0)
+                                        }
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Single transaction
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Avg Transaction</CardTitle>
+                                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {transactions.length > 0
+                                            ? formatCurrency(
+                                                transactions.reduce((sum, t) => sum + t.amount, 0) / transactions.length
+                                            )
+                                            : formatCurrency(0)
+                                        }
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Per transaction
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="transactions" className="space-y-6">
+                        {/* Filters */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Filters</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search transactions..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="pl-8"
+                                        />
+                                    </div>
+
+                                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Filter by type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Types</SelectItem>
+                                            <SelectItem value="income">Income</SelectItem>
+                                            <SelectItem value="expense">Expense</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Filter by category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Categories</SelectItem>
+                                            {Object.entries(TRANSACTION_CATEGORIES).map(([key, category]) => (
+                                                <SelectItem key={key} value={key}>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{category.icon}</span>
+                                                        {category.label}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={dateRange} onValueChange={setDateRange}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Date range" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Time</SelectItem>
+                                            <SelectItem value="today">Today</SelectItem>
+                                            <SelectItem value="week">This Week</SelectItem>
+                                            <SelectItem value="month">This Month</SelectItem>
+                                            <SelectItem value="quarter">This Quarter</SelectItem>
+                                            <SelectItem value="year">This Year</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Transaction Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-green-600">Income</p>
+                                            <p className="text-2xl font-bold text-green-600">
+                                                {formatCurrency(totals.income)}
+                                            </p>
+                                        </div>
+                                        <TrendingUp className="h-8 w-8 text-green-600" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-red-600">Expenses</p>
+                                            <p className="text-2xl font-bold text-red-600">
+                                                {formatCurrency(totals.expense)}
+                                            </p>
+                                        </div>
+                                        <TrendingDown className="h-8 w-8 text-red-600" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium">Net</p>
+                                            <p className={`text-2xl font-bold ${totals.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {formatCurrency(Math.abs(totals.net))}
+                                            </p>
+                                        </div>
+                                        {totals.net >= 0 ? (
+                                            <TrendingUp className="h-8 w-8 text-green-600" />
+                                        ) : (
+                                            <TrendingDown className="h-8 w-8 text-red-600" />
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Transactions Table */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Transactions ({filteredTransactions.length})</CardTitle>
+                                <CardDescription>
+                                    {filteredTransactions.length !== transactions.length &&
+                                        `${filteredTransactions.length} of ${transactions.length} transactions shown`
+                                    }
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Category</TableHead>
+                                            <TableHead>Description</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Payment Method</TableHead>
+                                            <TableHead>Member/Event</TableHead>
+                                            <TableHead>Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredTransactions.map((transaction) => (
+                                            <TableRow key={transaction.id}>
+                                                <TableCell>
+                                                    {new Date(transaction.date).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={transaction.type === 'income' ? 'default' : 'destructive'}>
+                                                        {transaction.type}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <span>
+                                                            {TRANSACTION_CATEGORIES[transaction.category].icon}
+                                                        </span>
+                                                        {TRANSACTION_CATEGORIES[transaction.category].label}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="max-w-xs truncate">
+                                                    {transaction.description}
+                                                </TableCell>
+                                                <TableCell className={`font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                                                    }`}>
+                                                    {transaction.type === 'income' ? '+' : '-'}
+                                                    {formatCurrency(transaction.amount)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {PAYMENT_METHODS.find(pm => pm.value === transaction.payment_method)?.label}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {transaction.member_name || transaction.event_name || '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleEditTransaction(transaction)}>
+                                                                <Edit className="mr-2 h-4 w-4" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDeleteTransaction(transaction.id)}
+                                                                className="text-red-600"
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+
+                                {filteredTransactions.length === 0 && (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        No transactions found matching your filters.
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="reports" className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Financial Reports</CardTitle>
+                                <CardDescription>
+                                    Generate detailed financial reports and analytics
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-center py-8 text-muted-foreground">
+                                    Advanced reporting features coming soon...
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+
+                <FinancialTransactionDialog
+                    open={showTransactionDialog}
+                    onOpenChange={(open) => {
+                        setShowTransactionDialog(open)
+                        if (!open) setEditingTransaction(null)
+                    }}
+                    transaction={editingTransaction}
+                    onSave={handleSaveTransaction}
+                    members={members}
+                    events={events}
+                />
+
+                <ServiceFinancialSummaryDialog
+                    open={showSummaryDialog}
+                    onOpenChange={(open) => {
+                        setShowSummaryDialog(open)
+                        if (!open) setEditingSummary(null)
+                    }}
+                    summary={editingSummary}
+                    onSave={async (summaryData) => {
+                        // For now, just close the dialog since we don't have the database table yet
+                        setShowSummaryDialog(false)
+                        setEditingSummary(null)
+                    }}
+                    events={events.map(e => ({ id: e.id, title: e.title, date: e.title }))}
+                    members={members}
+                    eventTypes={eventTypes}
+                />
+            </div>
+        </LayoutWrapper >
+    )
+}

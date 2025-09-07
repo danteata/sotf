@@ -8,9 +8,11 @@ import { Overview } from "@/components/overview"
 import { RecentMembers } from "@/components/recent-members"
 import { UpcomingEvents } from "@/components/upcoming-events"
 import { BirthdayWidget } from "@/components/birthday-widget"
+import { FinancialWidget } from "@/components/financial-widget"
+import { ServiceSummaryWidget } from "@/components/service-summary-widget"
 import { supabase } from "@/lib/supabase"
 import { useUserRole } from "@/hooks/use-user-role"
-import type { Member, AttendanceRecord, Event } from "@/types/database"
+import type { Member, AttendanceRecord, Event, FinancialTransaction } from "@/types/database"
 
 export function DashboardContent() {
   const { user, role, isAdmin, isMinistryLeader, isRegionLeader, ministryLeaderships, regionLeaderships, isLoading: roleLoading } = useUserRole()
@@ -26,6 +28,7 @@ export function DashboardContent() {
     activeMinistries: 0
   })
   const [members, setMembers] = useState<Member[]>([])
+  const [financialTransactions, setFinancialTransactions] = useState<FinancialTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scopedEvents, setScopedEvents] = useState<any[]>([])
@@ -177,7 +180,18 @@ export function DashboardContent() {
         // Store scoped events for UpcomingEvents component
         setScopedEvents(events || [])
 
-        // Skip giving data for now as requested
+        // Fetch financial transactions for the financial widget
+        const { data: financialData, error: financialError } = await supabase
+          .from('financial_transactions')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(50)
+
+        if (financialError) {
+          console.warn('Could not fetch financial data:', financialError)
+        } else {
+          setFinancialTransactions(financialData || [])
+        }
 
         // Calculate attendance stats based on data structure
         let weeklyAttendance = 0
@@ -409,6 +423,28 @@ export function DashboardContent() {
       {/* Birthday Widget */}
       <div className="mt-4">
         <BirthdayWidget members={members} />
+      </div>
+
+      {/* Financial Widget */}
+      <div className="mt-4">
+        <FinancialWidget
+          transactions={financialTransactions}
+          onAddTransaction={() => {
+            // This would typically open a dialog or navigate to financial page
+            window.location.href = '/financial'
+          }}
+        />
+      </div>
+
+      {/* Service Summary Widget - Note: This will show empty until service summaries are created */}
+      <div className="mt-4">
+        <ServiceSummaryWidget
+          summaries={[]} // Empty array for now - would be populated from service_summaries table
+          onAddSummary={() => {
+            // Navigate to financial page where service summaries can be added
+            window.location.href = '/financial'
+          }}
+        />
       </div>
 
       <div className="mt-4">

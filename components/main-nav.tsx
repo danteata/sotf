@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Calendar, Heart, Home, MessageSquare, PieChart, Settings, Users } from "lucide-react"
+import { Calendar, Heart, Home, MessageSquare, PieChart, Settings, Users, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   SidebarGroup,
@@ -38,6 +38,7 @@ const navigationItems = [
   { href: "/members", label: "Members", icon: Users, public: false },
   { href: "/attendance", label: "Attendance", icon: Calendar, public: false },
   { href: "/events", label: "Events", icon: Calendar, public: false },
+  { href: "/financial", label: "Financial", icon: DollarSign, public: false },
   { href: "/giving", label: "Giving", icon: Heart, public: false },
   { href: "/communication", label: "Communication", icon: MessageSquare, public: false },
   { href: "/reports", label: "Reports", icon: PieChart, public: false },

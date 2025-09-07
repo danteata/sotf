@@ -11,10 +11,12 @@ import {
   Calendar,
   BarChart3,
   Settings,
+  Church,
   MapPin,
   UserCheck,
   Shield,
-  Heart
+  Heart,
+  DollarSign
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
@@ -70,6 +72,12 @@ export function RoleBasedNavigation() {
       roles: ["admin", "ministry_leader", "region_leader"]
     },
     {
+      title: "Financial",
+      href: "/financial",
+      icon: DollarSign,
+      roles: ["admin", "treasurer"]
+    },
+    {
       title: "Reports",
       href: "/reports",
       icon: BarChart3,
@@ -99,12 +107,12 @@ export function RoleBasedNavigation() {
   // Filter navigation items based on user role
   const visibleItems = navigationItems.filter(item => {
     if (isLoading) return false
-    
+
     // Show items based on role
     if (isAdmin) return item.roles.includes("admin")
     if (isMinistryLeader && role === "ministry_leader") return item.roles.includes("ministry_leader")
     if (isRegionLeader && role === "region_leader") return item.roles.includes("region_leader")
-    
+
     // Default member access
     return item.roles.includes("member")
   })
@@ -124,7 +132,7 @@ export function RoleBasedNavigation() {
       {visibleItems.map((item) => {
         const Icon = item.icon
         const isActive = pathname === item.href
-        
+
         return (
           <Link key={item.href} href={item.href}>
             <Button
@@ -161,14 +169,14 @@ export function RoleIndicator() {
       case 'admin':
         return { label: 'Administrator', color: 'destructive' as const }
       case 'ministry_leader':
-        return { 
-          label: `${terminology.ministry_term} Leader`, 
+        return {
+          label: `${terminology.ministry_term} Leader`,
           color: 'default' as const,
           subtitle: ministryLeaderships.map(m => m.name).join(', ')
         }
       case 'region_leader':
-        return { 
-          label: 'Region Leader', 
+        return {
+          label: 'Region Leader',
           color: 'secondary' as const,
           subtitle: regionLeaderships.map(r => r.name).join(', ')
         }
