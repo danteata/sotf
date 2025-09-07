@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react"
 import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3 } from "lucide-react"
 import { getAttendanceStats, getMinistries, getRegions, getMembersLegacyFormat, getEnhancedAttendanceStats } from "@/lib/database-utils"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useUser } from "@clerk/nextjs"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,7 +11,9 @@ import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
 import { cn } from "@/lib/utils"
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 import { supabase } from "@/lib/supabase"
 
 interface AttendanceStats {
@@ -256,6 +256,19 @@ export function AttendanceContent() {
           </Button>
         </div>
       </div>
+
+      {loading && (
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-24 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
+      )}
 
       {error && (
         <div className="bg-destructive/10 text-destructive px-4 py-2 rounded-md">

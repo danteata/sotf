@@ -5,6 +5,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { supabase } from "@/lib/supabase"
 import { useUserRole } from "@/hooks/use-user-role"
 import { format, subWeeks, startOfWeek } from "date-fns"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface AttendanceData {
   name: string
@@ -133,7 +134,17 @@ export function Overview({ className }: OverviewProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[350px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-8 w-3/4 rounded-lg" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-64 w-full rounded-lg" />
+        </div>
       </div>
     )
   }

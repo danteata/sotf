@@ -86,40 +86,40 @@ export function AttendanceForm({
 
       // Transform fetched data with null checks and default values
       const formattedMembers = membersData.map((member: any) => {
-          const firstName = member.first_name || '';
-          const lastName = member.last_name || '';
-          const initials = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
+        const firstName = member.first_name || '';
+        const lastName = member.last_name || '';
+        const initials = `${firstName.charAt(0) || ''}${lastName.charAt(0) || ''}`.toUpperCase();
 
-          return {
-            id: member.id,
-            name: `${firstName} ${lastName}`.trim(),
-            email: member.email || '',
-            region: member.region || '',
-            ministries: member.ministries || [],
-            avatar: member.avatar_url || `/placeholder.svg?height=40&width=40`,
-            initials: initials || '??'
-          };
-        });
+        return {
+          id: member.id,
+          name: `${firstName} ${lastName}`.trim(),
+          email: member.email || '',
+          region: member.region || '',
+          ministries: member.ministries || [],
+          avatar: member.avatar_url || `/placeholder.svg?height=40&width=40`,
+          initials: initials || '??'
+        };
+      });
 
-        setMembers(formattedMembers);
-        setMinistries(ministriesData);
-        setRegions(regionsData);
-      } catch (error: any) {
-        setError(error.message);
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
+      setMembers(formattedMembers);
+      setMinistries(ministriesData);
+      setRegions(regionsData);
+    } catch (error: any) {
+      setError(error.message);
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    const refreshData = async () => {
-      setIsRefreshing(true);
-      try {
-        await fetchAllData();
-      } finally {
-        setIsRefreshing(false);
-      }
+  const refreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchAllData();
+    } finally {
+      setIsRefreshing(false);
     }
+  }
 
   // Separate useEffect for fetching existing attendance when date or event type changes
   useEffect(() => {
@@ -560,29 +560,22 @@ export function AttendanceForm({
                 </TableHeader>
                 <TableBody className="[&_tr:not(:last-child)]:border-b">
                   {loading ? (
-                    // Skeleton rows for member table
-                    [...Array(5)].map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell>
-                          <Skeleton className="h-4 w-4" />
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Skeleton className="h-8 w-8 rounded-full" />
-                            <Skeleton className="h-4 w-32" />
+                    <TableRow>
+                      <TableCell colSpan={4} className="h-24 text-center">
+                        <div className="space-y-4">
+                          <Skeleton className="h-8 w-full" />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-10 w-full" />
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Skeleton className="h-4 w-20" />
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Skeleton className="h-4 w-16" />
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Skeleton className="h-6 w-12 rounded-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          <Skeleton className="h-32 w-full" />
+                          <div className="flex gap-2">
+                            <Skeleton className="h-10 w-20" />
+                            <Skeleton className="h-10 w-20" />
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ) : filteredMembers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">

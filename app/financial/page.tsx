@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { FinancialTransactionDialog } from '@/components/financial-transaction-dialog'
 import { FinancialWidget } from '@/components/financial-widget'
+import { FinancialReports } from '@/components/financial-reports'
 import { ServiceFinancialSummaryDialog } from '@/components/service-financial-summary-dialog'
 import { ServiceSummaryWidget } from '@/components/service-summary-widget'
 import {
@@ -57,6 +58,7 @@ import {
 import { supabase } from '@/lib/supabase'
 
 import { LayoutWrapper } from '@/components/layout-wrapper'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function FinancialPage() {
     const { user, isLoaded } = useUser()
@@ -277,9 +279,39 @@ export default function FinancialPage() {
 
     if (!isLoaded || isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-            </div>
+            <LayoutWrapper>
+                <div className="container mx-auto p-6 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <Skeleton className="h-8 w-64 mb-2" />
+                            <Skeleton className="h-4 w-96" />
+                        </div>
+                        <div className="flex gap-2">
+                            <Skeleton className="h-10 w-20" />
+                            <Skeleton className="h-10 w-40" />
+                            <Skeleton className="h-10 w-32" />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <Skeleton className="h-24 w-full rounded-lg" />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <Skeleton className="h-32 w-full rounded-lg" />
+                            </div>
+                        ))}
+                    </div>
+
+                    <Skeleton className="h-96 w-full rounded-lg" />
+                </div>
+            </LayoutWrapper>
         )
     }
 
@@ -603,19 +635,7 @@ export default function FinancialPage() {
                     </TabsContent>
 
                     <TabsContent value="reports" className="space-y-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Financial Reports</CardTitle>
-                                <CardDescription>
-                                    Generate detailed financial reports and analytics
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-center py-8 text-muted-foreground">
-                                    Advanced reporting features coming soon...
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <FinancialReports transactions={transactions} />
                     </TabsContent>
                 </Tabs>
 
