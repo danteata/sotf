@@ -119,7 +119,7 @@ export function UserManagement() {
     const memberId = memberData?.id
 
     // Load member's current ministry leaderships
-    let ministryLeaderships = []
+    let ministryLeaderships: any[] = []
     if (memberId) {
       const { data } = await supabase
         .from('member_ministry_leadership')
@@ -127,10 +127,10 @@ export function UserManagement() {
         .eq('member_id', memberId)
       ministryLeaderships = data || []
     }
-    setSelectedMinistries(ministryLeaderships.map((ml) => ml.ministry_id))
+    setSelectedMinistries(ministryLeaderships.map((ml: any) => ml.ministry_id))
 
     // Load member's current region leaderships
-    let regionLeaderships = []
+    let regionLeaderships: any[] = []
     if (memberId) {
       const { data } = await supabase
         .from('member_region_leadership')
@@ -138,7 +138,7 @@ export function UserManagement() {
         .eq('member_id', memberId)
       regionLeaderships = data || []
     }
-    setSelectedRegions(regionLeaderships.map((rl) => rl.region_id))
+    setSelectedRegions(regionLeaderships.map((rl: any) => rl.region_id))
 
     setIsDialogOpen(true)
   }
@@ -166,7 +166,7 @@ export function UserManagement() {
       // Update ministry leaderships
       if (
         memberId &&
-        (selectedRole === 'ministry_leader' || selectedRole === 'admin')
+        (selectedRole === 'ministry_leader' || selectedRole === 'organization_admin' || selectedRole === 'division_admin' || selectedRole === 'unit_admin')
       ) {
         // Delete existing leaderships
         await supabase
@@ -198,7 +198,7 @@ export function UserManagement() {
       // Update region leaderships
       if (
         memberId &&
-        (selectedRole === 'region_leader' || selectedRole === 'admin')
+        (selectedRole === 'region_leader' || selectedRole === 'organization_admin' || selectedRole === 'division_admin' || selectedRole === 'unit_admin')
       ) {
         // Delete existing leaderships
         await supabase
@@ -322,7 +322,10 @@ export function UserManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                  <SelectItem value="organization_admin">Organization Admin</SelectItem>
+                  <SelectItem value="division_admin">Division Admin</SelectItem>
+                  <SelectItem value="unit_admin">Unit Admin</SelectItem>
                   <SelectItem value="ministry_leader">
                     {terminology.ministry_term} Leader
                   </SelectItem>
@@ -374,12 +377,16 @@ export function UserManagement() {
                         <TableCell>
                           <Badge
                             variant={
-                              user.role === 'admin'
+                              user.role === 'super_admin'
                                 ? 'destructive'
-                                : user.role === 'ministry_leader'
+                                : user.role === 'organization_admin'
+                                ? 'destructive'
+                                : user.role === 'division_admin' || user.role === 'unit_admin'
                                 ? 'default'
-                                : user.role === 'region_leader'
+                                : user.role === 'ministry_leader'
                                 ? 'secondary'
+                                : user.role === 'region_leader'
+                                ? 'outline'
                                 : 'outline'
                             }
                           >
@@ -387,8 +394,14 @@ export function UserManagement() {
                               ? `${terminology.ministry_term} Leader`
                               : user.role === 'region_leader'
                               ? 'Region Leader'
-                              : user.role === 'admin'
-                              ? 'Administrator'
+                              : user.role === 'super_admin'
+                              ? 'Super Admin'
+                              : user.role === 'organization_admin'
+                              ? 'Organization Admin'
+                              : user.role === 'division_admin'
+                              ? 'Division Admin'
+                              : user.role === 'unit_admin'
+                              ? 'Unit Admin'
                               : 'Member'}
                           </Badge>
                         </TableCell>
@@ -441,19 +454,25 @@ export function UserManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="unit_admin">Unit Admin</SelectItem>
+                      <SelectItem value="division_admin">Division Admin</SelectItem>
+                      <SelectItem value="organization_admin">Organization Admin</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
                       <SelectItem value="ministry_leader">
                         {terminology.ministry_term} Leader
                       </SelectItem>
                       <SelectItem value="region_leader">
                         Region Leader
                       </SelectItem>
-                      <SelectItem value="admin">Administrator</SelectItem>
+
                     </SelectContent>
                   </Select>
                 </div>
 
                 {(selectedRole === 'ministry_leader' ||
-                  selectedRole === 'admin') && (
+                  selectedRole === 'organization_admin' ||
+                  selectedRole === 'division_admin' ||
+                  selectedRole === 'unit_admin') && (
                   <div>
                     <Label>{terminology.ministry_term} Leadership</Label>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
@@ -490,7 +509,9 @@ export function UserManagement() {
                 )}
 
                 {(selectedRole === 'region_leader' ||
-                  selectedRole === 'admin') && (
+                  selectedRole === 'organization_admin' ||
+                  selectedRole === 'division_admin' ||
+                  selectedRole === 'unit_admin') && (
                   <div>
                     <Label>Region Leadership</Label>
                     <div className="space-y-2 max-h-32 overflow-y-auto">

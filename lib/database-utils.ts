@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { format, subWeeks, startOfWeek, subDays } from 'date-fns'
-import type { Member, Ministry, Region, MemberWithDetails, MemberMinistry } from '@/types/database'
+import type { Member, Ministry, Region, MemberWithDetails, MemberMinistry, Denomination, Council, Branch } from '@/types/database'
 
 /**
  * Utility functions for working with the improved database structure
@@ -756,5 +756,319 @@ export async function getMemberMinistries(memberId: string) {
   } catch (error) {
     console.error('Error getting member ministries:', error)
     return []
+  }
+}
+
+// ============================================================================
+// ORGANIZATION-AWARE QUERY FUNCTIONS
+// ============================================================================
+
+/**
+ * Apply organization filters to a Supabase query
+ */
+export function applyOrganizationFilters(query: any, organizationFilter: Record<string, string>) {
+  let filteredQuery = query
+
+  if (organizationFilter.branch_id) {
+    filteredQuery = filteredQuery.eq('branch_id', organizationFilter.branch_id)
+  } else if (organizationFilter.council_id) {
+    filteredQuery = filteredQuery.eq('council_id', organizationFilter.council_id)
+  } else if (organizationFilter.denomination_id) {
+    filteredQuery = filteredQuery.eq('denomination_id', organizationFilter.denomination_id)
+  }
+
+  return filteredQuery
+}
+
+/**
+ * Get members filtered by current organization context
+ */
+export async function getMembersByOrganization(organizationFilter: Record<string, string>): Promise<MemberWithDetails[]> {
+  try {
+    let query = supabase
+      .from('members')
+      .select(`
+        *,
+        regions!region_id(name),
+        member_ministries(ministries(name))
+      `)
+      .eq('status', 'active')
+      .order('name')
+
+    // Apply organization filters
+    query = applyOrganizationFilters(query, organizationFilter)
+
+    const { data: members, error } = await query
+    if (error) throw error
+
+    // Transform data to match MemberWithDetails interface
+    return members?.map(member => ({
+      ...member,
+      region_name: (member as any).regions?.name || null,
+      ministry_names: (member as any).member_ministries?.map((mm: any) => mm.ministries?.name).filter(Boolean) || [],
+      ministries_detail: (member as any).member_ministries?.map((mm: any) => mm.ministries).filter(Boolean) || []
+    })) as MemberWithDetails[] || []
+
+  } catch (error) {
+    console.error('Error fetching members by organization:', error)
+    return []
+  }
+}
+
+/**
+ * Get ministries filtered by current organization context
+ */
+export async function getMinistriesByOrganization(organizationFilter: Record<string, string>): Promise<Ministry[]> {
+  try {
+    let query = supabase
+      .from('ministries')
+      .select(`
+        *,
+        leader_member:members!leader_id(name)
+      `)
+      .eq('active', true)
+      .order('name')
+
+    // Apply organization filters
+    query = applyOrganizationFilters(query, organizationFilter)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    // Transform the data to include leader name
+    return (data as any[]).map(ministry => ({
+      ...ministry,
+      leader_name: ministry.leader_member?.name || null
+    })) as Ministry[]
+
+  } catch (error) {
+    console.error('Error fetching ministries by organization:', error)
+    return []
+  }
+}
+
+/**
+ * Get regions filtered by current organization context
+ */
+export async function getRegionsByOrganization(organizationFilter: Record<string, string>): Promise<Region[]> {
+  try {
+    let query = supabase
+      .from('regions')
+      .select(`
+        *,
+        regional_minister:members!regional_minister_id(name)
+      `)
+      .eq('active', true)
+      .order('name')
+
+    // Apply organization filters
+    query = applyOrganizationFilters(query, organizationFilter)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    // Transform the data to include regional minister name
+    return (data as any[]).map(region => ({
+      ...region,
+      regional_minister_name: region.regional_minister?.name || null
+    })) as Region[]
+
+  } catch (error) {
+    console.error('Error fetching regions by organization:', error)
+    return []
+  }
+}
+
+/**
+ * Get events filtered by current organization context
+ */
+export async function getEventsByOrganization(organizationFilter: Record<string, string>) {
+  try {
+    let query = supabase
+      .from('events')
+      .select(`
+        *,
+        event_types(value, label, color, icon)
+      `)
+      .order('date', { ascending: false })
+
+    // Apply organization filters
+    query = applyOrganizationFilters(query, organizationFilter)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    // Transform data to include event type details
+    return data?.map(event => ({
+      ...event,
+      event_type_value: (event as any).event_types?.value,
+      event_type_label: (event as any).event_types?.label,
+      event_type_color: (event as any).event_types?.color,
+      event_type_icon: (event as any).event_types?.icon
+    })) || []
+
+  } catch (error) {
+    console.error('Error fetching events by organization:', error)
+    return []
+  }
+}
+
+/**
+ * Get attendance records filtered by current organization context
+ */
+export async function getAttendanceByOrganization(organizationFilter: Record<string, string>) {
+  try {
+    let query = supabase
+      .from('attendance')
+      .select(`
+        *,
+        event_types(value, label)
+      `)
+      .order('date', { ascending: false })
+
+    // Apply organization filters
+    query = applyOrganizationFilters(query, organizationFilter)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    return data || []
+
+  } catch (error) {
+    console.error('Error fetching attendance by organization:', error)
+    return []
+  }
+}
+
+/**
+ * Get organization statistics for dashboard
+ */
+export async function getOrganizationStats(organizationFilter: Record<string, string>) {
+  try {
+    // Get member count
+    let memberQuery = supabase
+      .from('members')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active')
+
+    memberQuery = applyOrganizationFilters(memberQuery, organizationFilter)
+    const { count: memberCount } = await memberQuery
+
+    // Get ministry count
+    let ministryQuery = supabase
+      .from('ministries')
+      .select('id', { count: 'exact', head: true })
+      .eq('active', true)
+
+    ministryQuery = applyOrganizationFilters(ministryQuery, organizationFilter)
+    const { count: ministryCount } = await ministryQuery
+
+    // Get recent events count (last 30 days)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    let eventsQuery = supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+
+    eventsQuery = applyOrganizationFilters(eventsQuery, organizationFilter)
+    const { count: recentEventsCount } = await eventsQuery
+
+    // Get this week's attendance total
+    const today = new Date()
+    const thisWeekStart = new Date(today)
+    thisWeekStart.setDate(today.getDate() - today.getDay())
+
+    let attendanceQuery = supabase
+      .from('attendance')
+      .select('count')
+      .gte('date', thisWeekStart.toISOString().split('T')[0])
+
+    attendanceQuery = applyOrganizationFilters(attendanceQuery, organizationFilter)
+    const { data: attendanceData } = await attendanceQuery
+
+    const thisWeekAttendance = attendanceData?.reduce((sum, record) => sum + record.count, 0) || 0
+
+    return {
+      memberCount: memberCount || 0,
+      ministryCount: ministryCount || 0,
+      recentEventsCount: recentEventsCount || 0,
+      thisWeekAttendance
+    }
+
+  } catch (error) {
+    console.error('Error fetching organization stats:', error)
+    return {
+      memberCount: 0,
+      ministryCount: 0,
+      recentEventsCount: 0,
+      thisWeekAttendance: 0
+    }
+  }
+}
+
+/**
+ * Create a new organization entity with proper relationships
+ */
+export async function createOrganizationHierarchy(
+  denominationData?: Partial<Denomination>,
+  councilData?: Partial<Council>,
+  branchData?: Partial<Branch>
+) {
+  try {
+    let denominationId: string | undefined
+    let councilId: string | undefined
+    let branchId: string | undefined
+
+    // Create denomination if provided
+    if (denominationData) {
+      const { data: denom, error: denomError } = await supabase
+        .from('denominations')
+        .insert([denominationData])
+        .select()
+        .single()
+
+      if (denomError) throw denomError
+      denominationId = denom.id
+    }
+
+    // Create council if provided
+    if (councilData && denominationId) {
+      const { data: council, error: councilError } = await supabase
+        .from('councils')
+        .insert([{ ...councilData, denomination_id: denominationId }])
+        .select()
+        .single()
+
+      if (councilError) throw councilError
+      councilId = council.id
+    }
+
+    // Create branch if provided
+    if (branchData && councilId && denominationId) {
+      const { data: branch, error: branchError } = await supabase
+        .from('branches')
+        .insert([{
+          ...branchData,
+          council_id: councilId,
+          denomination_id: denominationId
+        }])
+        .select()
+        .single()
+
+      if (branchError) throw branchError
+      branchId = branch.id
+    }
+
+    return {
+      denominationId,
+      councilId,
+      branchId
+    }
+
+  } catch (error) {
+    console.error('Error creating organization hierarchy:', error)
+    throw error
   }
 }
