@@ -3,3 +3,7 @@ node_modules
 .env
 .env.local
 .vercel
+supabase/*.sql
+supabase/.temp/
+memory-bank/
+*.txt

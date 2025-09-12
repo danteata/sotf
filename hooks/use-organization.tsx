@@ -3,33 +3,23 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
-import type { Denomination, Council, Branch, OrganizationContext } from '@/types/database'
-
-interface OrganizationTerminology {
-  level1_singular: string
-  level1_plural: string
-  level2_singular: string
-  level2_plural: string
-  level3_singular: string
-  level3_plural: string
-}
+import type { Organization, Division, Unit, OrganizationContext } from '@/types/database'
 
 interface OrganizationState {
   context: OrganizationContext | null
-  currentDenomination: Denomination | null
-  currentCouncil: Council | null
-  currentBranch: Branch | null
-  terminology: OrganizationTerminology | null
+  currentOrganization: Organization | null
+  currentDivision: Division | null
+  currentUnit: Unit | null
   isLoading: boolean
   error: string | null
 }
 
 interface OrganizationActions {
-  setCurrentDenomination: (denomination: Denomination | null) => void
-  setCurrentCouncil: (council: Council | null) => void
-  setCurrentBranch: (branch: Branch | null) => void
+  setCurrentOrganization: (organization: Organization | null) => void
+  setCurrentDivision: (division: Division | null) => void
+  setCurrentUnit: (unit: Unit | null) => void
   refreshContext: () => Promise<void>
-  switchOrganization: (denominationId?: string, councilId?: string, branchId?: string) => Promise<void>
+  switchOrganization: (organizationId?: string, divisionId?: string, unitId?: string) => Promise<void>
 }
 
 const OrganizationReactContext = createContext<(OrganizationState & OrganizationActions) | null>(null)
@@ -38,10 +28,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const { user: clerkUser, isLoaded } = useUser()
   const [state, setState] = useState<OrganizationState>({
     context: null,
-    currentDenomination: null,
-    currentCouncil: null,
-    currentBranch: null,
-    terminology: null,
+    currentOrganization: null,
+    currentDivision: null,
+    currentUnit: null,
     isLoading: true,
     error: null
   })
@@ -52,10 +41,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       setState(prev => ({
         ...prev,
         context: null,
-        currentDenomination: null,
-        currentCouncil: null,
-        currentBranch: null,
-        terminology: null,
+        currentOrganization: null,
+        currentDivision: null,
+        currentUnit: null,
         isLoading: false
       }))
       return
@@ -77,10 +65,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         setState(prev => ({
           ...prev,
           context: null,
-          currentDenomination: null,
-          currentCouncil: null,
-          currentBranch: null,
-          terminology: null,
+          currentOrganization: null,
+          currentDivision: null,
+          currentUnit: null,
           isLoading: false
         }))
         return
@@ -124,25 +111,18 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         division: null,
         unit: null,
         subUnit: null,
-        denomination: null,
-        council: null,
-        branch: null,
         userRole: userData.role as any,
         accessibleOrganizations: accessibleOrganizations,
         accessibleDivisions: [],
         accessibleUnits: [],
-        accessibleSubUnits: [],
-        accessibleDenominations: [],
-        accessibleCouncils: [],
-        accessibleBranches: []
+        accessibleSubUnits: []
       }
 
       setState({
         context,
-        currentDenomination: null,
-        currentCouncil: null,
-        currentBranch: null,
-        terminology: null,
+        currentOrganization,
+        currentDivision: null,
+        currentUnit: null,
         isLoading: false,
         error: null
       })
@@ -157,44 +137,44 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     }
   }, [clerkUser, isLoaded])
 
-  // Set current denomination
-  const setCurrentDenomination = useCallback((denomination: Denomination | null) => {
+  // Set current organization
+  const setCurrentOrganization = useCallback((organization: Organization | null) => {
     setState(prev => ({
       ...prev,
-      currentDenomination: denomination,
+      currentOrganization: organization,
       context: prev.context ? {
         ...prev.context,
-        denomination
+        organization
       } : null
     }))
   }, [])
 
-  // Set current council
-  const setCurrentCouncil = useCallback((council: Council | null) => {
+  // Set current division
+  const setCurrentDivision = useCallback((division: Division | null) => {
     setState(prev => ({
       ...prev,
-      currentCouncil: council,
+      currentDivision: division,
       context: prev.context ? {
         ...prev.context,
-        council
+        division
       } : null
     }))
   }, [])
 
-  // Set current branch
-  const setCurrentBranch = useCallback((branch: Branch | null) => {
+  // Set current unit
+  const setCurrentUnit = useCallback((unit: Unit | null) => {
     setState(prev => ({
       ...prev,
-      currentBranch: branch,
+      currentUnit: unit,
       context: prev.context ? {
         ...prev.context,
-        branch
+        unit
       } : null
     }))
   }, [])
 
   // Switch organization context
-  const switchOrganization = useCallback(async (denominationId?: string, councilId?: string, branchId?: string) => {
+  const switchOrganization = useCallback(async (organizationId?: string, divisionId?: string, unitId?: string) => {
     if (!clerkUser) return
 
     try {
@@ -202,9 +182,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       const { error } = await supabase
         .from('users')
         .update({
-          denomination_id: denominationId || null,
-          council_id: councilId || null,
-          branch_id: branchId || null
+          organization_id: organizationId || null,
+          division_id: divisionId || null,
+          unit_id: unitId || null
         })
         .eq('clerk_user_id', clerkUser.id)
 
@@ -233,9 +213,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   const value: OrganizationState & OrganizationActions = {
     ...state,
-    setCurrentDenomination,
-    setCurrentCouncil,
-    setCurrentBranch,
+    setCurrentOrganization,
+    setCurrentDivision,
+    setCurrentUnit,
     refreshContext,
     switchOrganization
   }
@@ -264,48 +244,33 @@ export function useOrganizationFilter() {
 
     const filters: Record<string, string> = {}
 
-    if (context.branch?.id) {
-      filters.branch_id = context.branch.id
-    } else if (context.council?.id) {
-      filters.council_id = context.council.id
-    } else if (context.denomination?.id) {
-      filters.denomination_id = context.denomination.id
+    if (context.organization?.id) {
+      filters.organization_id = context.organization.id
     }
 
     return filters
   }, [context])
 }
 
-// Hook for checking if user can access a specific organization level
+// Hook for checking if user can access a specific organization
 export function useOrganizationAccess() {
   const { context } = useOrganization()
 
-  return useCallback((level: 'denomination' | 'council' | 'branch', id?: string) => {
+  return useCallback((organizationId?: string) => {
     if (!context) return false
 
-    switch (level) {
-      case 'denomination':
-        return (context.accessibleDenominations || []).some((d: any) => !id || d.id === id)
-      case 'council':
-        return (context.accessibleCouncils || []).some((c: any) => !id || c.id === id)
-      case 'branch':
-        return (context.accessibleBranches || []).some((b: any) => !id || b.id === id)
-      default:
-        return false
-    }
+    return context.accessibleOrganizations.some((org: any) => !organizationId || org.id === organizationId)
   }, [context])
 }
 
-// Hook for getting organization hierarchy path
+// Hook for getting organization path
 export function useOrganizationPath() {
   const { context } = useOrganization()
 
   if (!context) return []
 
   const path = []
-  if (context.denomination) path.push(context.denomination)
-  if (context.council) path.push(context.council)
-  if (context.branch) path.push(context.branch)
+  if (context.organization) path.push(context.organization)
 
   return path
 }

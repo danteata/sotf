@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { useOrganization } from "@/hooks/use-organization"
-import type { Denomination, Council, Branch } from "@/types/database"
+import { supabase } from "@/lib/supabase"
+import { useUser } from "@clerk/nextjs"
 
 interface OrganizationSelectorProps {
   className?: string
@@ -22,9 +23,10 @@ interface OrganizationSelectorProps {
 export function OrganizationSelector({ className }: OrganizationSelectorProps) {
   const {
     context,
-    switchOrganization,
     isLoading
   } = useOrganization()
+
+  const { user: clerkUser } = useUser()
 
   const accessibleOrganizations = context?.accessibleOrganizations || []
   const currentOrganization = context?.organization
@@ -60,20 +62,24 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
   const Icon = currentOrg.icon
 
   const handleOrganizationSelect = async (org: any) => {
+    if (!clerkUser?.id) {
+      console.error('No Clerk user ID available')
+      return
+    }
+
     try {
       // Update user's organization_id in the database
       const { error } = await supabase
         .from('users')
         .update({ organization_id: org.id })
-        .eq('clerk_user_id', context.userRole ? 'user_2tyL2ZeAMaXQmROtK2aGtFIqP44' : '')
+        .eq('clerk_user_id', clerkUser.id)
 
       if (error) throw error
 
       // Close the dropdown
       setIsOpen(false)
 
-      // The use-organization hook should automatically refresh
-      // due to the database change, but we can also force a refresh
+      // Force page reload to refresh the organization context
       window.location.reload()
     } catch (error) {
       console.error('Failed to switch organization:', error)

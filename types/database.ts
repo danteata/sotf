@@ -82,6 +82,8 @@ export interface Organization {
   updated_at: string
 }
 
+
+
 export interface Division {
   id: string
   name: string
@@ -153,7 +155,7 @@ export interface OrganizationContext {
 }
 
 // Role-based access control types
-export type UserRole = 'super_admin' | 'organization_admin' | 'division_admin' | 'unit_admin' | 'sub_unit_admin' | 'ministry_leader' | 'region_leader' | 'member'
+export type UserRole = 'super_admin' | 'admin' | 'organization_admin' | 'division_admin' | 'unit_admin' | 'sub_unit_admin' | 'ministry_leader' | 'region_leader' | 'member'
 
 // Organization Terminology Types
 export interface OrganizationTerminology {

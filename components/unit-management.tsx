@@ -92,7 +92,7 @@ export function UnitManagement() {
   const { toast } = useToast()
 
   // Get organization context from the layout
-  const { context: orgContext, currentDenomination, currentCouncil, currentBranch } = useOrganization()
+  const { context: orgContext, currentOrganization, currentDivision, currentUnit } = useOrganization()
 
   // Get current user from Clerk (must be at top level)
   const { user: clerkUser } = useUser()
