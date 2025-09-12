@@ -155,9 +155,9 @@ export function useUserRole(): UserRoleData {
   return {
     user: userData,
     role,
-    isAdmin: role === 'admin',
-    isMinistryLeader: role === 'ministry_leader' || role === 'admin',
-    isRegionLeader: role === 'region_leader' || role === 'admin',
+    isAdmin: role === 'admin' || role === 'super_admin' || role === 'organization_admin',
+    isMinistryLeader: role === 'ministry_leader' || role === 'admin' || role === 'super_admin' || role === 'organization_admin',
+    isRegionLeader: role === 'region_leader' || role === 'admin' || role === 'super_admin' || role === 'organization_admin',
     ministryLeaderships,
     regionLeaderships,
     isLoading,

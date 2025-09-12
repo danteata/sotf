@@ -16,7 +16,8 @@ import {
   UserCheck,
   Shield,
   Heart,
-  DollarSign
+  DollarSign,
+  Building2
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
@@ -39,13 +40,19 @@ export function RoleBasedNavigation() {
       title: "Dashboard",
       href: "/",
       icon: Home,
-      roles: ["admin", "ministry_leader", "region_leader", "member"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader", "member"]
     },
     {
       title: "Members",
       href: "/members",
       icon: Users,
-      roles: ["admin"]
+      roles: ["admin", "organization_admin"]
+    },
+    {
+      title: "Organization",
+      href: "/organization",
+      icon: Building2,
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {
       title: `My ${terminology.ministry_term}`,
@@ -63,13 +70,13 @@ export function RoleBasedNavigation() {
       title: "Events",
       href: "/events",
       icon: Calendar,
-      roles: ["admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
     },
     {
       title: "Attendance",
       href: "/attendance",
       icon: UserCheck,
-      roles: ["admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
     },
     {
       title: "Financial",
@@ -81,13 +88,13 @@ export function RoleBasedNavigation() {
       title: "Reports",
       href: "/reports",
       icon: BarChart3,
-      roles: ["admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
     },
     {
       title: "Map",
       href: "/map",
       icon: MapPin,
-      roles: ["admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
     },
     {
       title: "User Management",
@@ -112,6 +119,9 @@ export function RoleBasedNavigation() {
     if (isAdmin) return item.roles.includes("admin")
     if (isMinistryLeader && role === "ministry_leader") return item.roles.includes("ministry_leader")
     if (isRegionLeader && role === "region_leader") return item.roles.includes("region_leader")
+
+    // Check for organization roles
+    if (role && item.roles.includes(role)) return true
 
     // Default member access
     return item.roles.includes("member")
@@ -166,8 +176,18 @@ export function RoleIndicator() {
 
   const getRoleDisplay = () => {
     switch (role) {
+      case 'super_admin':
+        return { label: 'Super Administrator', color: 'destructive' as const }
       case 'admin':
         return { label: 'Administrator', color: 'destructive' as const }
+      case 'organization_admin':
+        return { label: 'Organization Admin', color: 'destructive' as const }
+      case 'division_admin':
+        return { label: 'Division Admin', color: 'default' as const }
+      case 'unit_admin':
+        return { label: 'Unit Admin', color: 'secondary' as const }
+      case 'sub_unit_admin':
+        return { label: 'Sub-Unit Admin', color: 'secondary' as const }
       case 'ministry_leader':
         return {
           label: `${terminology.ministry_term} Leader`,

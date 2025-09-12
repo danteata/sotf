@@ -65,12 +65,15 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
     try {
       // Get user's organization context from database
-      const { data: userOrg, error: userError } = await supabase
-        .rpc('get_user_organization_context', { user_clerk_id: clerkUser.id })
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, clerk_user_id, role, organization_id')
+        .eq('clerk_user_id', clerkUser.id)
+        .single()
 
       if (userError) throw userError
 
-      if (!userOrg || userOrg.length === 0) {
+      if (!userData) {
         setState(prev => ({
           ...prev,
           context: null,
@@ -83,108 +86,63 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         return
       }
 
-      const orgContext = userOrg[0]
+      // Get user's organization
+      let currentOrganization = null
+      let accessibleOrganizations: any[] = []
 
-      // Get accessible organizations
-      const { data: accessibleOrgs, error: orgsError } = await supabase
-        .rpc('get_user_accessible_organizations', { user_clerk_id: clerkUser.id })
-
-      if (orgsError) throw orgsError
-
-      // Load current organization details
-      let currentDenomination = null
-      let currentCouncil = null
-      let currentBranch = null
-
-      if (orgContext.denomination_id) {
-        const { data: denom } = await supabase
-          .from('denominations')
+      if (userData.role === 'super_admin') {
+        // Super admin can see all organizations
+        const { data: allOrgs, error: orgsError } = await supabase
+          .from('organizations')
           .select('*')
-          .eq('id', orgContext.denomination_id)
-          .single()
-        currentDenomination = denom
-      }
+          .eq('active', true)
 
-      if (orgContext.council_id) {
-        const { data: council } = await supabase
-          .from('councils')
-          .select('*')
-          .eq('id', orgContext.council_id)
-          .single()
-        currentCouncil = council
-      }
+        if (orgsError) throw orgsError
+        accessibleOrganizations = allOrgs || []
 
-      if (orgContext.branch_id) {
-        const { data: branch } = await supabase
-          .from('branches')
-          .select('*')
-          .eq('id', orgContext.branch_id)
-          .single()
-        currentBranch = branch
-      }
-
-      // Group accessible organizations
-      const denominations = accessibleOrgs?.reduce((acc: Denomination[], org: any) => {
-        if (org.denomination_id && !acc.find(d => d.id === org.denomination_id)) {
-          acc.push({
-            id: org.denomination_id,
-            name: org.denomination_name,
-            description: '',
-            active: true,
-            created_at: '',
-            updated_at: ''
-          })
+        // Set current organization to the one the user is associated with
+        if (userData.organization_id) {
+          currentOrganization = accessibleOrganizations.find(org => org.id === userData.organization_id)
         }
-        return acc
-      }, []) || []
+      } else {
+        // Regular users can only see their organization
+        if (userData.organization_id) {
+          const { data: userOrg, error: orgError } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('id', userData.organization_id)
+            .single()
 
-      const councils = accessibleOrgs?.reduce((acc: Council[], org: any) => {
-        if (org.council_id && !acc.find(c => c.id === org.council_id)) {
-          acc.push({
-            id: org.council_id,
-            name: org.council_name,
-            description: '',
-            denomination_id: org.denomination_id,
-            active: true,
-            created_at: '',
-            updated_at: ''
-          })
+          if (orgError) throw orgError
+          currentOrganization = userOrg
+          accessibleOrganizations = userOrg ? [userOrg] : []
         }
-        return acc
-      }, []) || []
-
-      const branches = accessibleOrgs?.reduce((acc: Branch[], org: any) => {
-        if (org.branch_id && !acc.find(b => b.id === org.branch_id)) {
-          acc.push({
-            id: org.branch_id,
-            name: org.branch_name,
-            description: '',
-            council_id: org.council_id,
-            denomination_id: org.denomination_id,
-            active: true,
-            created_at: '',
-            updated_at: ''
-          })
-        }
-        return acc
-      }, []) || []
+      }
 
       const context: OrganizationContext = {
-        denomination: currentDenomination,
-        council: currentCouncil,
-        branch: currentBranch,
-        userRole: orgContext.user_role as any,
-        accessibleDenominations: denominations,
-        accessibleCouncils: councils,
-        accessibleBranches: branches
+        organization: currentOrganization,
+        division: null,
+        unit: null,
+        subUnit: null,
+        denomination: null,
+        council: null,
+        branch: null,
+        userRole: userData.role as any,
+        accessibleOrganizations: accessibleOrganizations,
+        accessibleDivisions: [],
+        accessibleUnits: [],
+        accessibleSubUnits: [],
+        accessibleDenominations: [],
+        accessibleCouncils: [],
+        accessibleBranches: []
       }
 
       setState({
         context,
-        currentDenomination,
-        currentCouncil,
-        currentBranch,
-        terminology: null, // TODO: Load terminology from database
+        currentDenomination: null,
+        currentCouncil: null,
+        currentBranch: null,
+        terminology: null,
         isLoading: false,
         error: null
       })
@@ -327,11 +285,11 @@ export function useOrganizationAccess() {
 
     switch (level) {
       case 'denomination':
-        return context.accessibleDenominations.some((d: any) => !id || d.id === id)
+        return (context.accessibleDenominations || []).some((d: any) => !id || d.id === id)
       case 'council':
-        return context.accessibleCouncils.some((c: any) => !id || c.id === id)
+        return (context.accessibleCouncils || []).some((c: any) => !id || c.id === id)
       case 'branch':
-        return context.accessibleBranches.some((b: any) => !id || b.id === id)
+        return (context.accessibleBranches || []).some((b: any) => !id || b.id === id)
       default:
         return false
     }
