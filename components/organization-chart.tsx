@@ -44,6 +44,7 @@ import {
 import { useUserRole } from '@/hooks/use-user-role'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
+import { useUser } from '@clerk/nextjs'
 import type { Organization, Division, Unit } from '@/types/database'
 
 interface ChartNode {
@@ -69,6 +70,7 @@ interface OrganizationChartProps {
 export function OrganizationChart({ organizationId, onUnitMove }: OrganizationChartProps) {
   const { isAdmin, role } = useUserRole()
   const { toast } = useToast()
+  const { user: clerkUser } = useUser()
 
   // State
   const [loading, setLoading] = useState(true)
@@ -93,14 +95,20 @@ export function OrganizationChart({ organizationId, onUnitMove }: OrganizationCh
   const loadOrganizationChart = async () => {
     setLoading(true)
     try {
-      // Get current user's organization context
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      // Get current user's organization context using Clerk user
+      if (!clerkUser?.id) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to access organization chart.",
+          variant: "destructive",
+        })
+        return
+      }
 
       const { data: userData } = await supabase
         .from('users')
         .select('organization_id')
-        .eq('clerk_user_id', user.id)
+        .eq('clerk_user_id', clerkUser.id)
         .single()
 
       const orgId = organizationId || userData?.organization_id

@@ -155,14 +155,20 @@ export function UnitManagement() {
   const loadOrganizationData = async () => {
     setLoading(true)
     try {
-      // Get current user's organization context
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      // Get current user's organization context using Clerk user
+      if (!clerkUser?.id) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to access unit management.",
+          variant: "destructive",
+        })
+        return
+      }
 
       const { data: userData } = await supabase
         .from('users')
         .select('organization_id, division_id')
-        .eq('clerk_user_id', user.id)
+        .eq('clerk_user_id', clerkUser.id)
         .single()
 
       if (!userData?.organization_id) {
