@@ -253,7 +253,7 @@ export function ServiceMetadataSummaryDialog({
             <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {summary ? 'Edit Service Metadata' : 'Add Service Metadata'}
+                        {summary ? 'Edit Service Summary' : 'Add Service Summary'}
                     </DialogTitle>
                     <DialogDescription>
                         Record non-financial metadata for a church service or event
@@ -654,7 +654,7 @@ export function ServiceMetadataSummaryDialog({
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={isLoading}>
-                                {isLoading ? 'Saving...' : summary ? 'Update Metadata' : 'Add Metadata'}
+                                {isLoading ? 'Saving...' : summary ? 'Update Report' : 'Add Report'}
                             </Button>
                         </DialogFooter>
                     </form>

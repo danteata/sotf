@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
+import { ServiceMetadataSummaryDialog } from "@/components/service-metadata-summary-dialog"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
@@ -70,6 +71,13 @@ export function AttendanceContent() {
   const [availableRegions, setAvailableRegions] = useState<any[]>([])
   const [filtersLoading, setFiltersLoading] = useState(false)
 
+  // Service metadata dialog state
+  const [showMetadataDialog, setShowMetadataDialog] = useState(false)
+  const [editingMetadata, setEditingMetadata] = useState<any>(null)
+  const [members, setMembers] = useState<any[]>([])
+  const [events, setEvents] = useState<any[]>([])
+  const [eventTypes, setEventTypes] = useState<any[]>([])
+
   useEffect(() => {
     fetchAttendanceStats()
   }, [])
@@ -77,6 +85,7 @@ export function AttendanceContent() {
   useEffect(() => {
     if (clerkLoaded) {
       loadAvailableFilters()
+      loadMetadataData()
     }
   }, [clerkLoaded, clerkUser])
 
@@ -216,6 +225,23 @@ export function AttendanceContent() {
       setAvailableRegions([])
     } finally {
       setFiltersLoading(false)
+    }
+  }
+
+  const loadMetadataData = async () => {
+    try {
+      // Load members, events, and event types for the metadata dialog
+      const [membersData, eventsData, eventTypesData] = await Promise.all([
+        supabase.from('members').select('id, name, ministries').eq('status', 'active').order('name'),
+        supabase.from('events').select('id, title, date').order('date', { ascending: false }).limit(50),
+        supabase.from('event_types').select('id, value, label, status').order('sort_order')
+      ])
+
+      setMembers(membersData.data || [])
+      setEvents(eventsData.data || [])
+      setEventTypes(eventTypesData.data || [])
+    } catch (error) {
+      console.error('Error loading metadata data:', error)
     }
   }
 
@@ -388,7 +414,7 @@ export function AttendanceContent() {
 
 
       <Tabs defaultValue="record" className="w-full">
-        <TabsList className="grid grid-cols-3 w-full bg-muted p-1 rounded-md">
+        <TabsList className="grid grid-cols-4 w-full bg-muted p-1 rounded-md">
           {[
             {
               value: "record",
@@ -407,6 +433,12 @@ export function AttendanceContent() {
               icon: <UserMinus className="h-5 w-5 sm:h-4 sm:w-4" />,
               label: "Members",
               prefix: "Absent"
+            },
+            {
+              value: "metadata",
+              icon: <BarChart3 className="h-5 w-5 sm:h-4 sm:w-4" />,
+              label: "Metadata",
+              prefix: "Service"
             }
           ].map((tab) => (
             <TabsTrigger
@@ -451,7 +483,47 @@ export function AttendanceContent() {
         <TabsContent value="absent" className="space-y-4 pt-4">
           <AbsentMembers />
         </TabsContent>
+
+        <TabsContent value="metadata" className="space-y-4 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Service Summary</h2>
+              <p className="text-muted-foreground">
+                Record attendance and service information for church services
+              </p>
+            </div>
+            <Button onClick={() => setShowMetadataDialog(true)}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Service Summary
+            </Button>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-muted-foreground">
+                Service summary includes attendance numbers, speaker information, message details, and conversion metrics.
+                This information helps track the impact and effectiveness of church services.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      <ServiceMetadataSummaryDialog
+        open={showMetadataDialog}
+        onOpenChange={(open) => {
+          setShowMetadataDialog(open)
+          if (!open) setEditingMetadata(null)
+        }}
+        summary={editingMetadata}
+        onSave={async (summaryData) => {
+          // For now, just close the dialog since we don't have the database table yet
+          setShowMetadataDialog(false)
+          setEditingMetadata(null)
+        }}
+        events={events.map(e => ({ id: e.id, title: e.title, date: e.date }))}
+        members={members.map(m => ({ id: m.id, name: m.name, ministries: m.ministries }))}
+      />
     </div>
   )
 }
