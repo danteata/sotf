@@ -33,6 +33,7 @@ import { FinancialTransactionDialog } from '@/components/financial-transaction-d
 import { FinancialWidget } from '@/components/financial-widget'
 import { FinancialReports } from '@/components/financial-reports'
 import { ServiceFinancialSummaryDialog } from '@/components/service-financial-summary-dialog'
+import { ServiceMetadataSummaryDialog } from '@/components/service-metadata-summary-dialog'
 import { ServiceSummaryWidget } from '@/components/service-summary-widget'
 import {
     Plus,
@@ -47,7 +48,7 @@ import {
     TrendingUp,
     TrendingDown
 } from 'lucide-react'
-import { FinancialTransaction, ServiceFinancialSummary } from '@/types/database'
+import { FinancialTransaction, ServiceFinancialSummary, ServiceMetadataSummary } from '@/types/database'
 import {
     formatCurrency,
     calculateTransactionTotals,
@@ -75,8 +76,10 @@ export default function FinancialPage() {
     const [eventTypes, setEventTypes] = useState<Array<{ id: string; value: string; label: string; status: string }>>([])
     const [showTransactionDialog, setShowTransactionDialog] = useState(false)
     const [showSummaryDialog, setShowSummaryDialog] = useState(false)
+    const [showMetadataDialog, setShowMetadataDialog] = useState(false)
     const [editingTransaction, setEditingTransaction] = useState<FinancialTransaction | null>(null)
     const [editingSummary, setEditingSummary] = useState<ServiceFinancialSummary | null>(null)
+    const [editingMetadata, setEditingMetadata] = useState<ServiceMetadataSummary | null>(null)
 
     // Check user permissions
     useEffect(() => {
@@ -329,6 +332,10 @@ export default function FinancialPage() {
                         <Button variant="outline" onClick={handleExportData}>
                             <Download className="h-4 w-4 mr-2" />
                             Export
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowMetadataDialog(true)}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Service Metadata
                         </Button>
                         <Button variant="outline" onClick={() => setShowSummaryDialog(true)}>
                             <Plus className="h-4 w-4 mr-2" />
@@ -666,6 +673,22 @@ export default function FinancialPage() {
                     events={events.map(e => ({ id: e.id, title: e.title, date: e.title }))}
                     members={members}
                     eventTypes={eventTypes}
+                />
+
+                <ServiceMetadataSummaryDialog
+                    open={showMetadataDialog}
+                    onOpenChange={(open) => {
+                        setShowMetadataDialog(open)
+                        if (!open) setEditingMetadata(null)
+                    }}
+                    summary={editingMetadata}
+                    onSave={async (summaryData) => {
+                        // For now, just close the dialog since we don't have the database table yet
+                        setShowMetadataDialog(false)
+                        setEditingMetadata(null)
+                    }}
+                    events={events.map(e => ({ id: e.id, title: e.title, date: '' }))}
+                    members={members.map(m => ({ id: m.id, name: m.name, ministries: m.ministries }))}
                 />
             </div>
         </LayoutWrapper >

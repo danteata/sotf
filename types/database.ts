@@ -384,6 +384,58 @@ export interface ServiceFinancialSummary {
   updated_at: string
 }
 
+// Service Metadata Summary Types (Non-financial event/service metadata)
+export interface ServiceMetadataSummary {
+  id: string
+  service_date: string
+  service_type: string // Dynamic service types from event_types table
+  service_name?: string
+  event_id?: string // Link to events table if it's an event
+  // Message/Sermon Information
+  message_title?: string
+  message_category?: string // e.g., 'christian-living', 'evangelism', etc.
+  preacher_id?: string
+  preacher_name?: string
+  // Attendance Breakdown
+  attendance_adults: number
+  attendance_children: number
+  attendance_total: number // Calculated field
+  // Conversion Metrics
+  first_timers: number
+  new_converts: number
+  tithe_payers: number
+  // Verification
+  verified_by_id?: string
+  verified_by_name?: string
+  verification_date?: string
+  // Additional Notes
+  notes?: string
+  recorded_by: string
+  recorded_by_name: string
+  created_at: string
+  updated_at: string
+}
+
+// Message categories for dropdown
+export type MessageCategory =
+  | 'christian-living'
+  | 'evangelism'
+  | 'discipleship'
+  | 'worship'
+  | 'prayer'
+  | 'bible-study'
+  | 'missions'
+  | 'family-life'
+  | 'leadership'
+  | 'special-occasion'
+  | 'other'
+
+export interface MessageCategoryOption {
+  value: MessageCategory
+  label: string
+  description?: string
+}
+
 // Extended member interface with financial data
 export interface MemberWithFinancials extends Member {
   total_tithes: number
@@ -487,7 +539,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          name: string
+          name?: string
           description?: string | null
           denomination_id: string
           council_admin_id?: string | null
@@ -535,10 +587,10 @@ export interface Database {
         }
         Insert: {
           id?: string
-          name: string
+          name?: string
           description?: string | null
-          council_id: string
-          denomination_id: string
+          council_id?: string
+          denomination_id?: string
           branch_admin_id?: string | null
           address?: string | null
           city?: string | null
@@ -601,9 +653,9 @@ export interface Database {
         Insert: {
           id?: string
           clerk_user_id?: string | null
-          email: string
-          name: string
-          role: string
+          email?: string
+          name?: string
+          role?: string
           denomination_id?: string | null
           council_id?: string | null
           branch_id?: string | null
@@ -724,10 +776,10 @@ export interface Database {
           id?: string
           title?: string | null
           first_name?: string
-          last_name?: string
-          name?: string
-          email?: string
-          phone?: string
+          last_name: string
+          name: string
+          email: string
+          phone: string
           dob?: string | null
           birth_month?: number | null
           birth_day?: number | null
