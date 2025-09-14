@@ -60,14 +60,23 @@ import {
   Grid3X3,
   List,
   Eye,
-  EyeOff
+  EyeOff,
+  Settings,
+  Copy,
+  Edit,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  Target,
+  Briefcase
 } from 'lucide-react'
 import { useUserRole } from '@/hooks/use-user-role'
 import { useOrganization } from '@/hooks/use-organization'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/hooks/use-toast'
-import type { Organization, Division, Unit } from '@/types/database'
+import type { Organization, Division, Unit, SubUnit } from '@/types/database'
 
 interface UnitWithDetails extends Unit {
   member_count?: number

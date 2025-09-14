@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import QueryProvider from '@/components/query-provider'
 import { AuthLoadingWrapper } from '@/components/auth-loading-wrapper'
+import { OrganizationProvider } from '@/hooks/use-organization'
 
 const font = Inter({
   variable: '--font-inter',
@@ -26,7 +27,9 @@ export default function RootLayout({
         <body className={`${font.variable} antialiased`}>
           <QueryProvider>
             <AuthLoadingWrapper>
-              {children}
+              <OrganizationProvider>
+                {children}
+              </OrganizationProvider>
             </AuthLoadingWrapper>
           </QueryProvider>
         </body>

@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Calendar, Heart, Home, MessageSquare, PieChart, Settings, Users, DollarSign, Building2 } from "lucide-react"
+import { Calendar, Heart, Home, MessageSquare, PieChart, Settings, Users, DollarSign, Building2, Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
 import {
@@ -19,6 +19,7 @@ const navigationItems = [
   { href: "/", label: "Dashboard", icon: Home, public: true },
   { href: "/members", label: "Members", icon: Users, public: false },
   { href: "/organization", label: "Organization", icon: Building2, public: false },
+  { href: "/sub-units", label: "Sub-Units", icon: Layers, public: false },
   { href: "/attendance", label: "Attendance", icon: Calendar, public: false },
   { href: "/events", label: "Events", icon: Calendar, public: false },
   { href: "/financial", label: "Financial", icon: DollarSign, public: false },

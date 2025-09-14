@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { supabase } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import type { Organization, Division, Unit, OrganizationContext } from '@/types/database'
 
 interface OrganizationState {
@@ -78,8 +79,13 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       let accessibleOrganizations: any[] = []
 
       if (userData.role === 'super_admin') {
-        // Super admin can see all organizations
-        const { data: allOrgs, error: orgsError } = await supabase
+        // Super admin can see all organizations - use service role to bypass RLS
+        const serviceSupabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://127.0.0.1:54321',
+          process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU'
+        )
+
+        const { data: allOrgs, error: orgsError } = await serviceSupabase
           .from('organizations')
           .select('*')
           .eq('active', true)

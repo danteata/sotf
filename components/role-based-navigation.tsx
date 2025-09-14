@@ -17,7 +17,8 @@ import {
   Shield,
   Heart,
   DollarSign,
-  Building2
+  Building2,
+  Layers
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
@@ -52,6 +53,12 @@ export function RoleBasedNavigation() {
       title: "Organization",
       href: "/organization",
       icon: Building2,
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+    },
+    {
+      title: "Sub-Units",
+      href: "/sub-units",
+      icon: Layers,
       roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {

@@ -137,6 +137,16 @@ export interface SubUnit {
   latitude?: number
   longitude?: number
   active: boolean
+  // New inheritance fields
+  type?: 'administrative' | 'ministry'
+  ministry_category?: string
+  inheritance_level?: 'organization' | 'division' | 'unit'
+  inherited_from?: string
+  is_template?: boolean
+  template_name?: string
+  parent_ministry_id?: string
+  // Virtual fields from views
+  connected_ministries_count?: number
   created_at: string
   updated_at: string
 }
@@ -161,14 +171,26 @@ export type UserRole = 'super_admin' | 'admin' | 'organization_admin' | 'divisio
 export interface OrganizationTerminology {
   id: string
   organization_id: string
-  level1_singular: string
-  level1_plural: string
-  level2_singular: string
-  level2_plural: string
-  level3_singular: string
-  level3_plural: string
-  level4_singular: string
-  level4_plural: string
+  division_id?: string
+  unit_id?: string
+  sub_unit_id?: string
+  ministry_term?: string
+  ministry_term_plural?: string
+  ministry_leader_term?: string
+  region_term?: string
+  region_term_plural?: string
+  regional_leader_term?: string
+  unit_term?: string
+  unit_term_plural?: string
+  unit_leader_term?: string
+  division_term?: string
+  division_term_plural?: string
+  division_leader_term?: string
+  sub_unit_term?: string
+  sub_unit_term_plural?: string
+  sub_unit_leader_term?: string
+  level: 'organization' | 'division' | 'unit' | 'sub_unit'
+  created_by: string
   created_at: string
   updated_at: string
 }

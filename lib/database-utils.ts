@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import { format, subWeeks, startOfWeek, subDays } from 'date-fns'
-import type { Member, Ministry, Region, MemberWithDetails, MemberMinistry, Denomination, Council, Branch } from '@/types/database'
+import type { Member, Ministry, Region, MemberWithDetails, MemberMinistry } from '@/types/database'
 
 /**
  * Utility functions for working with the improved database structure
@@ -346,13 +346,23 @@ export async function getAppConfig(key?: string) {
       .eq('key', key)
       .single()
 
-    if (error) throw error
+    // Handle the case where no row is found gracefully
+    if (error) {
+      // PGRST116 is the error code for "no rows returned"
+      if (error.code === 'PGRST116') {
+        console.warn(`App config key '${key}' not found, returning null`)
+        return null
+      }
+      // For other errors, still throw them
+      throw error
+    }
+
     return data?.value || null
   } else {
     const { data, error } = await supabase
       .from('app_config')
       .select('*')
-      .order('category, key')
+      .order('key') // Removed category since it doesn't exist
 
     if (error) throw error
     return data || []
@@ -1008,67 +1018,6 @@ export async function getOrganizationStats(organizationFilter: Record<string, st
   }
 }
 
-/**
- * Create a new organization entity with proper relationships
- */
-export async function createOrganizationHierarchy(
-  denominationData?: Partial<Denomination>,
-  councilData?: Partial<Council>,
-  branchData?: Partial<Branch>
-) {
-  try {
-    let denominationId: string | undefined
-    let councilId: string | undefined
-    let branchId: string | undefined
-
-    // Create denomination if provided
-    if (denominationData) {
-      const { data: denom, error: denomError } = await supabase
-        .from('denominations')
-        .insert([denominationData])
-        .select()
-        .single()
-
-      if (denomError) throw denomError
-      denominationId = denom.id
-    }
-
-    // Create council if provided
-    if (councilData && denominationId) {
-      const { data: council, error: councilError } = await supabase
-        .from('councils')
-        .insert([{ ...councilData, denomination_id: denominationId }])
-        .select()
-        .single()
-
-      if (councilError) throw councilError
-      councilId = council.id
-    }
-
-    // Create branch if provided
-    if (branchData && councilId && denominationId) {
-      const { data: branch, error: branchError } = await supabase
-        .from('branches')
-        .insert([{
-          ...branchData,
-          council_id: councilId,
-          denomination_id: denominationId
-        }])
-        .select()
-        .single()
-
-      if (branchError) throw branchError
-      branchId = branch.id
-    }
-
-    return {
-      denominationId,
-      councilId,
-      branchId
-    }
-
-  } catch (error) {
-    console.error('Error creating organization hierarchy:', error)
-    throw error
-  }
-}
+// Note: Removed createOrganizationHierarchy function as it uses
+// denomination/council/branch structure which is not needed for
+// the current organization/division/unit setup
