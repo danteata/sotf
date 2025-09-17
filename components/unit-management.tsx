@@ -178,7 +178,7 @@ export function UnitManagement() {
         .from('users')
         .select('organization_id, division_id')
         .eq('clerk_user_id', clerkUser.id)
-        .single()
+        .maybeSingle()
 
       if (!userData?.organization_id) {
         toast({

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { UnitManagement } from '@/components/unit-management'
 import { OrganizationChart } from '@/components/organization-chart'
-import { TerminologyManagement } from '@/components/terminology-management'
+import { SettingsDialog } from '@/components/settings-dialog'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { useUserRole } from '@/hooks/use-user-role'
 import { supabase } from '@/lib/supabase'
@@ -28,6 +28,7 @@ export default function OrganizationPage() {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState('units')
   const [refreshing, setRefreshing] = useState(false)
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
 
   const handleUnitMove = async (unitId: string, targetType: 'division' | 'organization', targetId?: string) => {
     try {
@@ -90,7 +91,7 @@ export default function OrganizationPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Organization Management</h1>
             <p className="text-muted-foreground">
-              Manage your organization's structure, units, and terminology
+              Manage your organization's structure and units
             </p>
           </div>
 
@@ -98,6 +99,15 @@ export default function OrganizationPage() {
             <Badge variant="outline" className="hidden sm:flex">
               {role?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </Badge>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSettingsDialogOpen(true)}
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
 
             <Button
               variant="outline"
@@ -166,7 +176,7 @@ export default function OrganizationPage() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="units" className="flex items-center gap-2">
               <Grid3X3 className="h-4 w-4" />
               Unit Management
@@ -174,10 +184,6 @@ export default function OrganizationPage() {
             <TabsTrigger value="chart" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Organization Chart
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Terminology
             </TabsTrigger>
           </TabsList>
 
@@ -187,10 +193,6 @@ export default function OrganizationPage() {
 
           <TabsContent value="chart" className="space-y-4">
             <OrganizationChart onUnitMove={handleUnitMove} />
-          </TabsContent>
-
-          <TabsContent value="settings" className="space-y-4">
-            <TerminologyManagement />
           </TabsContent>
         </Tabs>
 
@@ -253,6 +255,17 @@ export default function OrganizationPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Settings Dialog */}
+        <SettingsDialog
+          open={settingsDialogOpen}
+          onOpenChange={setSettingsDialogOpen}
+          onSuccess={() => {
+            // Refresh data if needed
+            setRefreshing(true)
+            setTimeout(() => setRefreshing(false), 100)
+          }}
+        />
       </div>
     </LayoutWrapper>
   )

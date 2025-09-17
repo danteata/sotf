@@ -429,33 +429,102 @@ export function ServiceMetadataSummaryDialog({
                                 />
                             </div>
 
-                            <FormField
-                                control={form.control}
-                                name="preacher_id"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Preacher/Speaker</FormLabel>
-                                        <MemberCombobox
-                                            members={members.map(m => ({
-                                                id: m.id,
-                                                name: m.name,
-                                                email: '', // We don't have email in our member data
-                                                initials: m.name.split(' ').map(n => n[0]).join('').toUpperCase()
-                                            }))}
-                                            value={field.value}
-                                            onValueChange={(memberId) => {
-                                                field.onChange(memberId)
-                                            }}
-                                            placeholder="Search and select preacher..."
-                                            emptyText="No member found."
-                                        />
-                                        <FormDescription>
-                                            Search and select the preacher or speaker for this service
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
+                            <div className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="preacher_id"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Speaker Type</FormLabel>
+                                            <FormControl>
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center space-x-2">
+                                                        <input
+                                                            type="radio"
+                                                            id="member-speaker"
+                                                            name="speaker-type"
+                                                            checked={!!field.value && !form.watch('preacher_name')}
+                                                            onChange={() => {
+                                                                form.setValue('preacher_name', '')
+                                                            }}
+                                                            className="h-4 w-4 text-primary"
+                                                        />
+                                                        <label htmlFor="member-speaker" className="text-sm font-medium">
+                                                            Church Member
+                                                        </label>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        <input
+                                                            type="radio"
+                                                            id="guest-speaker"
+                                                            name="speaker-type"
+                                                            checked={!!form.watch('preacher_name')}
+                                                            onChange={() => {
+                                                                form.setValue('preacher_id', '')
+                                                            }}
+                                                            className="h-4 w-4 text-primary"
+                                                        />
+                                                        <label htmlFor="guest-speaker" className="text-sm font-medium">
+                                                            Guest Speaker
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                {form.watch('preacher_name') ? (
+                                    <FormField
+                                        control={form.control}
+                                        name="preacher_name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Guest Speaker Name</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="e.g., Pastor John Smith"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Enter the full name of the guest speaker
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                ) : (
+                                    <FormField
+                                        control={form.control}
+                                        name="preacher_id"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Select Church Member</FormLabel>
+                                                <MemberCombobox
+                                                    members={members.map(m => ({
+                                                        id: m.id,
+                                                        name: m.name,
+                                                        email: '', // We don't have email in our member data
+                                                        initials: m.name.split(' ').map(n => n[0]).join('').toUpperCase()
+                                                    }))}
+                                                    value={field.value}
+                                                    onValueChange={(memberId) => {
+                                                        field.onChange(memberId)
+                                                    }}
+                                                    placeholder="Search and select preacher..."
+                                                    emptyText="No member found."
+                                                />
+                                                <FormDescription>
+                                                    Search and select a church member as the speaker
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 )}
-                            />
+                            </div>
                         </div>
 
                         {/* Attendance Breakdown */}

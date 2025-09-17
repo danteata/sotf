@@ -104,7 +104,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
             .from('organizations')
             .select('*')
             .eq('id', userData.organization_id)
-            .single()
+            .maybeSingle()
 
           if (orgError) throw orgError
           currentOrganization = userOrg

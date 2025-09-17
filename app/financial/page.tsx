@@ -661,9 +661,31 @@ export default function FinancialPage() {
                     }}
                     summary={editingSummary}
                     onSave={async (summaryData) => {
-                        // For now, just close the dialog since we don't have the database table yet
-                        setShowSummaryDialog(false)
-                        setEditingSummary(null)
+                        try {
+                            if (editingSummary) {
+                                // Update existing record
+                                const { error } = await supabase
+                                    .from('service_financial_summaries')
+                                    .update(summaryData)
+                                    .eq('id', editingSummary.id)
+
+                                if (error) throw error
+                            } else {
+                                // Create new record
+                                const { error } = await supabase
+                                    .from('service_financial_summaries')
+                                    .insert([summaryData])
+
+                                if (error) throw error
+                            }
+
+                            setShowSummaryDialog(false)
+                            setEditingSummary(null)
+                            // Optionally refresh data or show success message
+                        } catch (error) {
+                            console.error('Error saving service financial summary:', error)
+                            // Optionally show error message to user
+                        }
                     }}
                     events={events.map(e => ({ id: e.id, title: e.title, date: e.title }))}
                     members={members}

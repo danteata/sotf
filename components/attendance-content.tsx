@@ -517,9 +517,31 @@ export function AttendanceContent() {
         }}
         summary={editingMetadata}
         onSave={async (summaryData) => {
-          // For now, just close the dialog since we don't have the database table yet
-          setShowMetadataDialog(false)
-          setEditingMetadata(null)
+          try {
+            if (editingMetadata) {
+              // Update existing record
+              const { error } = await supabase
+                .from('service_metadata_summaries')
+                .update(summaryData)
+                .eq('id', editingMetadata.id)
+
+              if (error) throw error
+            } else {
+              // Create new record
+              const { error } = await supabase
+                .from('service_metadata_summaries')
+                .insert([summaryData])
+
+              if (error) throw error
+            }
+
+            setShowMetadataDialog(false)
+            setEditingMetadata(null)
+            // Optionally refresh data or show success message
+          } catch (error) {
+            console.error('Error saving service metadata:', error)
+            // Optionally show error message to user
+          }
         }}
         events={events.map(e => ({ id: e.id, title: e.title, date: e.date }))}
         members={members.map(m => ({ id: m.id, name: m.name, ministries: m.ministries }))}

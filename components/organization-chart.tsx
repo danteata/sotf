@@ -109,7 +109,7 @@ export function OrganizationChart({ organizationId, onUnitMove }: OrganizationCh
         .from('users')
         .select('organization_id')
         .eq('clerk_user_id', clerkUser.id)
-        .single()
+        .maybeSingle()
 
       const orgId = organizationId || userData?.organization_id
       if (!orgId) return
@@ -119,9 +119,17 @@ export function OrganizationChart({ organizationId, onUnitMove }: OrganizationCh
         .from('organizations')
         .select('*')
         .eq('id', orgId)
-        .single()
+        .maybeSingle()
 
       if (orgError) throw orgError
+      if (!orgData) {
+        toast({
+          title: "Organization Not Found",
+          description: "The requested organization could not be found.",
+          variant: "destructive",
+        })
+        return
+      }
 
       // Load divisions
       const { data: divisionsData, error: divisionsError } = await supabase
