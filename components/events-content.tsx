@@ -237,54 +237,52 @@ export function EventsContent() {
 
   return (
     <div className="container p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 p-4 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Events</h1>
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Events</h1>
           <p className="text-muted-foreground">
             Manage and view upcoming events for your{' '}
             {terminology.church_name.toLowerCase()}.
           </p>
         </div>
-        <Button onClick={handleAddEvent}>
+        <Button onClick={handleAddEvent} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md">
           <Plus className="mr-2 h-4 w-4" />
           Add Event
         </Button>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="all-events">All Events</TabsTrigger>
+        <TabsList className="bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm rounded-xl p-1">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">Overview</TabsTrigger>
+          <TabsTrigger value="all-events" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">All Events</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6">
             {/* Overview Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg border-primary/30">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium">
-                    Total Events
-                  </CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-bold">Total Events</CardTitle>
+                  <Calendar className="h-5 w-5 text-primary" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{events.length}</div>
-                  <p className="text-xs text-muted-foreground">
+                <CardContent className="space-y-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="text-3xl font-bold text-primary">{events.length}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
                     Upcoming events scheduled
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg border-secondary/30">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium">
+                  <CardTitle className="text-sm font-bold">
                     {ministryLabels.management}
                   </CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <Users className="h-5 w-5 text-secondary" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="space-y-2 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
+                  <div className="text-3xl font-bold text-secondary">
                     {
                       events.filter(
                         (e) =>
@@ -306,41 +304,41 @@ export function EventsContent() {
                       ).length
                     }
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {ministryLabels.single}-related events
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg border-accent/30">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium">
+                  <CardTitle className="text-sm font-bold">
                     Services
                   </CardTitle>
-                  <Church className="h-4 w-4 text-muted-foreground" />
+                  <Church className="h-5 w-5 text-accent" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="space-y-2 p-3 rounded-lg bg-accent/5 border border-accent/20">
+                  <div className="text-3xl font-bold text-accent">
                     {events.filter((e) => e.type === 'sunday-service').length}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Worship services
                   </p>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg border-ring/30">
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-medium">
+                  <CardTitle className="text-sm font-bold">
                     Community
                   </CardTitle>
-                  <Heart className="h-4 w-4 text-muted-foreground" />
+                  <Heart className="h-5 w-5 text-ring" />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
+                <CardContent className="space-y-2 p-3 rounded-lg bg-ring/5 border border-ring/20">
+                  <div className="text-3xl font-bold text-ring">
                     {events.filter((e) => e.type === 'other').length}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Community events
                   </p>
                 </CardContent>
@@ -348,9 +346,9 @@ export function EventsContent() {
             </div>
 
             {/* Upcoming Events */}
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-lg border-primary/10 shadow-sm">
               <CardHeader>
-                <CardTitle>Upcoming Events</CardTitle>
+                <CardTitle className="text-lg font-bold">Upcoming Events</CardTitle>
                 <CardDescription>
                   View and manage upcoming events for{' '}
                   {terminology.church_name.toLowerCase()}
@@ -365,7 +363,7 @@ export function EventsContent() {
 
         <TabsContent value="all-events" className="space-y-6">
           {/* Filters and Search */}
-          <Card>
+          <Card className="border-primary/10 shadow-sm">
             <CardHeader>
               <CardTitle>All Events</CardTitle>
               <CardDescription>
@@ -375,18 +373,21 @@ export function EventsContent() {
             <CardContent>
               <div className="flex flex-col sm:flex-row gap-4 mb-4">
                 <div className="flex-1">
-                  <Input
-                    placeholder="Search events..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="max-w-sm"
-                  />
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search events..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="max-w-sm pl-8 border-primary/30"
+                    />
+                  </div>
                 </div>
                 <Select
                   value={eventTypeFilter}
                   onValueChange={setEventTypeFilter}
                 >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] border-primary/30">
                     <SelectValue placeholder="Event Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -399,7 +400,7 @@ export function EventsContent() {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] border-primary/30">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,10 +412,10 @@ export function EventsContent() {
               </div>
 
               {/* Events Table */}
-              <div className="rounded-md border">
+              <div className="rounded-md border border-primary/10 shadow-sm">
                 <Table>
                   <TableHeader>
-                    <TableRow>
+                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
                       <TableHead>Event</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Date</TableHead>
@@ -443,10 +444,10 @@ export function EventsContent() {
                           eventDate.getTime() === today.getTime()
 
                         return (
-                          <TableRow key={event.id}>
+                          <TableRow key={event.id} className="hover:bg-accent/50 transition-colors">
                             <TableCell>
                               <div>
-                                <div className="font-medium">{event.title}</div>
+                                <div className="font-bold">{event.title}</div>
                                 {event.description && (
                                   <div className="text-sm text-muted-foreground line-clamp-1">
                                     {event.description}
@@ -467,13 +468,14 @@ export function EventsContent() {
                                     ? 'destructive'
                                     : 'outline'
                                 }
+                                className="shadow-sm"
                               >
                                 {(event as any).event_type_label ||
                                   event.type ||
                                   'Unknown'}
                               </Badge>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="font-medium">
                               {format(new Date(event.date), 'MMM dd, yyyy')}
                             </TableCell>
                             <TableCell>{(event as any).time || '-'}</TableCell>
@@ -483,6 +485,7 @@ export function EventsContent() {
                             <TableCell>
                               <Badge
                                 variant={isUpcoming ? 'default' : 'secondary'}
+                                className={isUpcoming ? 'bg-gradient-to-r from-green-500 to-emerald-500' : ''}
                               >
                                 {isUpcoming ? 'Upcoming' : 'Past'}
                               </Badge>
@@ -492,12 +495,12 @@ export function EventsContent() {
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     variant="ghost"
-                                    className="h-8 w-8 p-0"
+                                    className="h-8 w-8 p-0 hover:bg-primary/10"
                                   >
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
+                                <DropdownMenuContent align="end" className="shadow-lg">
                                   <DropdownMenuItem
                                     onClick={() => handleEditEvent(event)}
                                   >
@@ -539,6 +542,7 @@ export function EventsContent() {
                       size="sm"
                       onClick={() => setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
+                      className="border-primary/30 hover:bg-primary/10"
                     >
                       Previous
                     </Button>
@@ -547,6 +551,7 @@ export function EventsContent() {
                       size="sm"
                       onClick={() => setCurrentPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
+                      className="border-primary/30 hover:bg-primary/10"
                     >
                       Next
                     </Button>

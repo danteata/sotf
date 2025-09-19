@@ -24,10 +24,11 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
             className={`
         relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg
         ${member.isToday
-                    ? 'ring-2 ring-pink-500 shadow-pink-500/20 bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950 dark:to-rose-950'
-                    : 'hover:shadow-md'
+                    ? 'ring-2 ring-pink-500 shadow-pink-500/20 bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/50 dark:to-rose-950/50'
+                    : 'hover:shadow-md border-primary/20 bg-gradient-to-br from-white to-gray-50 dark:from-background dark:to-gray-900/20'
                 }
         ${isHovered ? 'animate-pulse' : ''}
+        rounded-xl shadow-sm
       `}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -64,7 +65,7 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                                 className="object-cover"
                             />
                             <AvatarFallback className={`
-                ${member.isToday ? 'bg-gradient-to-br from-pink-400 to-rose-400 text-white' : ''}
+                ${member.isToday ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white' : 'bg-muted'}
               `}>
                                 {member.initials}
                             </AvatarFallback>
@@ -73,8 +74,8 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                         {/* Birthday crown for today's birthdays */}
                         {member.isToday && (
                             <div className="absolute -top-1 -right-1">
-                                <div className="bg-yellow-400 rounded-full p-1 shadow-sm">
-                                    <Cake className="h-3 w-3 text-purple-800" />
+                                <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full p-1 shadow-md">
+                                    <Cake className="h-3 w-3 text-purple-900" />
                                 </div>
                             </div>
                         )}
@@ -83,8 +84,8 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                             <h3 className={`
-                font-semibold truncate transition-colors duration-300
-                ${member.isToday ? 'text-pink-700 dark:text-pink-300' : ''}
+                font-bold truncate transition-colors duration-300
+                ${member.isToday ? 'text-pink-700 dark:text-pink-300' : 'text-foreground'}
               `}>
                                 {member.name}
                             </h3>
@@ -94,8 +95,8 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                                 <Badge
                                     variant="secondary"
                                     className={`
-                    text-xs ml-2 transition-all duration-300
-                    ${member.isToday ? 'bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300' : ''}
+                    text-xs ml-2 transition-all duration-300 font-bold
+                    ${member.isToday ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 dark:from-pink-900 dark:to-rose-900 dark:text-pink-300 border-pink-300' : 'border-primary/20 bg-primary/5 text-primary'}
                   `}
                                 >
                                     {member.age}

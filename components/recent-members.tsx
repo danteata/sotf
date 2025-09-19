@@ -86,22 +86,22 @@ export function RecentMembers() {
   }
 
   if (error) {
-    return <div className="text-sm text-destructive">Error loading members: {error}</div>
+    return <div className="text-sm text-destructive p-3 bg-destructive/10 rounded-lg">Error loading members: {error}</div>
   }
 
   return (
     <div className="space-y-8">
       {members.map((member) => (
-        <div key={member.id} className="flex items-center">
-          <Avatar className="h-9 w-9">
+        <div key={member.id} className="flex items-center transition-all duration-200 hover:bg-accent p-3 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm hover:shadow-md">
+          <Avatar className="h-10 w-10 ring-2 ring-primary/20">
             <AvatarImage src={member.avatar || "/placeholder.svg?height=36&width=36"} alt={`${member.name}'s avatar`} />
-            <AvatarFallback>{member.initials}</AvatarFallback>
+            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-primary-foreground">{member.initials}</AvatarFallback>
           </Avatar>
           <div className="ml-4 space-y-1">
-            <p className="text-sm font-medium leading-none">{member.name}</p>
+            <p className="text-sm font-bold leading-none">{member.name}</p>
             <p className="text-sm text-muted-foreground">{member.email}</p>
           </div>
-          <div className="ml-auto font-medium">
+          <div className="ml-auto font-bold bg-gradient-to-r from-primary/20 to-secondary/20 text-primary px-3 py-1 rounded-full text-xs">
             {format(new Date(member.joined_date), "MMM d")}
           </div>
         </div>

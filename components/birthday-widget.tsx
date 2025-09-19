@@ -32,7 +32,7 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
 
     if (loading) {
         return (
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Cake className="h-5 w-5 text-pink-500" />
@@ -59,7 +59,7 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
 
     if (birthdays.length === 0) {
         return (
-            <Card>
+            <Card className="transition-all duration-300 hover:shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Cake className="h-5 w-5 text-pink-500" />
@@ -78,36 +78,40 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
     }
 
     return (
-        <Card className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950 dark:to-purple-950">
+        <Card className="overflow-hidden transition-all duration-300 hover:shadow-xl border-primary/20 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-950/50 dark:via-purple-950/50 dark:to-indigo-950/50">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <Cake className="h-5 w-5 text-pink-500" />
+                        <CardTitle className="flex items-center gap-3 text-pink-800 dark:text-pink-200">
+                            <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-md">
+                                <Cake className="h-6 w-6 text-white" />
+                            </div>
                             Birthday Celebrations
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="mt-2">
                             {todaysBirthdays.length > 0 && (
-                                <Badge className="bg-pink-500 text-white mr-2">
+                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white mr-2 hover:from-pink-600 hover:to-rose-600 transition-all shadow-md">
                                     🎉 {todaysBirthdays.length} today!
                                 </Badge>
                             )}
-                            Celebrating {birthdays.length} upcoming birthdays
+                            <span className="text-pink-700 dark:text-pink-300">Celebrating {birthdays.length} upcoming birthdays</span>
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Heart className="h-4 w-4 text-pink-400 animate-pulse" />
+                        <Heart className="h-5 w-5 text-pink-500 animate-pulse" />
                     </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="p-6">
+            <CardContent className="p-6 bg-gradient-to-br from-white to-pink-50 dark:from-background dark:to-pink-950/10">
                 {/* Today's Birthdays - Special Highlight */}
                 {todaysBirthdays.length > 0 && (
                     <div className="mb-6">
                         <div className="flex items-center gap-2 mb-4">
-                            <Calendar className="h-4 w-4 text-pink-500" />
-                            <h3 className="font-semibold text-pink-700 dark:text-pink-300">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30">
+                                <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                            </div>
+                            <h3 className="font-bold text-amber-700 dark:text-amber-300 text-lg">
                                 🎂 Today's Celebrations!
                             </h3>
                         </div>
@@ -124,17 +128,19 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <Gift className="h-4 w-4 text-purple-500" />
-                                <h3 className="font-semibold text-purple-700 dark:text-purple-300">
+                                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-fuchsia-100 dark:from-purple-900/30 dark:to-fuchsia-900/30">
+                                    <Gift className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <h3 className="font-bold text-purple-700 dark:text-purple-300 text-lg">
                                     Coming Up
                                 </h3>
                             </div>
                             {birthdays.length > 6 && (
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => setShowAll(!showAll)}
-                                    className="text-sm"
+                                    className="text-sm border-purple-300 hover:bg-purple-100 dark:border-purple-700 dark:hover:bg-purple-950/50 shadow-sm"
                                 >
                                     {showAll ? 'Show Less' : `Show All (${birthdays.length})`}
                                 </Button>
@@ -152,7 +158,7 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
                 {/* Empty State for Upcoming */}
                 {todaysBirthdays.length === 0 && upcomingBirthdays.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
-                        <Cake className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <Gift className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>No upcoming birthdays in the next few months.</p>
                     </div>
                 )}

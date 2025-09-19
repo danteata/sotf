@@ -134,7 +134,7 @@ export function Overview({ className }: OverviewProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[350px]">
-        <div className="space-y-4">
+        <div className="space-y-4 w-full">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-2">
@@ -150,28 +150,31 @@ export function Overview({ className }: OverviewProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={data}>
-        <XAxis
-          dataKey="name"
-          stroke="#888888"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          stroke="#888888"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(value) => `${value}`}
-        />
-        <Bar
-          dataKey="total"
-          fill="#4f46e5"
-          radius={[4, 4, 0, 0]}
-        />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="p-4 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
+      <ResponsiveContainer width="100%" height={350}>
+        <BarChart data={data}>
+          <XAxis
+            dataKey="name"
+            stroke="hsl(var(--muted-foreground))"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            stroke="hsl(var(--muted-foreground))"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(value) => `${value}`}
+          />
+          <Bar
+            dataKey="total"
+            fill="hsl(var(--primary))"
+            radius={[4, 4, 0, 0]}
+            className="hover:opacity-90 transition-opacity"
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   )
 }

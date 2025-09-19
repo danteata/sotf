@@ -43,7 +43,7 @@ export function MainNav() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-xs font-medium text-slate-500 uppercase tracking-wider px-3 mb-2">
+      <SidebarGroupLabel className="text-xs font-bold text-primary uppercase tracking-wider px-3 mb-2">
         Navigation
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -54,16 +54,16 @@ export function MainNav() {
                 asChild
                 isActive={pathname === item.href}
                 className={cn(
-                  "w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                  "w-full justify-start gap-3 px-3 py-2.5 text-sm font-bold transition-all duration-200 rounded-lg",
                   pathname === item.href
-                    ? "bg-blue-50 text-blue-700 border-r-2 border-blue-600"
-                    : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-primary text-primary-foreground shadow-md"
+                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <Link href={item.href}>
                   <item.icon className={cn(
                     "h-4 w-4 transition-colors",
-                    pathname === item.href ? "text-blue-600" : "text-slate-500"
+                    pathname === item.href ? "text-primary-foreground" : "text-primary"
                   )} />
                   <span>{item.label}</span>
                 </Link>

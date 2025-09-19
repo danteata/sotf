@@ -57,9 +57,6 @@ export default function HomePage() {
             background:
               'linear-gradient(120deg, #9333eab5 60%, rgba(40, 40, 80, 0.18))',
             boxShadow: 'rgba(30, 41, 59, 0.12) 0px 0px 32px 0px',
-            // background:
-            //   'linear-gradient(120deg,rgba(89,19,151,0.35) 60%,rgba(40,40,80,0.18))',
-            // boxShadow: '0 0 32px 0 rgba(30,41,59,0.12)',
             borderLeft: 'none',
             zIndex: 2,
           }}
@@ -72,7 +69,7 @@ export default function HomePage() {
               Sign in to access your dashboard and features
             </p>
             <SignInButton mode="modal">
-              <Button className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 text-white mb-2">
+              <Button className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white mb-2 shadow-lg transition-all duration-300 hover:shadow-xl">
                 Sign In / Create Account
               </Button>
             </SignInButton>

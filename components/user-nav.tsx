@@ -26,7 +26,7 @@ export function UserNav() {
 
   if (!isClerkConfigured) {
     return (
-      <Button variant="outline" onClick={() => router.push("/sign-in")}>
+      <Button variant="outline" onClick={() => router.push("/sign-in")} className="border-primary/30 hover:bg-primary/10">
         Sign In (Demo)
       </Button>
     )
@@ -45,7 +45,7 @@ export function UserNav() {
 
   if (!isSignedIn) {
     return (
-      <Button variant="outline" onClick={() => router.push("/sign-in")}>
+      <Button variant="outline" onClick={() => router.push("/sign-in")} className="border-primary/30 hover:bg-primary/10">
         Sign In
       </Button>
     )
@@ -59,26 +59,31 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8">
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-accent transition-all duration-200">
+          <Avatar className="h-8 w-8 ring-2 ring-primary/20">
             <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground font-semibold">{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
+      <DropdownMenuContent className="w-56 transition-all duration-300" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.fullName || user.username}</p>
+            <p className="text-sm font-semibold leading-none">{user.fullName || user.username}</p>
             <p className="text-xs leading-none text-muted-foreground">{user.primaryEmailAddress?.emailAddress}</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push("/profile")}>Profile</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/profile")} className="cursor-pointer hover:bg-accent">
+            Profile
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut(() => router.push("/"))} className="text-red-600 focus:text-red-600">
+        <DropdownMenuItem 
+          onClick={() => signOut(() => router.push("/"))} 
+          className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10"
+        >
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

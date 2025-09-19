@@ -29,7 +29,7 @@ export function UpcomingEvents({ events, onEditEvent }: UpcomingEventsProps) {
         {events.slice(0, 6).map((event) => (
           <div
             key={event.id}
-            className="rounded-lg border p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+            className="rounded-xl border p-4 cursor-pointer hover:bg-accent/50 transition-all duration-300 hover:shadow-lg border-primary/20 bg-gradient-to-br from-white to-gray-50 dark:from-background dark:to-gray-900/20 shadow-sm"
             onClick={() => onEditEvent?.(event)}
           >
             <div className="flex items-center justify-between">
@@ -38,24 +38,28 @@ export function UpcomingEvents({ events, onEditEvent }: UpcomingEventsProps) {
                 (event as any).event_type_color === 'secondary' ? 'secondary' :
                 (event as any).event_type_color === 'destructive' ? 'destructive' :
                 'outline'
-              }>
+              } className="transition-colors duration-300 shadow-sm">
                 {(event as any).event_type_label || getEventTypeDisplayName(event.type || 'other', eventTypes)}
               </Badge>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground font-bold">
                 {format(new Date(event.date), 'MMM dd')}
               </span>
             </div>
-            <h3 className="mt-3 font-semibold">{event.title}</h3>
+            <h3 className="mt-3 font-bold text-foreground">{event.title}</h3>
             <div className="mt-2 space-y-2">
               {(event as any).time && (
                 <div className="flex items-center text-sm text-muted-foreground">
-                  <Clock className="mr-1 h-4 w-4" />
+                  <div className="p-1 rounded-md bg-primary/10 mr-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                  </div>
                   <span>{(event as any).time}</span>
                 </div>
               )}
               {(event as any).location && (
                 <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="mr-1 h-4 w-4" />
+                  <div className="p-1 rounded-md bg-primary/10 mr-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                  </div>
                   <span>{(event as any).location}</span>
                 </div>
               )}
@@ -81,4 +85,3 @@ export function UpcomingEvents({ events, onEditEvent }: UpcomingEventsProps) {
 }
 
 // Badge variant function is now handled by getEventTypeBadgeVariant from useEventTypes hook
-

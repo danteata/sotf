@@ -252,7 +252,7 @@ export function DashboardContent() {
         {/* Stats Cards Skeleton */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="transition-all duration-300 hover:shadow-lg">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <Skeleton className="h-4 w-20" />
                 <Skeleton className="h-4 w-4" />
@@ -267,7 +267,7 @@ export function DashboardContent() {
 
         {/* Charts Skeleton */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-4">
-          <Card className="col-span-4">
+          <Card className="col-span-4 transition-all duration-300 hover:shadow-lg">
             <CardHeader>
               <Skeleton className="h-6 w-48 mb-2" />
               <Skeleton className="h-4 w-64" />
@@ -276,7 +276,7 @@ export function DashboardContent() {
               <Skeleton className="h-64 w-full" />
             </CardContent>
           </Card>
-          <Card className="col-span-3">
+          <Card className="col-span-3 transition-all duration-300 hover:shadow-lg">
             <CardHeader>
               <Skeleton className="h-6 w-32 mb-2" />
               <Skeleton className="h-4 w-48" />
@@ -299,7 +299,7 @@ export function DashboardContent() {
 
         {/* Upcoming Events Skeleton */}
         <div className="mt-4">
-          <Card>
+          <Card className="transition-all duration-300 hover:shadow-lg">
             <CardHeader>
               <Skeleton className="h-6 w-40 mb-2" />
               <Skeleton className="h-4 w-56" />
@@ -324,39 +324,46 @@ export function DashboardContent() {
   }
 
   if (error) {
-    return <div>Error loading dashboard: {error}</div>
+    return <div className="p-4 bg-destructive/10 text-destructive rounded-lg">Error loading dashboard: {error}</div>
   }
 
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        {/* Total Members Card */}
+        <Card className="transition-all duration-300 hover:shadow-lg border-primary/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-bold">Total Members</CardTitle>
+            <Users className="h-5 w-5 text-primary" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalMembers}</div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.newMembersThisMonth} new this month
+          <CardContent className="space-y-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="text-3xl font-bold text-primary">{stats.totalMembers}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span className="text-accent font-bold">+{stats.newMembersThisMonth}</span> new this month
             </p>
           </CardContent>
         </Card>
-        <Card>
+
+        {/* Weekly Attendance Card */}
+        <Card className="transition-all duration-300 hover:shadow-lg border-secondary/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Weekly Attendance</CardTitle>
-            <Church className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-bold">Weekly Attendance</CardTitle>
+            <Church className="h-5 w-5 text-secondary" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.weeklyAttendance}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.attendanceChange >= 0 ? '+' : ''}{stats.attendanceChange}% from last week
+          <CardContent className="space-y-2 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
+            <div className="text-3xl font-bold text-secondary">{stats.weeklyAttendance}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              <span className={`font-bold ${stats.attendanceChange >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                {stats.attendanceChange >= 0 ? '+' : ''}{stats.attendanceChange}%
+              </span> from last week
             </p>
           </CardContent>
         </Card>
-        <Card>
+
+        {/* Scoped Members Card */}
+        <Card className="transition-all duration-300 hover:shadow-lg border-accent/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-sm font-bold">
               {isAdmin
                 ? "Active Ministries"
                 : isRegionLeader
@@ -366,16 +373,16 @@ export function DashboardContent() {
                     : "Total Members"
               }
             </CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-5 w-5 text-accent" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
+          <CardContent className="space-y-2 p-3 rounded-lg bg-accent/5 border border-accent/20">
+            <div className="text-3xl font-bold text-accent">
               {isAdmin
                 ? stats.activeMinistries
                 : `${stats.scopedMembers}/${stats.totalMembers}`
               }
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               {isAdmin
                 ? "Active ministry groups"
                 : isRegionLeader
@@ -387,32 +394,34 @@ export function DashboardContent() {
             </p>
           </CardContent>
         </Card>
-        <Card>
+
+        {/* Upcoming Events Card */}
+        <Card className="transition-all duration-300 hover:shadow-lg border-ring/30">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-bold">Upcoming Events</CardTitle>
+            <Calendar className="h-5 w-5 text-ring" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.upcomingEventsCount}</div>
-            <p className="text-xs text-muted-foreground">
+          <CardContent className="space-y-2 p-3 rounded-lg bg-ring/5 border border-ring/20">
+            <div className="text-3xl font-bold text-ring">{stats.upcomingEventsCount}</div>
+            <p className="text-xs text-muted-foreground mt-1 truncate">
               Next: {stats.nextEventName}
             </p>
           </CardContent>
         </Card>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-4">
-        <Card className="col-span-4">
+        <Card className="col-span-4 transition-all duration-300 hover:shadow-lg">
           <CardHeader>
-            <CardTitle>Attendance Overview</CardTitle>
+            <CardTitle className="text-lg font-bold">Attendance Overview</CardTitle>
             <CardDescription>Weekly attendance for the past 3 months</CardDescription>
           </CardHeader>
           <CardContent className="pl-2">
             <Overview />
           </CardContent>
         </Card>
-        <Card className="col-span-3">
+        <Card className="col-span-3 transition-all duration-300 hover:shadow-lg">
           <CardHeader>
-            <CardTitle>Recent Members</CardTitle>
+            <CardTitle className="text-lg font-bold">Recent Members</CardTitle>
             <CardDescription>New members who joined this month</CardDescription>
           </CardHeader>
           <CardContent>
@@ -448,9 +457,9 @@ export function DashboardContent() {
       </div>
 
       <div className="mt-4">
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-lg">
           <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
+            <CardTitle className="text-lg font-bold">Upcoming Events</CardTitle>
             <CardDescription>Events scheduled for the next 30 days</CardDescription>
           </CardHeader>
           <CardContent>
