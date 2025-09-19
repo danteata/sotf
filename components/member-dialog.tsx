@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -26,6 +24,8 @@ import { cn } from "@/lib/utils"
 import { getMinistries, getRegions, saveMemberWithMinistries } from "@/lib/database-utils"
 import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Upload, X } from "lucide-react"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -63,6 +63,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [ministries, setMinistries] = useState<any[]>([])
   const [regions, setRegions] = useState<any[]>([])
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const { toast } = useToast()
   const { terminology } = useTerminology()
   const ministryLabels = getMinistryLabels(terminology)
@@ -125,6 +126,18 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     loadData()
   }, [open, toast])
 
+  // Handle photo upload completion
+  const handlePhotoUpload = (url: string) => {
+    setUploadedImageUrl(url)
+    setValue("avatar_url", url)
+  }
+
+  // Remove uploaded photo
+  const removePhoto = () => {
+    setUploadedImageUrl(null)
+    setValue("avatar_url", "")
+  }
+
   const onSubmit = async (data: MemberFormData) => {
     console.log("Form submitted with data:", data); // Debug log
     console.log("Ministries from form:", data.ministries); // Debug ministries
@@ -171,6 +184,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
       // Reset form and close dialog
       reset()
+      setUploadedImageUrl(null)
       onOpenChange(false)
     } catch (error: any) {
       console.error("Submission error:", error) // Debug log
@@ -202,9 +216,10 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
           </DialogHeader>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
               <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
+              <TabsTrigger value="photo" className="text-xs sm:text-sm">Photo</TabsTrigger>
               <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
             </TabsList>
 
@@ -386,6 +401,47 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                 <div>
                   <Label htmlFor="country">Country</Label>
                   <Input {...register("country")} defaultValue="United States" />
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="photo" className="space-y-4 pt-4">
+              <div className="space-y-4">
+                <Label>Member Photo</Label>
+                <div className="flex flex-col items-center space-y-4">
+                  {uploadedImageUrl ? (
+                    <div className="relative">
+                      <Avatar className="w-32 h-32">
+                        <AvatarImage src={uploadedImageUrl} alt="Member photo" />
+                        <AvatarFallback>
+                          {watch("first_name") && watch("last_name")
+                            ? `${watch("first_name")[0]}${watch("last_name")[0]}`.toUpperCase()
+                            : "MP"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-2 -right-2 rounded-full w-6 h-6 p-0"
+                        onClick={removePhoto}
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
+                      <Upload className="w-8 h-8 text-gray-400" />
+                    </div>
+                  )}
+
+                  <div className="w-full max-w-md">
+                    <FileUploader onUploadComplete={handlePhotoUpload} />
+                  </div>
+
+                  <p className="text-sm text-muted-foreground text-center">
+                    Upload a photo for this member. Supported formats: JPG, PNG, GIF. Max size: 4MB.
+                  </p>
                 </div>
               </div>
             </TabsContent>

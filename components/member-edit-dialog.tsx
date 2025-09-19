@@ -1,7 +1,5 @@
 "use client"
 
-"use client"
-
 import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -30,6 +28,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -41,6 +40,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Member, Ministry, Region } from "@/types/database"
 import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { FileUploader } from "@/components/file-uploader"
+import { Upload, X } from "lucide-react"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -86,6 +88,7 @@ export function MemberEditDialog({
   const [ministries, setMinistries] = useState<Ministry[]>([])
   const [regions, setRegions] = useState<Region[]>([])
   const [memberMinistryIds, setMemberMinistryIds] = useState<string[]>([])
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const { toast } = useToast()
   const { terminology } = useTerminology()
   const ministryLabels = getMinistryLabels(terminology)
@@ -144,6 +147,9 @@ export function MemberEditDialog({
         const ministryIds = memberMinistries?.map((mm: any) => mm.ministry?.id || mm.ministry_id).filter(Boolean) || []
         setMemberMinistryIds(ministryIds)
 
+        // Set the uploaded image URL to the existing avatar
+        setUploadedImageUrl(member.avatar_url || member.avatar || null)
+
         // Reset the form with the latest member data
         form.reset({
           title: member.title || "",
@@ -165,7 +171,7 @@ export function MemberEditDialog({
           plus_code: member.plus_code || "",
           ministries: ministryIds,
           region: member.region || "",
-          avatar: member.avatar || "",
+          avatar: member.avatar_url || member.avatar || "",
         });
 
         console.log('Loaded member ministries:', memberMinistries)
@@ -179,6 +185,18 @@ export function MemberEditDialog({
       loadData()
     }
   }, [open, member, form])
+
+  // Handle photo upload completion
+  const handlePhotoUpload = (url: string) => {
+    setUploadedImageUrl(url)
+    form.setValue("avatar", url)
+  }
+
+  // Remove uploaded photo
+  const removePhoto = () => {
+    setUploadedImageUrl(null)
+    form.setValue("avatar", "")
+  }
 
   async function onSubmit(data: MemberFormValues) {
     console.log("Edit form submitted with data:", data); // Debug log
@@ -256,9 +274,10 @@ export function MemberEditDialog({
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
                 <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
+                <TabsTrigger value="photo" className="text-xs sm:text-sm">Photo</TabsTrigger>
                 <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
                 <TabsTrigger value="labels" className="text-xs sm:text-sm">Labels</TabsTrigger>
               </TabsList>
@@ -553,6 +572,47 @@ export function MemberEditDialog({
                     </FormItem>
                   )}
                 />
+              </TabsContent>
+
+              <TabsContent value="photo" className="space-y-4 pt-4">
+                <div className="space-y-4">
+                  <Label>Member Photo</Label>
+                  <div className="flex flex-col items-center space-y-4">
+                    {uploadedImageUrl ? (
+                      <div className="relative">
+                        <Avatar className="w-32 h-32">
+                          <AvatarImage src={uploadedImageUrl} alt="Member photo" />
+                          <AvatarFallback>
+                            {form.watch("first_name") && form.watch("last_name")
+                              ? `${form.watch("first_name")[0]}${form.watch("last_name")[0]}`.toUpperCase()
+                              : "MP"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -top-2 -right-2 rounded-full w-6 h-6 p-0"
+                          onClick={removePhoto}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
+                        <Upload className="w-8 h-8 text-gray-400" />
+                      </div>
+                    )}
+
+                    <div className="w-full max-w-md">
+                      <FileUploader onUploadComplete={handlePhotoUpload} />
+                    </div>
+
+                    <p className="text-sm text-muted-foreground text-center">
+                      Upload a photo for this member. Supported formats: JPG, PNG, GIF. Max size: 4MB.
+                    </p>
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="ministry" className="space-y-4">
