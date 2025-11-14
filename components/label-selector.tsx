@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Label as FormLabel } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -105,9 +105,64 @@ export function LabelSelector({
         onLabelsChange?.(newLabels)
     }
 
+    const handleCreateNewLabel = async (labelName: string) => {
+        try {
+            // Create the new label
+            const { data: newLabel, error } = await supabase
+                .from('labels')
+                .insert({
+                    name: labelName.trim(),
+                    color: '#3B82F6', // Default blue color
+                    category: 'custom',
+                    is_system_label: false,
+                    created_by: user?.id,
+                    created_by_name: user?.name,
+                    is_active: true,
+                })
+                .select()
+                .single()
+
+            if (error) throw error
+
+            // Add it to available labels
+            setAvailableLabels(prev => [...prev, newLabel])
+
+            // Add it to selected labels and create the association
+            const newLabels = [...selectedLabels, newLabel]
+            setSelectedLabels(newLabels)
+
+            try {
+                const { error: assignError } = await supabase
+                    .from('member_labels')
+                    .insert({
+                        member_id: memberId,
+                        label_id: newLabel.id,
+                        assigned_by: user?.id,
+                        assigned_by_name: user?.name
+                    })
+
+                if (assignError && !assignError.message.includes('duplicate key')) throw assignError
+            } catch (assignError) {
+                console.error('Error assigning new label:', assignError)
+                return
+            }
+
+            onLabelsChange?.(newLabels)
+            setSearchValue("") // Clear search after creating
+        } catch (error) {
+            console.error('Error creating new label:', error)
+        }
+    }
+
     const filteredLabels = availableLabels.filter(label =>
         label.name.toLowerCase().includes(searchValue.toLowerCase())
     )
+
+    // Check if the search value could be a new label
+    const canCreateNewLabel = searchValue.trim().length > 0 &&
+        !availableLabels.some(label =>
+            label.name.toLowerCase() === searchValue.toLowerCase().trim()
+        )
 
     const groupedLabels = filteredLabels.reduce((acc, label) => {
         const category = label.category || 'other'
@@ -155,7 +210,6 @@ export function LabelSelector({
                                 onValueChange={setSearchValue}
                             />
                             <CommandList>
-                                <CommandEmpty>No labels found.</CommandEmpty>
                                 {Object.entries(groupedLabels).map(([category, labels]) => (
                                     <CommandGroup key={category} heading={category.charAt(0).toUpperCase() + category.slice(1)}>
                                         {labels.map((label) => {
@@ -177,6 +231,21 @@ export function LabelSelector({
                                         })}
                                     </CommandGroup>
                                 ))}
+
+                                {/* Always show create option if search text doesn't match existing labels */}
+                                {canCreateNewLabel && (
+                                    <CommandGroup heading="Create New">
+                                        <CommandItem
+                                            onSelect={() => handleCreateNewLabel(searchValue)}
+                                            className="flex items-center gap-2 text-blue-600"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            <span>Create "{searchValue.trim()}"</span>
+                                        </CommandItem>
+                                    </CommandGroup>
+                                )}
+
+                                <CommandEmpty>No labels found.</CommandEmpty>
                             </CommandList>
                         </Command>
                     </PopoverContent>
@@ -209,7 +278,7 @@ export function LabelSelector({
             </div>
 
             <div className="border rounded-lg p-4">
-                <Label className="text-sm font-medium mb-2 block">Available Labels</Label>
+                <FormLabel className="text-sm font-medium mb-2 block">Available Labels</FormLabel>
                 <Input
                     placeholder="Search labels..."
                     value={searchValue}
@@ -218,6 +287,23 @@ export function LabelSelector({
                 />
 
                 <div className="max-h-60 overflow-y-auto space-y-3">
+                    {/* Create new label option */}
+                    {canCreateNewLabel && (
+                        <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-2">Create New</h4>
+                            <button
+                                onClick={() => handleCreateNewLabel(searchValue)}
+                                className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 w-full text-left transition-colors"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">Create "{searchValue.trim()}"</div>
+                                    <div className="text-xs text-blue-600">Add as new custom label</div>
+                                </div>
+                            </button>
+                        </div>
+                    )}
+
                     {Object.entries(groupedLabels).map(([category, labels]) => (
                         <div key={category}>
                             <h4 className="text-sm font-medium text-gray-700 mb-2 capitalize">
@@ -231,8 +317,8 @@ export function LabelSelector({
                                             key={label.id}
                                             onClick={() => handleLabelToggle(label)}
                                             className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${isSelected
-                                                    ? 'border-blue-200 bg-blue-50'
-                                                    : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-blue-200 bg-blue-50'
+                                                : 'border-gray-200 hover:border-gray-300'
                                                 }`}
                                         >
                                             <div

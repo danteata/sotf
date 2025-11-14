@@ -292,7 +292,6 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
         const memberData = {
           id: uuidv4(),
-          name: `${firstName} ${lastName}`,
           first_name: firstName,
           last_name: lastName,
           email: email,
@@ -664,4 +663,3 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     </div>
   )
 }
-
