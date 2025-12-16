@@ -150,7 +150,7 @@ export function Overview({ className }: OverviewProps) {
   }
 
   return (
-    <div className="p-4 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
+    <div className="p-4 rounded-lg bg-white dark:bg-card border-4 border-black dark:border-white shadow-brutal">
       <ResponsiveContainer width="100%" height={350}>
         <BarChart data={data}>
           <XAxis

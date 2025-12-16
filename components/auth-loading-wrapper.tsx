@@ -30,7 +30,7 @@ export function AuthLoadingWrapper({ children, fallback }: AuthLoadingWrapperPro
                 <Card className="w-full max-w-md">
                     <CardHeader className="text-center">
                         <div className="flex justify-center mb-4">
-                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center animate-pulse">
+                            <div className="w-12 h-12 rounded-lg bg-primary border-2 border-black dark:border-white flex items-center justify-center animate-pulse">
                                 <span className="text-white font-bold text-lg">M</span>
                             </div>
                         </div>

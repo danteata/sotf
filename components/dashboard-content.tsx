@@ -327,146 +327,154 @@ export function DashboardContent() {
     return <div className="p-4 bg-destructive/10 text-destructive rounded-lg">Error loading dashboard: {error}</div>
   }
 
-  return (
-    <>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total Members Card */}
-        <Card className="transition-all duration-300 hover:shadow-lg border-primary/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-bold">Total Members</CardTitle>
-            <Users className="h-5 w-5 text-primary" />
-          </CardHeader>
-          <CardContent className="space-y-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-            <div className="text-3xl font-bold text-primary">{stats.totalMembers}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-accent font-bold">+{stats.newMembersThisMonth}</span> new this month
-            </p>
-          </CardContent>
-        </Card>
+  return <>
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {/* Total Members Card */}
+      <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+        <div className="h-2 bg-primary"></div>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+          <CardTitle className="text-xs font-bold uppercase tracking-wide">Total Members</CardTitle>
+          <div className="p-2.5 bg-primary text-primary-foreground rounded-lg border-3 border-black dark:border-white">
+            <Users className="h-5 w-5" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-6">
+          <div className="text-4xl font-black text-foreground">{stats.totalMembers}</div>
+          <div className="inline-block bg-accent text-black px-3 py-1 rounded-md border-2 border-black dark:border-white text-xs font-bold">
+            +{stats.newMembersThisMonth} This Month
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Weekly Attendance Card */}
-        <Card className="transition-all duration-300 hover:shadow-lg border-secondary/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-bold">Weekly Attendance</CardTitle>
-            <Church className="h-5 w-5 text-secondary" />
-          </CardHeader>
-          <CardContent className="space-y-2 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
-            <div className="text-3xl font-bold text-secondary">{stats.weeklyAttendance}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className={`font-bold ${stats.attendanceChange >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                {stats.attendanceChange >= 0 ? '+' : ''}{stats.attendanceChange}%
-              </span> from last week
-            </p>
-          </CardContent>
-        </Card>
+      {/* Weekly Attendance Card */}
+      <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+        <div className="h-2 bg-secondary"></div>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+          <CardTitle className="text-xs font-bold uppercase tracking-wide">Attendance</CardTitle>
+          <div className="p-2.5 bg-secondary text-secondary-foreground rounded-lg border-3 border-black dark:border-white">
+            <Church className="h-5 w-5" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-6">
+          <div className="text-4xl font-black text-foreground">{stats.weeklyAttendance}</div>
+          <div className={`inline-block px-3 py-1 rounded-md border-2 border-black dark:border-white text-xs font-bold ${stats.attendanceChange >= 0
+              ? 'bg-success text-success-foreground'
+              : 'bg-destructive text-destructive-foreground'
+            }`}>
+            {stats.attendanceChange >= 0 ? '↗' : '↘'} {Math.abs(stats.attendanceChange)}% vs Last Week
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Scoped Members Card */}
-        <Card className="transition-all duration-300 hover:shadow-lg border-accent/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-bold">
-              {isAdmin
-                ? "Active Ministries"
-                : isRegionLeader
-                  ? "My Region Members"
-                  : isMinistryLeader
-                    ? "My Ministry Members"
-                    : "Total Members"
-              }
-            </CardTitle>
-            <Users className="h-5 w-5 text-accent" />
-          </CardHeader>
-          <CardContent className="space-y-2 p-3 rounded-lg bg-accent/5 border border-accent/20">
-            <div className="text-3xl font-bold text-accent">
-              {isAdmin
-                ? stats.activeMinistries
-                : `${stats.scopedMembers}/${stats.totalMembers}`
-              }
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isAdmin
-                ? "Active ministry groups"
-                : isRegionLeader
-                  ? `${regionLeaderships.map(r => r.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
-                  : isMinistryLeader
-                    ? `${ministryLeaderships.map(m => m.name).join(', ')} (${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of total)`
-                    : `+${stats.newMembersThisMonth} new this month`
-              }
-            </p>
-          </CardContent>
-        </Card>
+      {/* Scoped Members Card */}
+      <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+        <div className="h-2 bg-accent"></div>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+          <CardTitle className="text-xs font-bold uppercase tracking-wide">
+            {isAdmin
+              ? "Active Groups"
+              : isRegionLeader
+                ? "My Region"
+                : isMinistryLeader
+                  ? "My Ministry"
+                  : "Members"
+            }
+          </CardTitle>
+          <div className="p-2.5 bg-accent text-black rounded-lg border-3 border-black dark:border-white">
+            <Users className="h-5 w-5" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-6">
+          <div className="text-4xl font-black text-foreground">
+            {isAdmin
+              ? stats.activeMinistries
+              : stats.scopedMembers
+            }
+          </div>
+          <p className="text-xs font-bold text-muted-foreground">
+            {isAdmin
+              ? "Ministry Groups"
+              : `${Math.round((stats.scopedMembers / stats.totalMembers) * 100)}% of Total`
+            }
+          </p>
+        </CardContent>
+      </Card>
 
-        {/* Upcoming Events Card */}
-        <Card className="transition-all duration-300 hover:shadow-lg border-ring/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-bold">Upcoming Events</CardTitle>
-            <Calendar className="h-5 w-5 text-ring" />
-          </CardHeader>
-          <CardContent className="space-y-2 p-3 rounded-lg bg-ring/5 border border-ring/20">
-            <div className="text-3xl font-bold text-ring">{stats.upcomingEventsCount}</div>
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              Next: {stats.nextEventName}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-4">
-        <Card className="col-span-4 transition-all duration-300 hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Attendance Overview</CardTitle>
-            <CardDescription>Weekly attendance for the past 3 months</CardDescription>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <Overview />
-          </CardContent>
-        </Card>
-        <Card className="col-span-3 transition-all duration-300 hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Recent Members</CardTitle>
-            <CardDescription>New members who joined this month</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentMembers />
-          </CardContent>
-        </Card>
-      </div>
-      {/* Birthday Widget */}
-      <div className="mt-4">
-        <BirthdayWidget members={members} />
-      </div>
+      {/* Upcoming Events Card */}
+      <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+        <div className="h-2 bg-success"></div>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+          <CardTitle className="text-xs font-bold uppercase tracking-wide">Events</CardTitle>
+          <div className="p-2.5 bg-success text-success-foreground rounded-lg border-3 border-black dark:border-white">
+            <Calendar className="h-5 w-5" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3 pb-6">
+          <div className="text-4xl font-black text-foreground">{stats.upcomingEventsCount}</div>
+          <p className="text-xs font-bold text-muted-foreground truncate">
+            Next: {stats.nextEventName}
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 mt-6">
+      <Card className="col-span-4 border-4 hover:shadow-brutal-lg overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b-4 border-black dark:border-white">
+          <CardTitle className="text-xl font-black uppercase">Attendance Overview</CardTitle>
+          <CardDescription className="font-bold">Weekly attendance for the past 3 months</CardDescription>
+        </CardHeader>
+        <CardContent className="pl-2 pt-6">
+          <Overview />
+        </CardContent>
+      </Card>
+      <Card className="col-span-3 border-4 hover:shadow-brutal-lg overflow-hidden">
+        <CardHeader className="bg-secondary/5 border-b-4 border-black dark:border-white">
+          <CardTitle className="text-xl font-black uppercase">Recent Members</CardTitle>
+          <CardDescription className="font-bold">New members this month</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <RecentMembers />
+        </CardContent>
+      </Card>
+    </div>
+    {/* Birthday Widget */}
+    <div className="mt-6">
+      <BirthdayWidget members={members} />
+    </div>
 
-      {/* Financial Widget */}
-      <div className="mt-4">
-        <FinancialWidget
-          transactions={financialTransactions}
-          onAddTransaction={() => {
-            // This would typically open a dialog or navigate to financial page
-            window.location.href = '/financial'
-          }}
-        />
-      </div>
+    {/* Financial Widget */}
+    <div className="mt-6">
+      <FinancialWidget
+        transactions={financialTransactions}
+        onAddTransaction={() => {
+          // This would typically open a dialog or navigate to financial page
+          window.location.href = '/financial'
+        }}
+      />
+    </div>
 
-      {/* Service Summary Widget - Note: This will show empty until service summaries are created */}
-      <div className="mt-4">
-        <ServiceSummaryWidget
-          summaries={[]} // Empty array for now - would be populated from service_summaries table
-          onAddSummary={() => {
-            // Navigate to financial page where service summaries can be added
-            window.location.href = '/financial'
-          }}
-        />
-      </div>
+    {/* Service Summary Widget - Note: This will show empty until service summaries are created */}
+    <div className="mt-6">
+      <ServiceSummaryWidget
+        summaries={[]} // Empty array for now - would be populated from service_summaries table
+        onAddSummary={() => {
+          // Navigate to financial page where service summaries can be added
+          window.location.href = '/financial'
+        }}
+      />
+    </div>
 
-      <div className="mt-4">
-        <Card className="transition-all duration-300 hover:shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Upcoming Events</CardTitle>
-            <CardDescription>Events scheduled for the next 30 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <UpcomingEvents events={scopedEvents} />
-          </CardContent>
-        </Card>
-      </div>
-    </>
-  )
+    <div className="mt-6">
+      <Card className="border-4 hover:shadow-brutal-lg overflow-hidden">
+        <CardHeader className="bg-accent/5 border-b-4 border-black dark:border-white">
+          <CardTitle className="text-xl font-black uppercase">Upcoming Events</CardTitle>
+          <CardDescription className="font-bold">Events scheduled for the next 30 days</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <UpcomingEvents events={scopedEvents} />
+        </CardContent>
+      </Card>
+    </div>
+  </>
+
 }

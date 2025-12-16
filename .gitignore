@@ -8,3 +8,6 @@ supabase/.temp/
 memory-bank/
 *.txt
 *.sql
+
+# clerk configuration (can include secrets)
+/.clerk/

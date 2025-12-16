@@ -32,22 +32,24 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
 
     if (loading) {
         return (
-            <Card className="transition-all duration-300 hover:shadow-lg">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Cake className="h-5 w-5 text-pink-500" />
-                        Upcoming Birthdays
+            <Card className="border-4 hover:shadow-brutal-lg">
+                <CardHeader className="bg-secondary/10 border-b-4 border-black dark:border-white">
+                    <CardTitle className="flex items-center gap-3 font-black uppercase">
+                        <div className="p-2 bg-secondary text-secondary-foreground rounded-brutal border-3 border-black dark:border-white">
+                            <Cake className="h-6 w-6" />
+                        </div>
+                        Birthdays
                     </CardTitle>
-                    <CardDescription>Loading birthday celebrations...</CardDescription>
+                    <CardDescription className="font-bold">Loading celebrations...</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
+                <CardContent className="pt-6">
+                    <div className="space-y-4">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="flex items-center space-x-3">
-                                <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse" />
+                            <div key={i} className="flex items-center space-x-4">
+                                <div className="h-12 w-12 bg-muted rounded-brutal border-4 border-black dark:border-white animate-pulse" />
                                 <div className="flex-1 space-y-2">
-                                    <div className="h-4 bg-gray-200 rounded animate-pulse" />
-                                    <div className="h-3 bg-gray-200 rounded animate-pulse w-2/3" />
+                                    <div className="h-4 bg-muted rounded-brutal animate-pulse" />
+                                    <div className="h-3 bg-muted rounded-brutal animate-pulse w-2/3" />
                                 </div>
                             </div>
                         ))}
@@ -59,18 +61,22 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
 
     if (birthdays.length === 0) {
         return (
-            <Card className="transition-all duration-300 hover:shadow-lg">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Cake className="h-5 w-5 text-pink-500" />
-                        Upcoming Birthdays
+            <Card className="border-4 hover:shadow-brutal-lg overflow-hidden">
+                <CardHeader className="bg-secondary/10 border-b-4 border-black dark:border-white">
+                    <CardTitle className="flex items-center gap-3 font-black uppercase">
+                        <div className="p-2 bg-secondary text-secondary-foreground rounded-brutal border-3 border-black dark:border-white">
+                            <Cake className="h-6 w-6" />
+                        </div>
+                        Birthdays
                     </CardTitle>
-                    <CardDescription>No upcoming birthdays found</CardDescription>
+                    <CardDescription className="font-bold">No upcoming celebrations</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                        <Gift className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No birthday data available. Add member birthdays to see celebrations here!</p>
+                <CardContent className="pt-6">
+                    <div className="text-center py-12">
+                        <div className="inline-block p-6 bg-muted rounded-brutal border-4 border-black dark:border-white mb-4">
+                            <Gift className="h-16 w-16 text-muted-foreground" />
+                        </div>
+                        <p className="text-lg font-bold">No birthday data available. Add member birthdays to see celebrations here!</p>
                     </div>
                 </CardContent>
             </Card>
@@ -78,44 +84,44 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
     }
 
     return (
-        <Card className="overflow-hidden transition-all duration-300 hover:shadow-xl border-primary/20 shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-pink-100 via-purple-100 to-indigo-100 dark:from-pink-950/50 dark:via-purple-950/50 dark:to-indigo-950/50">
+        <Card className="border-4 hover:shadow-brutal-lg overflow-hidden">
+            <CardHeader className="bg-secondary/10 border-b-4 border-black dark:border-white">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="flex items-center gap-3 text-pink-800 dark:text-pink-200">
-                            <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 shadow-md">
-                                <Cake className="h-6 w-6 text-white" />
+                        <CardTitle className="flex items-center gap-3 font-black uppercase text-secondary">
+                            <div className="p-3 bg-secondary text-secondary-foreground rounded-brutal border-4 border-black dark:border-white shadow-brutal-sm hover:-rotate-6 transition-transform">
+                                <Cake className="h-7 w-7" />
                             </div>
                             Birthday Celebrations
                         </CardTitle>
-                        <CardDescription className="mt-2">
+                        <CardDescription className="mt-3 flex items-center gap-2 flex-wrap">
                             {todaysBirthdays.length > 0 && (
-                                <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white mr-2 hover:from-pink-600 hover:to-rose-600 transition-all shadow-md">
-                                    🎉 {todaysBirthdays.length} today!
+                                <Badge variant="accent" className="font-black text-sm">
+                                    🎉 {todaysBirthdays.length} TODAY!
                                 </Badge>
                             )}
-                            <span className="text-pink-700 dark:text-pink-300">Celebrating {birthdays.length} upcoming birthdays</span>
+                            <span className="font-bold text-foreground">
+                                {birthdays.length} upcoming birthdays
+                            </span>
                         </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Heart className="h-5 w-5 text-pink-500 animate-pulse" />
+                    <div className="p-3 bg-accent text-accent-foreground rounded-brutal border-3 border-black dark:border-white animate-brutal-pulse">
+                        <Heart className="h-6 w-6" />
                     </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="p-6 bg-gradient-to-br from-white to-pink-50 dark:from-background dark:to-pink-950/10">
+            <CardContent className="p-6 space-y-6">
                 {/* Today's Birthdays - Special Highlight */}
                 {todaysBirthdays.length > 0 && (
-                    <div className="mb-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="p-2 rounded-lg bg-gradient-to-br from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30">
-                                <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                            </div>
-                            <h3 className="font-bold text-amber-700 dark:text-amber-300 text-lg">
+                    <div>
+                        <div className="inline-block mb-4 bg-accent text-accent-foreground px-4 py-2 rounded-brutal border-4 border-black dark:border-white shadow-brutal-sm rotate-[-1deg]">
+                            <h3 className="font-black text-lg uppercase flex items-center gap-2">
+                                <Calendar className="h-5 w-5" />
                                 🎂 Today's Celebrations!
                             </h3>
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {todaysBirthdays.map((birthday, index) => (
                                 <BirthdayCard key={birthday.id} member={birthday} index={index} />
                             ))}
@@ -127,11 +133,9 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
                 {upcomingBirthdays.length > 0 && (
                     <div>
                         <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-100 to-fuchsia-100 dark:from-purple-900/30 dark:to-fuchsia-900/30">
-                                    <Gift className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                                </div>
-                                <h3 className="font-bold text-purple-700 dark:text-purple-300 text-lg">
+                            <div className="inline-block bg-primary text-primary-foreground px-4 py-2 rounded-brutal border-4 border-black dark:border-white shadow-brutal-sm rotate-[1deg]">
+                                <h3 className="font-black text-base uppercase flex items-center gap-2">
+                                    <Gift className="h-4 w-4" />
                                     Coming Up
                                 </h3>
                             </div>
@@ -140,14 +144,14 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setShowAll(!showAll)}
-                                    className="text-sm border-purple-300 hover:bg-purple-100 dark:border-purple-700 dark:hover:bg-purple-950/50 shadow-sm"
+                                    className="font-bold"
                                 >
                                     {showAll ? 'Show Less' : `Show All (${birthdays.length})`}
                                 </Button>
                             )}
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {(showAll ? upcomingBirthdays : upcomingBirthdays.slice(0, 6)).map((birthday, index) => (
                                 <BirthdayCard key={birthday.id} member={birthday} index={index} />
                             ))}
@@ -157,9 +161,11 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
 
                 {/* Empty State for Upcoming */}
                 {todaysBirthdays.length === 0 && upcomingBirthdays.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <Gift className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>No upcoming birthdays in the next few months.</p>
+                    <div className="text-center py-8">
+                        <div className="inline-block p-4 bg-muted rounded-brutal border-4 border-black dark:border-white mb-4">
+                            <Gift className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                        <p className="font-bold">No upcoming birthdays in the next few months.</p>
                     </div>
                 )}
             </CardContent>

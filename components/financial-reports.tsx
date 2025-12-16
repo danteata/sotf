@@ -174,13 +174,15 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
     return (
         <div className="space-y-6">
             {/* Report Controls */}
-            <Card>
+            <Card className="border-4 border-black dark:border-white shadow-brutal">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-2 font-black uppercase tracking-wide">
+                        <div className="p-2 bg-primary text-primary-foreground rounded-lg border-3 border-black dark:border-white">
+                            <FileText className="h-5 w-5" />
+                        </div>
                         Financial Reports
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="font-bold">
                         Generate detailed financial reports and analytics for your church
                     </CardDescription>
                 </CardHeader>
@@ -265,52 +267,61 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
 
             {/* Report Content */}
             <Tabs value={reportType} onValueChange={(value: ReportType) => setReportType(value)} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="income-statement">Income Statement</TabsTrigger>
-                    <TabsTrigger value="expense-breakdown">Expenses</TabsTrigger>
-                    <TabsTrigger value="contribution-analysis">Contributions</TabsTrigger>
-                    <TabsTrigger value="budget-comparison">Budget</TabsTrigger>
-                    <TabsTrigger value="trend-analysis">Trends</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-5 bg-muted/50 border-3 border-black dark:border-white h-12 p-1">
+                    <TabsTrigger value="income-statement" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold text-xs md:text-sm">Income Statement</TabsTrigger>
+                    <TabsTrigger value="expense-breakdown" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold text-xs md:text-sm">Expenses</TabsTrigger>
+                    <TabsTrigger value="contribution-analysis" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold text-xs md:text-sm">Contributions</TabsTrigger>
+                    <TabsTrigger value="budget-comparison" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold text-xs md:text-sm">Budget</TabsTrigger>
+                    <TabsTrigger value="trend-analysis" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold text-xs md:text-sm">Trends</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="income-statement" className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Card>
+                        <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                            <div className="h-2 bg-success"></div>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-                                <TrendingUp className="h-4 w-4 text-green-600" />
+                                <CardTitle className="text-sm font-black uppercase tracking-wide">Total Income</CardTitle>
+                                <div className="p-2 bg-success text-success-foreground rounded-lg border-3 border-black dark:border-white">
+                                    <TrendingUp className="h-4 w-4" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">{formatCurrency(reportData.totalIncome)}</div>
+                                <div className="text-2xl font-black text-foreground">{formatCurrency(reportData.totalIncome)}</div>
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                            <div className="h-2 bg-destructive"></div>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-                                <TrendingDown className="h-4 w-4 text-red-600" />
+                                <CardTitle className="text-sm font-black uppercase tracking-wide">Total Expenses</CardTitle>
+                                <div className="p-2 bg-destructive text-destructive-foreground rounded-lg border-3 border-black dark:border-white">
+                                    <TrendingDown className="h-4 w-4" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-red-600">{formatCurrency(reportData.totalExpenses)}</div>
+                                <div className="text-2xl font-black text-foreground">{formatCurrency(reportData.totalExpenses)}</div>
                             </CardContent>
                         </Card>
 
-                        <Card>
+                        <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                            <div className={`h-2 ${reportData.netIncome >= 0 ? 'bg-success' : 'bg-destructive'}`}></div>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">Net Income</CardTitle>
-                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                <CardTitle className="text-sm font-black uppercase tracking-wide">Net Income</CardTitle>
+                                <div className={`p-2 rounded-lg border-3 border-black dark:border-white ${reportData.netIncome >= 0 ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'}`}>
+                                    <DollarSign className="h-4 w-4" />
+                                </div>
                             </CardHeader>
                             <CardContent>
-                                <div className={`text-2xl font-bold ${reportData.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <div className={`text-2xl font-black ${reportData.netIncome >= 0 ? 'text-success' : 'text-destructive'}`}>
                                     {formatCurrency(reportData.netIncome)}
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    <Card>
+                    <Card className="border-4 border-black dark:border-white shadow-brutal">
                         <CardHeader>
-                            <CardTitle>Income by Category</CardTitle>
+                            <CardTitle className="font-black uppercase tracking-wide">Income by Category</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -343,9 +354,9 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
                 </TabsContent>
 
                 <TabsContent value="expense-breakdown" className="space-y-6">
-                    <Card>
+                    <Card className="border-4 border-black dark:border-white shadow-brutal">
                         <CardHeader>
-                            <CardTitle>Expense Breakdown</CardTitle>
+                            <CardTitle className="font-black uppercase tracking-wide">Expense Breakdown</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -378,10 +389,10 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
                 </TabsContent>
 
                 <TabsContent value="contribution-analysis" className="space-y-6">
-                    <Card>
+                    <Card className="border-4 border-black dark:border-white shadow-brutal">
                         <CardHeader>
-                            <CardTitle>Contribution Analysis</CardTitle>
-                            <CardDescription>Analysis of tithes and offerings</CardDescription>
+                            <CardTitle className="font-black uppercase tracking-wide">Contribution Analysis</CardTitle>
+                            <CardDescription className="font-bold">Analysis of tithes and offerings</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="text-center py-8 text-muted-foreground">
@@ -394,10 +405,10 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
                 </TabsContent>
 
                 <TabsContent value="budget-comparison" className="space-y-6">
-                    <Card>
+                    <Card className="border-4 border-black dark:border-white shadow-brutal">
                         <CardHeader>
-                            <CardTitle>Budget vs Actual</CardTitle>
-                            <CardDescription>Compare budgeted amounts with actual spending</CardDescription>
+                            <CardTitle className="font-black uppercase tracking-wide">Budget vs Actual</CardTitle>
+                            <CardDescription className="font-bold">Compare budgeted amounts with actual spending</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="text-center py-8 text-muted-foreground">
@@ -410,10 +421,10 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
                 </TabsContent>
 
                 <TabsContent value="trend-analysis" className="space-y-6">
-                    <Card>
+                    <Card className="border-4 border-black dark:border-white shadow-brutal">
                         <CardHeader>
-                            <CardTitle>Monthly Trends</CardTitle>
-                            <CardDescription>Income and expense trends over time</CardDescription>
+                            <CardTitle className="font-black uppercase tracking-wide">Monthly Trends</CardTitle>
+                            <CardDescription className="font-bold">Income and expense trends over time</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -444,9 +455,9 @@ export function FinancialReports({ transactions }: FinancialReportsProps) {
             </Tabs>
 
             {/* Summary Stats */}
-            <Card>
+            <Card className="border-4 border-black dark:border-white shadow-brutal">
                 <CardHeader>
-                    <CardTitle>Report Summary</CardTitle>
+                    <CardTitle className="font-black uppercase tracking-wide">Report Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

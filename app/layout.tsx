@@ -1,15 +1,16 @@
 import { type Metadata } from 'next'
 import { ClerkProvider } from '@clerk/nextjs'
-import { Inter } from 'next/font/google'
+import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import QueryProvider from '@/components/query-provider'
 import { AuthLoadingWrapper } from '@/components/auth-loading-wrapper'
 import { OrganizationProvider } from '@/hooks/use-organization'
 import { ThemeProvider } from '@/components/theme-provider'
 
-const font = Inter({
-  variable: '--font-inter',
+const font = Space_Grotesk({
+  variable: '--font-space-grotesk',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {

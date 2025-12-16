@@ -153,16 +153,16 @@ export function RoleBasedNavigation() {
         return (
           <Link key={item.href} href={item.href}>
             <Button
-              variant={isActive ? "secondary" : "ghost"}
+              variant={isActive ? "default" : "ghost"}
               className={cn(
                 "w-full justify-start transition-all duration-200 rounded-lg",
-                isActive && "bg-primary text-primary-foreground shadow-md hover:bg-primary/90"
+                isActive && "shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] dark:shadow-[3px_3px_0px_0px_rgba(255,255,255,1)]"
               )}
             >
               <Icon className="mr-2 h-4 w-4" />
               {item.title}
               {item.badge && (
-                <Badge variant="outline" className="ml-auto text-xs border-primary/30">
+                <Badge variant="outline" className="ml-auto text-xs">
                   {item.badge}
                 </Badge>
               )}
@@ -221,7 +221,7 @@ export function RoleIndicator() {
           <p className="text-sm font-semibold truncate max-w-full">
             {user.name || 'Unknown User'}
           </p>
-          <Badge variant={roleInfo.color} className="text-xs px-2 py-0.5 bg-primary text-primary-foreground">
+          <Badge variant={roleInfo.color} className="text-xs px-2 py-0.5">
             {roleInfo.label}
           </Badge>
         </div>

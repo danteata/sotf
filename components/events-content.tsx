@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   Edit,
   Trash2,
+  Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -237,52 +238,58 @@ export function EventsContent() {
 
   return (
     <div className="container p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 p-4 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 p-4 rounded-lg bg-white dark:bg-card border-4 border-black dark:border-white shadow-brutal">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Events</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Events</h1>
           <p className="text-muted-foreground">
             Manage and view upcoming events for your{' '}
             {terminology.church_name.toLowerCase()}.
           </p>
         </div>
-        <Button onClick={handleAddEvent} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md">
+        <Button onClick={handleAddEvent}>
           <Plus className="mr-2 h-4 w-4" />
           Add Event
         </Button>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm rounded-xl p-1">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">Overview</TabsTrigger>
-          <TabsTrigger value="all-events" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">All Events</TabsTrigger>
+        <TabsList className="bg-white dark:bg-card border-3 border-black dark:border-white rounded-lg p-1 shadow-brutal-sm">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-accent data-[state=active]:text-black rounded-md">Overview</TabsTrigger>
+          <TabsTrigger value="all-events" className="data-[state=active]:bg-accent data-[state=active]:text-black rounded-md">All Events</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid gap-6">
             {/* Overview Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="transition-all duration-300 hover:shadow-lg border-primary/30">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-bold">Total Events</CardTitle>
-                  <Calendar className="h-5 w-5 text-primary" />
+              <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+                <div className="h-2 bg-primary"></div>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wide">Total Events</CardTitle>
+                  <div className="p-2.5 bg-primary text-primary-foreground rounded-lg border-3 border-black dark:border-white">
+                    <Calendar className="h-5 w-5" />
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                  <div className="text-3xl font-bold text-primary">{events.length}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                <CardContent className="space-y-3 pb-6">
+                  <div className="text-4xl font-black text-foreground">{events.length}</div>
+                  <p className="text-xs font-bold text-muted-foreground">
                     Upcoming events scheduled
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="transition-all duration-300 hover:shadow-lg border-secondary/30">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-bold">
+              <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+                <div className="h-2 bg-secondary"></div>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wide">
                     {ministryLabels.management}
                   </CardTitle>
-                  <Users className="h-5 w-5 text-secondary" />
+                  <div className="p-2.5 bg-secondary text-secondary-foreground rounded-lg border-3 border-black dark:border-white">
+                    <Users className="h-5 w-5" />
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-2 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
-                  <div className="text-3xl font-bold text-secondary">
+                <CardContent className="space-y-3 pb-6">
+                  <div className="text-4xl font-black text-foreground">
                     {
                       events.filter(
                         (e) =>
@@ -294,7 +301,7 @@ export function EventsContent() {
                           eventTypes.some(
                             (type) =>
                               type.value ===
-                                (e.type || (e as any).event_type_value) &&
+                              (e.type || (e as any).event_type_value) &&
                               type.label
                                 .toLowerCase()
                                 .includes(
@@ -304,41 +311,47 @@ export function EventsContent() {
                       ).length
                     }
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs font-bold text-muted-foreground">
                     {ministryLabels.single}-related events
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="transition-all duration-300 hover:shadow-lg border-accent/30">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-bold">
+              <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+                <div className="h-2 bg-accent"></div>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wide">
                     Services
                   </CardTitle>
-                  <Church className="h-5 w-5 text-accent" />
+                  <div className="p-2.5 bg-accent text-black rounded-lg border-3 border-black dark:border-white">
+                    <Church className="h-5 w-5" />
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-2 p-3 rounded-lg bg-accent/5 border border-accent/20">
-                  <div className="text-3xl font-bold text-accent">
+                <CardContent className="space-y-3 pb-6">
+                  <div className="text-4xl font-black text-foreground">
                     {events.filter((e) => e.type === 'sunday-service').length}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs font-bold text-muted-foreground">
                     Worship services
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="transition-all duration-300 hover:shadow-lg border-ring/30">
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                  <CardTitle className="text-sm font-bold">
+              <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)] transition-all">
+                <div className="h-2 bg-success"></div>
+                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-4">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wide">
                     Community
                   </CardTitle>
-                  <Heart className="h-5 w-5 text-ring" />
+                  <div className="p-2.5 bg-success text-success-foreground rounded-lg border-3 border-black dark:border-white">
+                    <Heart className="h-5 w-5" />
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-2 p-3 rounded-lg bg-ring/5 border border-ring/20">
-                  <div className="text-3xl font-bold text-ring">
+                <CardContent className="space-y-3 pb-6">
+                  <div className="text-4xl font-black text-foreground">
                     {events.filter((e) => e.type === 'other').length}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs font-bold text-muted-foreground">
                     Community events
                   </p>
                 </CardContent>
@@ -363,7 +376,7 @@ export function EventsContent() {
 
         <TabsContent value="all-events" className="space-y-6">
           {/* Filters and Search */}
-          <Card className="border-primary/10 shadow-sm">
+          <Card className="border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal">
             <CardHeader>
               <CardTitle>All Events</CardTitle>
               <CardDescription>
@@ -371,23 +384,26 @@ export function EventsContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search events..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="max-w-sm pl-8 border-primary/30"
-                    />
-                  </div>
+              {/* Search Input - Consistent with Members Page */}
+              <div className="flex flex-col gap-4 mb-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search events by title, description, or type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 h-10 border-3 border-black dark:border-white shadow-brutal-sm focus:shadow-brutal"
+                  />
                 </div>
+              </div>
+
+              {/* Filters - Consistent Pattern */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-4">
                 <Select
                   value={eventTypeFilter}
                   onValueChange={setEventTypeFilter}
                 >
-                  <SelectTrigger className="w-[180px] border-primary/30">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Event Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -400,7 +416,7 @@ export function EventsContent() {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px] border-primary/30">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -415,7 +431,7 @@ export function EventsContent() {
               <div className="rounded-md border border-primary/10 shadow-sm">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+                    <TableRow className="bg-muted/30">
                       <TableHead>Event</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Date</TableHead>
@@ -462,11 +478,11 @@ export function EventsContent() {
                                     ? 'default'
                                     : (event as any).event_type_color ===
                                       'secondary'
-                                    ? 'secondary'
-                                    : (event as any).event_type_color ===
-                                      'destructive'
-                                    ? 'destructive'
-                                    : 'outline'
+                                      ? 'secondary'
+                                      : (event as any).event_type_color ===
+                                        'destructive'
+                                        ? 'destructive'
+                                        : 'outline'
                                 }
                                 className="shadow-sm"
                               >
@@ -484,8 +500,7 @@ export function EventsContent() {
                             </TableCell>
                             <TableCell>
                               <Badge
-                                variant={isUpcoming ? 'default' : 'secondary'}
-                                className={isUpcoming ? 'bg-gradient-to-r from-green-500 to-emerald-500' : ''}
+                                variant={isUpcoming ? 'success' : 'secondary'}
                               >
                                 {isUpcoming ? 'Upcoming' : 'Past'}
                               </Badge>
@@ -542,7 +557,6 @@ export function EventsContent() {
                       size="sm"
                       onClick={() => setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="border-primary/30 hover:bg-primary/10"
                     >
                       Previous
                     </Button>
@@ -551,7 +565,6 @@ export function EventsContent() {
                       size="sm"
                       onClick={() => setCurrentPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="border-primary/30 hover:bg-primary/10"
                     >
                       Next
                     </Button>

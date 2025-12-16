@@ -17,7 +17,7 @@ export function WelcomeBanner() {
   // Show loading skeleton while authentication is being determined
   if (isClerkConfigured && !isLoaded) {
     return (
-      <div className="mb-8 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 p-6 border-2 border-primary/30 shadow-lg animate-pulse">
+      <div className="mb-8 rounded-lg bg-white dark:bg-card p-6 border-4 border-black dark:border-white shadow-brutal animate-pulse">
         <div className="flex items-center gap-4">
           <div className="rounded-full bg-primary/30 p-3">
             <Church className="h-6 w-6 text-primary animate-pulse" />
@@ -38,7 +38,7 @@ export function WelcomeBanner() {
   // If Clerk is not configured, show a demo welcome banner
   if (!isClerkConfigured) {
     return (
-      <div className="mb-8 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 p-6 border-2 border-primary/30 shadow-lg transition-all duration-300 hover:shadow-xl">
+      <div className="mb-8 rounded-lg bg-white dark:bg-card p-6 border-4 border-black dark:border-white shadow-brutal hover:shadow-brutal-lg transition-all">
         <div className="flex items-center gap-4">
           <div className="rounded-full bg-primary/30 p-3">
             <Church className="h-6 w-6 text-primary" />
@@ -49,7 +49,7 @@ export function WelcomeBanner() {
           </div>
         </div>
         <div className="mt-4 flex gap-3">
-          <Button onClick={() => router.push("/dashboard")} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground font-bold">
+          <Button onClick={() => router.push("/dashboard")} className="font-bold">
             Go to Dashboard
           </Button>
           <Button variant="outline" onClick={() => router.push("/members")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
@@ -62,7 +62,7 @@ export function WelcomeBanner() {
 
   if (isSignedIn) {
     return (
-      <div className="mb-8 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 p-6 border-2 border-primary/30 shadow-lg transition-all duration-300 hover:shadow-xl">
+      <div className="mb-8 rounded-lg bg-white dark:bg-card p-6 border-4 border-black dark:border-white shadow-brutal hover:shadow-brutal-lg transition-all">
         <div className="flex items-center gap-4">
           <div className="rounded-full bg-primary/30 p-3">
             <Church className="h-6 w-6 text-primary" />
@@ -73,7 +73,7 @@ export function WelcomeBanner() {
           </div>
         </div>
         <div className="mt-4 flex gap-3">
-          <Button onClick={() => router.push("/dashboard")} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground font-bold">
+          <Button onClick={() => router.push("/dashboard")} className="font-bold">
             Go to Dashboard
           </Button>
           <Button variant="outline" onClick={() => router.push("/members")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
@@ -85,24 +85,24 @@ export function WelcomeBanner() {
   }
 
   return (
-      <div className="mb-8 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 p-6 border-2 border-primary/30 shadow-lg transition-all duration-300 hover:shadow-xl">
-        <div className="flex items-center gap-4">
-          <div className="rounded-full bg-primary/30 p-3">
-            <Church className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">Welcome to Makarios Church Management System</h2>
-            <p className="text-muted-foreground">Sign in to access all features and manage your church community</p>
-          </div>
+    <div className="mb-8 rounded-lg bg-white dark:bg-card p-6 border-4 border-black dark:border-white shadow-brutal hover:shadow-brutal-lg transition-all">
+      <div className="flex items-center gap-4">
+        <div className="rounded-full bg-primary/30 p-3">
+          <Church className="h-6 w-6 text-primary" />
         </div>
-        <div className="mt-4 flex gap-3">
-          <Button onClick={() => router.push("/sign-in")} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground font-bold">
-            Sign In
-          </Button>
-          <Button variant="outline" onClick={() => router.push("/sign-up")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
-            Create Account
-          </Button>
+        <div>
+          <h2 className="text-xl font-bold">Welcome to Makarios Church Management System</h2>
+          <p className="text-muted-foreground">Sign in to access all features and manage your church community</p>
         </div>
       </div>
+      <div className="mt-4 flex gap-3">
+        <Button onClick={() => router.push("/sign-in")} className="font-bold">
+          Sign In
+        </Button>
+        <Button variant="outline" onClick={() => router.push("/sign-up")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
+          Create Account
+        </Button>
+      </div>
+    </div>
   )
 }

@@ -52,7 +52,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b-2 border-sidebar-border">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-md">
+              <div className="w-8 h-8 rounded-lg bg-primary border-3 border-black dark:border-white flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] dark:shadow-[3px_3px_0px_0px_rgba(255,255,255,1)]">
                 <span className="text-primary-foreground font-bold text-sm">M</span>
               </div>
               <span className="font-bold text-sidebar-foreground">State of the Flock</span>

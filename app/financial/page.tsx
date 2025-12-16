@@ -319,24 +319,24 @@ export default function FinancialPage() {
     return (
         <LayoutWrapper>
             <div className="container mx-auto p-6 space-y-6">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
+                <div className="flex items-center justify-between p-6 rounded-lg bg-white dark:bg-card border-4 border-black dark:border-white shadow-brutal">
                     <div>
-                        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Financial Management</h1>
-                        <p className="text-muted-foreground">
+                        <h1 className="text-3xl font-black uppercase tracking-wide">Financial Management</h1>
+                        <p className="text-muted-foreground font-bold mt-1">
                             Track income, expenses, and financial performance
                         </p>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={handleExportData} className="border-primary/30 hover:bg-primary/10">
+                        <Button variant="outline" onClick={handleExportData}>
                             <Download className="h-4 w-4 mr-2" />
                             Export
                         </Button>
 
-                        <Button variant="outline" onClick={() => setShowSummaryDialog(true)} className="border-primary/30 hover:bg-primary/10">
+                        <Button variant="outline" onClick={() => setShowSummaryDialog(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add Service Summary
                         </Button>
-                        <Button onClick={() => setShowTransactionDialog(true)} className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md">
+                        <Button onClick={() => setShowTransactionDialog(true)}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add Transaction
                         </Button>
@@ -344,10 +344,10 @@ export default function FinancialPage() {
                 </div>
 
                 <Tabs defaultValue="overview" className="space-y-6">
-                    <TabsList className="bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm rounded-xl p-1">
-                        <TabsTrigger value="overview" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">Overview</TabsTrigger>
-                        <TabsTrigger value="transactions" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">Transactions</TabsTrigger>
-                        <TabsTrigger value="reports" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-secondary data-[state=active]:text-primary-foreground rounded-lg">Reports</TabsTrigger>
+                    <TabsList className="bg-muted/50 border-3 border-black dark:border-white h-12 p-1">
+                        <TabsTrigger value="overview" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold">Overview</TabsTrigger>
+                        <TabsTrigger value="transactions" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold">Transactions</TabsTrigger>
+                        <TabsTrigger value="reports" className="h-full data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black font-bold">Reports</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-6">
@@ -357,27 +357,34 @@ export default function FinancialPage() {
                         />
 
                         {/* Quick Stats Cards */}
+                        {/* Quick Stats Cards */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <Card className="transition-all duration-300 hover:shadow-lg border-primary/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className="h-2 bg-primary"></div>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-bold">Total Transactions</CardTitle>
-                                    <DollarSign className="h-5 w-5 text-primary" />
+                                    <CardTitle className="text-sm font-black uppercase tracking-wide">Total Transactions</CardTitle>
+                                    <div className="p-2 bg-primary text-primary-foreground rounded-lg border-3 border-black dark:border-white">
+                                        <DollarSign className="h-4 w-4" />
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="space-y-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                                    <div className="text-2xl font-bold text-primary">{transactions.length}</div>
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                <CardContent>
+                                    <div className="text-2xl font-black text-foreground">{transactions.length}</div>
+                                    <p className="text-xs font-bold text-muted-foreground mt-1">
                                         All time
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="transition-all duration-300 hover:shadow-lg border-secondary/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className="h-2 bg-secondary"></div>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-bold">This Month</CardTitle>
-                                    <TrendingUp className="h-5 w-5 text-secondary" />
+                                    <CardTitle className="text-sm font-black uppercase tracking-wide">This Month</CardTitle>
+                                    <div className="p-2 bg-secondary text-secondary-foreground rounded-lg border-3 border-black dark:border-white">
+                                        <TrendingUp className="h-4 w-4" />
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="space-y-2 p-3 rounded-lg bg-secondary/5 border border-secondary/20">
-                                    <div className="text-2xl font-bold text-secondary">
+                                <CardContent>
+                                    <div className="text-2xl font-black text-foreground">
                                         {transactions.filter(t => {
                                             const date = new Date(t.date)
                                             const now = new Date()
@@ -385,37 +392,43 @@ export default function FinancialPage() {
                                                 date.getFullYear() === now.getFullYear()
                                         }).length}
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                    <p className="text-xs font-bold text-muted-foreground mt-1">
                                         Transactions
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="transition-all duration-300 hover:shadow-lg border-accent/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className="h-2 bg-accent"></div>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-bold">Largest Transaction</CardTitle>
-                                    <TrendingUp className="h-5 w-5 text-accent" />
+                                    <CardTitle className="text-sm font-black uppercase tracking-wide">Largest Transaction</CardTitle>
+                                    <div className="p-2 bg-accent text-accent-foreground rounded-lg border-3 border-black dark:border-white">
+                                        <TrendingUp className="h-4 w-4" />
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="space-y-2 p-3 rounded-lg bg-accent/5 border border-accent/20">
-                                    <div className="text-2xl font-bold text-accent">
+                                <CardContent>
+                                    <div className="text-2xl font-black text-foreground">
                                         {transactions.length > 0
                                             ? formatCurrency(Math.max(...transactions.map(t => t.amount)))
                                             : formatCurrency(0)
                                         }
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                    <p className="text-xs font-bold text-muted-foreground mt-1">
                                         Single transaction
                                     </p>
                                 </CardContent>
                             </Card>
 
-                            <Card className="transition-all duration-300 hover:shadow-lg border-ring/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className="h-2 bg-muted-foreground"></div>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                    <CardTitle className="text-sm font-bold">Avg Transaction</CardTitle>
-                                    <TrendingDown className="h-5 w-5 text-ring" />
+                                    <CardTitle className="text-sm font-black uppercase tracking-wide">Avg Transaction</CardTitle>
+                                    <div className="p-2 bg-muted text-muted-foreground rounded-lg border-3 border-black dark:border-white">
+                                        <TrendingDown className="h-4 w-4" />
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="space-y-2 p-3 rounded-lg bg-ring/5 border border-ring/20">
-                                    <div className="text-2xl font-bold text-ring">
+                                <CardContent>
+                                    <div className="text-2xl font-black text-foreground">
                                         {transactions.length > 0
                                             ? formatCurrency(
                                                 transactions.reduce((sum, t) => sum + t.amount, 0) / transactions.length
@@ -423,7 +436,7 @@ export default function FinancialPage() {
                                             : formatCurrency(0)
                                         }
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                    <p className="text-xs font-bold text-muted-foreground mt-1">
                                         Per transaction
                                     </p>
                                 </CardContent>
@@ -433,24 +446,25 @@ export default function FinancialPage() {
 
                     <TabsContent value="transactions" className="space-y-6">
                         {/* Filters */}
-                        <Card className="border-primary/10 shadow-sm">
+                        {/* Filters */}
+                        <Card className="border-4 border-black dark:border-white shadow-brutal">
                             <CardHeader>
-                                <CardTitle>Filters</CardTitle>
+                                <CardTitle className="font-black uppercase tracking-wide">Filters</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                     <div className="relative">
-                                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             placeholder="Search transactions..."
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="pl-8 border-primary/30"
+                                            className="pl-10"
                                         />
                                     </div>
 
                                     <Select value={typeFilter} onValueChange={setTypeFilter}>
-                                        <SelectTrigger className="border-primary/30">
+                                        <SelectTrigger>
                                             <SelectValue placeholder="Filter by type" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -461,7 +475,7 @@ export default function FinancialPage() {
                                     </Select>
 
                                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                        <SelectTrigger className="border-primary/30">
+                                        <SelectTrigger>
                                             <SelectValue placeholder="Filter by category" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -478,7 +492,7 @@ export default function FinancialPage() {
                                     </Select>
 
                                     <Select value={dateRange} onValueChange={setDateRange}>
-                                        <SelectTrigger className="border-primary/30">
+                                        <SelectTrigger>
                                             <SelectValue placeholder="Date range" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -496,52 +510,55 @@ export default function FinancialPage() {
 
                         {/* Transaction Summary */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Card className="transition-all duration-300 hover:shadow-lg border-green-500/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className="h-2 bg-success"></div>
                                 <CardContent className="pt-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-bold text-green-600 dark:text-green-400">Income</p>
-                                            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                            <p className="text-sm font-black uppercase tracking-wide text-muted-foreground">Income</p>
+                                            <p className="text-2xl font-black text-foreground">
                                                 {formatCurrency(totals.income)}
                                             </p>
                                         </div>
-                                        <div className="p-3 rounded-xl bg-green-100 dark:bg-green-900/50">
-                                            <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                                        <div className="p-3 rounded-lg bg-success text-success-foreground border-3 border-black dark:border-white">
+                                            <TrendingUp className="h-6 w-6" />
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="transition-all duration-300 hover:shadow-lg border-red-500/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className="h-2 bg-destructive"></div>
                                 <CardContent className="pt-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-bold text-red-600 dark:text-red-400">Expenses</p>
-                                            <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                            <p className="text-sm font-black uppercase tracking-wide text-muted-foreground">Expenses</p>
+                                            <p className="text-2xl font-black text-foreground">
                                                 {formatCurrency(totals.expense)}
                                             </p>
                                         </div>
-                                        <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/50">
-                                            <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
+                                        <div className="p-3 rounded-lg bg-destructive text-destructive-foreground border-3 border-black dark:border-white">
+                                            <TrendingDown className="h-6 w-6" />
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="transition-all duration-300 hover:shadow-lg border-blue-500/30">
+                            <Card className="overflow-hidden border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal hover:shadow-brutal-lg transition-all">
+                                <div className={`h-2 ${totals.net >= 0 ? 'bg-success' : 'bg-destructive'}`}></div>
                                 <CardContent className="pt-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm font-bold">Net</p>
-                                            <p className={`text-2xl font-bold ${totals.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                            <p className="text-sm font-black uppercase tracking-wide text-muted-foreground">Net</p>
+                                            <p className={`text-2xl font-black ${totals.net >= 0 ? 'text-success' : 'text-destructive'}`}>
                                                 {formatCurrency(Math.abs(totals.net))}
                                             </p>
                                         </div>
-                                        <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/50">
+                                        <div className={`p-3 rounded-lg border-3 border-black dark:border-white ${totals.net >= 0 ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'}`}>
                                             {totals.net >= 0 ? (
-                                                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
+                                                <TrendingUp className="h-6 w-6" />
                                             ) : (
-                                                <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
+                                                <TrendingDown className="h-6 w-6" />
                                             )}
                                         </div>
                                     </div>
@@ -550,10 +567,10 @@ export default function FinancialPage() {
                         </div>
 
                         {/* Transactions Table */}
-                        <Card className="border-primary/10 shadow-sm">
+                        <Card className="border-4 border-black dark:border-white shadow-brutal">
                             <CardHeader>
-                                <CardTitle>Transactions ({filteredTransactions.length})</CardTitle>
-                                <CardDescription>
+                                <CardTitle className="font-black uppercase tracking-wide">Transactions ({filteredTransactions.length})</CardTitle>
+                                <CardDescription className="font-bold">
                                     {filteredTransactions.length !== transactions.length &&
                                         `${filteredTransactions.length} of ${transactions.length} transactions shown`
                                     }
@@ -562,15 +579,15 @@ export default function FinancialPage() {
                             <CardContent>
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead>Category</TableHead>
-                                            <TableHead>Description</TableHead>
-                                            <TableHead>Amount</TableHead>
-                                            <TableHead>Payment Method</TableHead>
-                                            <TableHead>Member/Event</TableHead>
-                                            <TableHead>Actions</TableHead>
+                                        <TableRow className="bg-muted/30 border-b-2 border-black dark:border-white">
+                                            <TableHead className="font-bold text-black dark:text-white">Date</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Type</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Category</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Description</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Amount</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Payment Method</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Member/Event</TableHead>
+                                            <TableHead className="font-bold text-black dark:text-white">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -609,7 +626,7 @@ export default function FinancialPage() {
                                                 <TableCell>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-primary/10">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
                                                                 <MoreHorizontal className="h-4 w-4" />
                                                             </Button>
                                                         </DropdownMenuTrigger>

@@ -129,199 +129,223 @@ export function FinancialWidget({
     }
 
     return (
-        <Card className={`${className} transition-all duration-300 hover:shadow-lg border-primary/10`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                    <CardTitle className="text-sm font-semibold">Financial Overview</CardTitle>
-                    <CardDescription>
-                        {getPeriodLabel()} financial summary
-                    </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as any)}>
-                        <TabsList className="grid w-full grid-cols-3 bg-muted/50">
-                            <TabsTrigger value="month" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Month</TabsTrigger>
-                            <TabsTrigger value="quarter" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Quarter</TabsTrigger>
-                            <TabsTrigger value="year" className="text-xs data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Year</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                    {onAddTransaction && (
-                        <Button size="sm" className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90">
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add
-                        </Button>
-                    )}
+        <Card className={`${className} border-4 border-black dark:border-white bg-white dark:bg-card shadow-brutal overflow-hidden`}>
+            <div className="h-2 bg-success"></div>
+            <CardHeader className="border-b-4 border-black dark:border-white pt-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="font-black uppercase flex items-center gap-2 tracking-wide text-lg">
+                            <div className="p-2 bg-success text-success-foreground rounded-lg border-3 border-black dark:border-white">
+                                <DollarSign className="h-6 w-6" />
+                            </div>
+                            Financial Overview
+                        </CardTitle>
+                        <CardDescription className="font-bold mt-2 text-muted-foreground">
+                            {getPeriodLabel()} financial summary
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as any)}>
+                            <TabsList className="grid w-full grid-cols-3 bg-muted/50 border-3 border-black dark:border-white h-10">
+                                <TabsTrigger value="month" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black">Month</TabsTrigger>
+                                <TabsTrigger value="quarter" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black">Quarter</TabsTrigger>
+                                <TabsTrigger value="year" className="text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-black data-[state=active]:border-2 data-[state=active]:border-black">Year</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        {onAddTransaction && (
+                            <Button size="sm" variant="default">
+                                <Plus className="h-4 w-4 mr-1" />
+                                Add
+                            </Button>
+                        )}
+                    </div>
                 </div>
             </CardHeader>
 
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 pt-6">
                 {/* Key Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Total Income */}
-                    <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200/50 dark:border-green-900/50 shadow-sm hover:shadow-md transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/50">
-                                    <DollarSign className="h-5 w-5 text-green-600" />
+                    {/* Total Income */}
+                    <div className="overflow-hidden bg-white dark:bg-card rounded-lg border-4 border-black dark:border-white shadow-brutal-md hover:shadow-brutal-lg hover:-translate-y-0.5 transition-all">
+                        <div className="h-2 bg-success"></div>
+                        <div className="p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-success text-success-foreground rounded-lg border-3 border-black dark:border-white">
+                                        <DollarSign className="h-5 w-5" />
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-wide">Income</span>
                                 </div>
-                                <span className="text-sm font-bold text-green-800 dark:text-green-200">Income</span>
+                                {incomeChange !== 0 && (
+                                    <Badge variant={incomeChange > 0 ? "success" : "destructive"} className="text-xs font-bold border-2 border-black dark:border-white">
+                                        {incomeChange > 0 ? (
+                                            <ArrowUpRight className="h-3 w-3 mr-1" />
+                                        ) : (
+                                            <ArrowDownRight className="h-3 w-3 mr-1" />
+                                        )}
+                                        {Math.abs(incomeChange).toFixed(1)}%
+                                    </Badge>
+                                )}
                             </div>
-                            {incomeChange !== 0 && (
-                                <Badge variant={incomeChange > 0 ? "default" : "destructive"} className="text-xs px-2 py-1">
-                                    {incomeChange > 0 ? (
-                                        <ArrowUpRight className="h-3 w-3 mr-1" />
-                                    ) : (
-                                        <ArrowDownRight className="h-3 w-3 mr-1" />
-                                    )}
-                                    {Math.abs(incomeChange).toFixed(1)}%
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="text-2xl font-bold text-green-600">
-                            {formatCurrency(currentTotals.income)}
-                        </div>
-                        <div className="text-xs text-green-700 dark:text-green-300">
-                            {previousTotals.income > 0 ? (
-                                <span>
-                                    Prev: {formatCurrency(previousTotals.income)}
-                                </span>
-                            ) : (
-                                <span>No previous data</span>
-                            )}
+                            <div className="text-4xl font-black text-foreground mb-2">
+                                {formatCurrency(currentTotals.income)}
+                            </div>
+                            <div className="text-xs font-bold text-muted-foreground">
+                                {previousTotals.income > 0 ? (
+                                    <span>
+                                        Prev: {formatCurrency(previousTotals.income)}
+                                    </span>
+                                ) : (
+                                    <span>No previous data</span>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Total Expenses */}
-                    <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30 border border-red-200/50 dark:border-red-900/50 shadow-sm hover:shadow-md transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/50">
-                                    <TrendingDown className="h-5 w-5 text-red-600" />
+                    {/* Total Expenses */}
+                    <div className="overflow-hidden bg-white dark:bg-card rounded-lg border-4 border-black dark:border-white shadow-brutal-md hover:shadow-brutal-lg hover:-translate-y-0.5 transition-all">
+                        <div className="h-2 bg-destructive"></div>
+                        <div className="p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-destructive text-destructive-foreground rounded-lg border-3 border-black dark:border-white">
+                                        <TrendingDown className="h-5 w-5" />
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-wide">Expenses</span>
                                 </div>
-                                <span className="text-sm font-bold text-red-800 dark:text-red-200">Expenses</span>
+                                {expenseChange !== 0 && (
+                                    <Badge variant={expenseChange < 0 ? "success" : "destructive"} className="text-xs font-bold border-2 border-black dark:border-white">
+                                        {expenseChange < 0 ? (
+                                            <ArrowDownRight className="h-3 w-3 mr-1" />
+                                        ) : (
+                                            <ArrowUpRight className="h-3 w-3 mr-1" />
+                                        )}
+                                        {Math.abs(expenseChange).toFixed(1)}%
+                                    </Badge>
+                                )}
                             </div>
-                            {expenseChange !== 0 && (
-                                <Badge variant={expenseChange < 0 ? "default" : "destructive"} className="text-xs px-2 py-1">
-                                    {expenseChange < 0 ? (
-                                        <ArrowDownRight className="h-3 w-3 mr-1" />
-                                    ) : (
-                                        <ArrowUpRight className="h-3 w-3 mr-1" />
-                                    )}
-                                    {Math.abs(expenseChange).toFixed(1)}%
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="text-2xl font-bold text-red-600">
-                            {formatCurrency(currentTotals.expense)}
-                        </div>
-                        <div className="text-xs text-red-700 dark:text-red-300">
-                            {previousTotals.expense > 0 ? (
-                                <span>
-                                    Prev: {formatCurrency(previousTotals.expense)}
-                                </span>
-                            ) : (
-                                <span>No previous data</span>
-                            )}
+                            <div className="text-4xl font-black text-foreground mb-2">
+                                {formatCurrency(currentTotals.expense)}
+                            </div>
+                            <div className="text-xs font-bold text-muted-foreground">
+                                {previousTotals.expense > 0 ? (
+                                    <span>
+                                        Prev: {formatCurrency(previousTotals.expense)}
+                                    </span>
+                                ) : (
+                                    <span>No previous data</span>
+                                )}
+                            </div>
                         </div>
                     </div>
 
                     {/* Net Amount */}
-                    <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border border-blue-200/50 dark:border-blue-900/50 shadow-sm hover:shadow-md transition-all duration-300">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
-                                    {currentTotals.net >= 0 ? (
-                                        <TrendingUp className="h-5 w-5 text-blue-600" />
-                                    ) : (
-                                        <TrendingDown className="h-5 w-5 text-blue-600" />
-                                    )}
+                    {/* Net Amount */}
+                    <div className="overflow-hidden bg-white dark:bg-card rounded-lg border-4 border-black dark:border-white shadow-brutal-md hover:shadow-brutal-lg hover:-translate-y-0.5 transition-all">
+                        <div className={`h-2 ${currentTotals.net >= 0 ? 'bg-success' : 'bg-destructive'}`}></div>
+                        <div className="p-5">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div className={`p-2 ${currentTotals.net >= 0 ? 'bg-success text-success-foreground' : 'bg-destructive text-destructive-foreground'} rounded-lg border-3 border-black dark:border-white`}>
+                                        {currentTotals.net >= 0 ? (
+                                            <TrendingUp className="h-5 w-5" />
+                                        ) : (
+                                            <TrendingDown className="h-5 w-5" />
+                                        )}
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-wide">Net</span>
                                 </div>
-                                <span className="text-sm font-bold text-blue-800 dark:text-blue-200">Net</span>
+                                {netChange !== 0 && (
+                                    <Badge variant={currentTotals.net >= 0 ? "success" : "destructive"} className="text-xs font-bold border-2 border-black dark:border-white">
+                                        {netChange > 0 ? (
+                                            <ArrowUpRight className="h-3 w-3 mr-1" />
+                                        ) : (
+                                            <ArrowDownRight className="h-3 w-3 mr-1" />
+                                        )}
+                                        {Math.abs(netChange).toFixed(1)}%
+                                    </Badge>
+                                )}
                             </div>
-                            {netChange !== 0 && (
-                                <Badge variant={currentTotals.net >= 0 ? "default" : "destructive"} className="text-xs px-2 py-1">
-                                    {netChange > 0 ? (
-                                        <ArrowUpRight className="h-3 w-3 mr-1" />
-                                    ) : (
-                                        <ArrowDownRight className="h-3 w-3 mr-1" />
-                                    )}
-                                    {Math.abs(netChange).toFixed(1)}%
-                                </Badge>
-                            )}
-                        </div>
-                        <div className={`text-2xl font-bold ${currentTotals.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {formatCurrency(Math.abs(currentTotals.net))}
-                        </div>
-                        <div className={`text-xs ${currentTotals.net >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>
-                            {currentTotals.net >= 0 ? 'Profit' : 'Loss'}
+                            <div className="text-4xl font-black text-foreground mb-2">
+                                {formatCurrency(Math.abs(currentTotals.net))}
+                            </div>
+                            <div className={`text-xs font-black uppercase ${currentTotals.net >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                {currentTotals.net >= 0 ? 'Profit' : 'Loss'}
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Category Breakdown */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Top Income Categories */}
-                    <div className="space-y-3 p-4 rounded-xl bg-gradient-to-br from-green-50/50 to-emerald-50/50 dark:from-green-950/20 dark:to-emerald-950/20 border border-green-200/30 dark:border-green-900/30 shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/50">
-                                <TrendingUp className="h-4 w-4 text-green-600" />
+                    <div className="p-6 bg-white dark:bg-card rounded-brutal border-4 border-black dark:border-white shadow-brutal-md hover:shadow-brutal-lg transition-all">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="p-2 bg-success text-success-foreground rounded-lg border-3 border-black dark:border-white">
+                                <TrendingUp className="h-5 w-5" />
                             </div>
-                            <h4 className="text-sm font-bold text-green-800 dark:text-green-200">Top Income Sources</h4>
+                            <h4 className="text-base font-bold uppercase">Top Income Sources</h4>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {topIncomeCategories.length > 0 ? (
                                 topIncomeCategories.map(([category, totals]) => {
                                     const categoryInfo = TRANSACTION_CATEGORIES[category as keyof typeof TRANSACTION_CATEGORIES]
                                     const percentage = currentTotals.income > 0 ? (totals.income / currentTotals.income) * 100 : 0
 
                                     return (
-                                        <div key={category} className="flex items-center justify-between p-2 rounded-lg hover:bg-green-100/50 dark:hover:bg-green-900/20 transition-colors">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm">{categoryInfo.icon}</span>
-                                                <span className="text-sm font-medium">{categoryInfo.label}</span>
+                                        <div key={category} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border-3 border-black dark:border-white hover:border-success hover:-translate-y-0.5 transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg">{categoryInfo.icon}</span>
+                                                <span className="text-sm font-bold">{categoryInfo.label}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-sm font-bold text-green-600">{formatCurrency(totals.income)}</div>
-                                                <div className="text-xs text-green-700 dark:text-green-300">{percentage.toFixed(1)}%</div>
+                                                <div className="text-base font-black text-success">{formatCurrency(totals.income)}</div>
+                                                <div className="text-xs font-bold text-muted-foreground">{percentage.toFixed(1)}%</div>
                                             </div>
                                         </div>
                                     )
                                 })
                             ) : (
-                                <div className="text-sm text-muted-foreground italic">No income recorded</div>
+                                <div className="text-center p-8 bg-muted/50 rounded-lg border-3 border-black dark:border-white">
+                                    <div className="text-sm font-bold text-muted-foreground">No income recorded</div>
+                                </div>
                             )}
                         </div>
                     </div>
 
                     {/* Top Expense Categories */}
-                    <div className="space-y-3 p-4 rounded-xl bg-gradient-to-br from-red-50/50 to-rose-50/50 dark:from-red-950/20 dark:to-rose-950/20 border border-red-200/30 dark:border-red-900/30 shadow-sm">
-                        <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-red-100 dark:bg-red-900/50">
-                                <TrendingDown className="h-4 w-4 text-red-600" />
+                    <div className="p-6 bg-white dark:bg-card rounded-brutal border-4 border-black dark:border-white shadow-brutal-md hover:shadow-brutal-lg transition-all">
+                        <div className="flex items-center gap-3 mb-5">
+                            <div className="p-2 bg-destructive text-destructive-foreground rounded-lg border-3 border-black dark:border-white">
+                                <TrendingDown className="h-5 w-5" />
                             </div>
-                            <h4 className="text-sm font-bold text-red-800 dark:text-red-200">Top Expenses</h4>
+                            <h4 className="text-base font-bold uppercase">Top Expenses</h4>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {topExpenseCategories.length > 0 ? (
                                 topExpenseCategories.map(([category, totals]) => {
                                     const categoryInfo = TRANSACTION_CATEGORIES[category as keyof typeof TRANSACTION_CATEGORIES]
                                     const percentage = currentTotals.expense > 0 ? (totals.expense / currentTotals.expense) * 100 : 0
 
                                     return (
-                                        <div key={category} className="flex items-center justify-between p-2 rounded-lg hover:bg-red-100/50 dark:hover:bg-red-900/20 transition-colors">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm">{categoryInfo.icon}</span>
-                                                <span className="text-sm font-medium">{categoryInfo.label}</span>
+                                        <div key={category} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border-3 border-black dark:border-white hover:border-destructive hover:-translate-y-0.5 transition-all">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg">{categoryInfo.icon}</span>
+                                                <span className="text-sm font-bold">{categoryInfo.label}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-sm font-bold text-red-600">{formatCurrency(totals.expense)}</div>
-                                                <div className="text-xs text-red-700 dark:text-red-300">{percentage.toFixed(1)}%</div>
+                                                <div className="text-base font-black text-destructive">{formatCurrency(totals.expense)}</div>
+                                                <div className="text-xs font-bold text-muted-foreground">{percentage.toFixed(1)}%</div>
                                             </div>
                                         </div>
                                     )
                                 })
                             ) : (
-                                <div className="text-sm text-muted-foreground italic">No expenses recorded</div>
+                                <div className="text-center p-8 bg-muted/50 rounded-lg border-3 border-black dark:border-white">
+                                    <div className="text-sm font-bold text-muted-foreground">No expenses recorded</div>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -329,10 +353,10 @@ export function FinancialWidget({
 
                 {/* Recent Transactions Summary */}
                 {transactions.length > 0 && (
-                    <div className="pt-4 border-t border-primary/10">
+                    <div className="p-5 bg-accent/10 rounded-brutal border-4 border-accent shadow-brutal-md">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold">Recent Activity</span>
-                            <Badge variant="secondary" className="text-xs bg-accent text-accent-foreground px-2 py-1">
+                            <span className="text-base font-black uppercase">Recent Activity</span>
+                            <Badge variant="accent" className="font-black">
                                 {transactions.filter(t => {
                                     const transactionDate = new Date(t.date)
                                     const weekAgo = new Date()
@@ -341,7 +365,7 @@ export function FinancialWidget({
                                 }).length} this week
                             </Badge>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">
+                        <div className="text-sm font-bold mt-2">
                             {transactions.length} total transactions recorded
                         </div>
                     </div>

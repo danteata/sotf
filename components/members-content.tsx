@@ -121,20 +121,20 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   return (
     <div className="flex flex-col gap-4 w-full">
       {/* Header section with responsive layout */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
-        <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Members</h1>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-4 rounded-lg bg-white dark:bg-card border-4 border-black dark:border-white shadow-brutal">
+        <h1 className="text-2xl font-bold tracking-tight">Members</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={refreshAll}
             disabled={isRefreshing}
-            className="flex-1 sm:flex-none border-primary/30 hover:bg-primary/10"
+            className="flex-1 sm:flex-none"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none border-primary/30 hover:bg-primary/10">
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
@@ -142,7 +142,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
             variant="outline"
             size="sm"
             onClick={() => setIsBulkUploadOpen(true)}
-            className="flex-1 sm:flex-none border-primary/30 hover:bg-primary/10"
+            className="flex-1 sm:flex-none"
           >
             <Upload className="mr-2 h-4 w-4" />
             Bulk Upload
@@ -150,7 +150,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
           <Button
             size="sm"
             onClick={() => setIsAddMemberOpen(true)}
-            className="flex-1 sm:flex-none bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-primary-foreground shadow-md"
+            className="flex-1 sm:flex-none"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Member
@@ -159,12 +159,12 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       </div>
 
       {/* Filter section with improved mobile layout */}
-      <div className="flex flex-col gap-4 p-4 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
+      <div className="flex flex-col gap-4 p-4 rounded-lg bg-white dark:bg-card border-4 border-black dark:border-white shadow-brutal">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col gap-2 w-full md:w-auto">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-primary/10">
-                <Filter className="h-4 w-4 text-primary" />
+              <div className="p-1.5 rounded-md bg-primary text-primary-foreground border-2 border-black dark:border-white">
+                <Filter className="h-4 w-4" />
               </div>
               <span className="text-sm font-bold">Filter by:</span>
             </div>
@@ -173,7 +173,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                 value={statusFilter}
                 onValueChange={setStatusFilter}
               >
-                <SelectTrigger className="h-8 w-full sm:w-[150px] border-primary/30">
+                <SelectTrigger className="h-8 w-full sm:w-[150px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -187,7 +187,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                 value={ministryFilter}
                 onValueChange={setMinistryFilter}
               >
-                <SelectTrigger className="h-8 w-full sm:w-[150px] border-primary/30">
+                <SelectTrigger className="h-8 w-full sm:w-[150px]">
                   <SelectValue placeholder={ministryLabels.single} />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,13 +210,13 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       </div>
 
       {/* Search section */}
-      <div className="w-full p-4 rounded-xl bg-gradient-to-r from-white to-gray-50 dark:from-background dark:to-gray-900/20 border border-primary/10 shadow-sm">
+      <div className="w-full p-4 rounded-lg bg-white dark:bg-card border-4 border-black dark:border-white shadow-brutal">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search members..."
-            className="w-full pl-8 bg-background border-primary/30"
+            placeholder="Search members by name, email, or phone..."
+            className="w-full pl-10 h-10 border-3 border-black dark:border-white shadow-brutal-sm focus:shadow-brutal"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />

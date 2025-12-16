@@ -22,28 +22,26 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
     return (
         <Card
             className={`
-        relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg
+        relative overflow-hidden transition-all duration-200 rounded-lg border-4 border-black dark:border-white bg-white dark:bg-card
         ${member.isToday
-                    ? 'ring-2 ring-pink-500 shadow-pink-500/20 bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-950/50 dark:to-rose-950/50'
-                    : 'hover:shadow-md border-primary/20 bg-gradient-to-br from-white to-gray-50 dark:from-background dark:to-gray-900/20'
+                    ? 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[6px_6px_0px_0px_rgba(255,255,255,1)]'
+                    : 'shadow-brutal hover:shadow-brutal-md hover:-translate-y-0.5'
                 }
-        ${isHovered ? 'animate-pulse' : ''}
-        rounded-xl shadow-sm
       `}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
-            {/* Celebration background for today's birthdays */}
+            {/* Yellow accent bar for today */}
             {member.isToday && (
-                <div className="absolute inset-0 bg-gradient-to-br from-pink-400/10 to-purple-400/10 animate-pulse" />
+                <div className="absolute top-0 left-0 right-0 h-2 bg-accent" />
             )}
 
             {/* Floating sparkles animation */}
-            {isHovered && (
+            {isHovered && member.isToday && (
                 <div className="absolute inset-0 pointer-events-none">
-                    <Sparkles className="absolute top-2 right-2 h-4 w-4 text-yellow-400 animate-bounce" style={{ animationDelay: '0s' }} />
-                    <Sparkles className="absolute top-4 left-2 h-3 w-3 text-pink-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
-                    <Sparkles className="absolute bottom-2 right-4 h-3 w-3 text-purple-400 animate-bounce" style={{ animationDelay: '0.4s' }} />
+                    <Sparkles className="absolute top-2 right-2 h-4 w-4 text-accent animate-bounce" style={{ animationDelay: '0s' }} />
+                    <Sparkles className="absolute top-4 left-2 h-3 w-3 text-accent animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <Sparkles className="absolute bottom-2 right-4 h-3 w-3 text-accent animate-bounce" style={{ animationDelay: '0.4s' }} />
                 </div>
             )}
 
@@ -65,17 +63,17 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                                 className="object-cover"
                             />
                             <AvatarFallback className={`
-                ${member.isToday ? 'bg-gradient-to-br from-pink-500 to-rose-500 text-white' : 'bg-muted'}
+                ${member.isToday ? 'bg-accent text-black border-2 border-black dark:border-white' : 'bg-muted'}
               `}>
                                 {member.initials}
                             </AvatarFallback>
                         </Avatar>
 
-                        {/* Birthday crown for today's birthdays */}
+                        {/* Birthday cake icon for today's birthdays */}
                         {member.isToday && (
                             <div className="absolute -top-1 -right-1">
-                                <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full p-1 shadow-md">
-                                    <Cake className="h-3 w-3 text-purple-900" />
+                                <div className="bg-accent text-black rounded-full p-1 border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+                                    <Cake className="h-3 w-3" />
                                 </div>
                             </div>
                         )}
@@ -93,11 +91,8 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                             {/* Age badge if available */}
                             {member.age && (
                                 <Badge
-                                    variant="secondary"
-                                    className={`
-                    text-xs ml-2 transition-all duration-300 font-bold
-                    ${member.isToday ? 'bg-gradient-to-r from-pink-100 to-rose-100 text-pink-700 dark:from-pink-900 dark:to-rose-900 dark:text-pink-300 border-pink-300' : 'border-primary/20 bg-primary/5 text-primary'}
-                  `}
+                                    variant={member.isToday ? "accent" : "secondary"}
+                                    className="text-xs ml-2 font-bold"
                                 >
                                     {member.age}
                                 </Badge>

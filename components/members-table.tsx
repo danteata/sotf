@@ -118,7 +118,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
     <div className="space-y-4">
       {/* Bulk Actions Bar */}
       {selectedMembers.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm">
+        <div className="flex items-center justify-between p-4 bg-white dark:bg-card border-4 border-black dark:border-white rounded-lg shadow-brutal">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
               <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -152,7 +152,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
       <div className="rounded-xl border overflow-x-auto shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+            <TableRow className="bg-muted/30">
               <TableHead className="w-[50px]">
                 <Checkbox
                   checked={selectedMembers.length === members.length && members.length > 0}
@@ -211,7 +211,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   <div className="flex items-center gap-3">
                     <Avatar className="ring-2 ring-primary/20">
                       <AvatarImage src={member.avatar} alt={member.name} />
-                      <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-primary-foreground">{member.initials}</AvatarFallback>
+                      <AvatarFallback className="bg-primary text-primary-foreground font-bold">{member.initials}</AvatarFallback>
                     </Avatar>
                     <div className="font-bold">{member.name}</div>
                   </div>
@@ -236,7 +236,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   <div className="flex flex-wrap gap-1 max-w-[200px]">
                     {Array.isArray(member.ministries) && member.ministries.length > 0 ? (
                       member.ministries.slice(0, 3).map((min: string, index: number) => (
-                        <Badge key={index} variant="secondary" className="text-xs bg-gradient-to-r from-primary/10 to-secondary/10 text-primary border-primary/20">
+                        <Badge key={index} variant="secondary" className="text-xs">
                           {min}
                         </Badge>
                       ))

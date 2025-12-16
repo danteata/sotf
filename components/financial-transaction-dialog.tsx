@@ -194,9 +194,9 @@ export function FinancialTransactionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto border-4 border-black dark:border-white shadow-brutal">
                 <DialogHeader>
-                    <DialogTitle>
+                    <DialogTitle className="font-black uppercase tracking-wide text-xl">
                         {transaction ? 'Edit Transaction' : 'Add New Transaction'}
                     </DialogTitle>
                     <DialogDescription>
@@ -331,7 +331,7 @@ export function FinancialTransactionDialog({
                                                 <Button
                                                     variant="outline"
                                                     className={cn(
-                                                        'w-full pl-3 text-left font-normal',
+                                                        'w-full pl-3 text-left font-normal border-3 border-black dark:border-white shadow-brutal',
                                                         !field.value && 'text-muted-foreground'
                                                     )}
                                                 >

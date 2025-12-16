@@ -29,15 +29,15 @@ export function UpcomingEvents({ events, onEditEvent }: UpcomingEventsProps) {
         {events.slice(0, 6).map((event) => (
           <div
             key={event.id}
-            className="rounded-xl border p-4 cursor-pointer hover:bg-accent/50 transition-all duration-300 hover:shadow-lg border-primary/20 bg-gradient-to-br from-white to-gray-50 dark:from-background dark:to-gray-900/20 shadow-sm"
+            className="rounded-lg border-4 border-black dark:border-white p-4 cursor-pointer bg-white dark:bg-card transition-all duration-200 shadow-brutal hover:shadow-brutal-md hover:-translate-y-0.5"
             onClick={() => onEditEvent?.(event)}
           >
             <div className="flex items-center justify-between">
               <Badge variant={
                 (event as any).event_type_color === 'default' ? 'default' :
-                (event as any).event_type_color === 'secondary' ? 'secondary' :
-                (event as any).event_type_color === 'destructive' ? 'destructive' :
-                'outline'
+                  (event as any).event_type_color === 'secondary' ? 'secondary' :
+                    (event as any).event_type_color === 'destructive' ? 'destructive' :
+                      'outline'
               } className="transition-colors duration-300 shadow-sm">
                 {(event as any).event_type_label || getEventTypeDisplayName(event.type || 'other', eventTypes)}
               </Badge>

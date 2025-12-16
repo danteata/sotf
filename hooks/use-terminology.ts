@@ -41,7 +41,7 @@ const defaultTerminology: Terminology = {
   sub_unit_term: 'Sub-Unit',
   sub_unit_term_plural: 'Sub-Units',
   sub_unit_leader_term: 'Sub-Unit Leader',
-  app_name: 'Church Management System',
+  app_name: 'State of the Flock',
   church_name: 'Your Church Name',
 }
 

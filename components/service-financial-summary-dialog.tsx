@@ -261,9 +261,9 @@ export function ServiceFinancialSummaryDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto border-4 border-black dark:border-white shadow-brutal">
                 <DialogHeader>
-                    <DialogTitle>
+                    <DialogTitle className="font-black uppercase tracking-wide text-xl">
                         {summary ? 'Edit Service Summary' : 'Add Service Financial Summary'}
                     </DialogTitle>
                     <DialogDescription>
@@ -286,7 +286,7 @@ export function ServiceFinancialSummaryDialog({
                                                     <Button
                                                         variant="outline"
                                                         className={cn(
-                                                            'w-full pl-3 text-left font-normal',
+                                                            'w-full pl-3 text-left font-normal border-3 border-black dark:border-white shadow-brutal',
                                                             !field.value && 'text-muted-foreground'
                                                         )}
                                                     >
@@ -645,7 +645,7 @@ export function ServiceFinancialSummaryDialog({
                                 <FormLabel>Treasurers Who Counted Money</FormLabel>
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {countedByNames.map((name, index) => (
-                                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                                        <Badge key={index} variant="secondary" className="flex items-center gap-1 border-2 border-black dark:border-white">
                                             {name}
                                             <X
                                                 className="h-3 w-3 cursor-pointer"
