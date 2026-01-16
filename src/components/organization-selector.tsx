@@ -1,0 +1,173 @@
+'use client'
+
+import { useState } from 'react'
+import { ChevronDown, Building2, Check, Globe } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Badge } from '@/components/ui/badge'
+import { useOrganization } from '@/hooks/use-organization'
+
+interface OrganizationSelectorProps {
+  className?: string
+}
+
+export function OrganizationSelector({ className }: OrganizationSelectorProps) {
+  const {
+    context,
+    isLoading,
+    switchOrganization
+  } = useOrganization()
+
+  const accessibleOrganizations = context?.accessibleOrganizations || []
+  const currentOrganization = context?.organization
+
+  const [isOpen, setIsOpen] = useState(false)
+
+  if (isLoading || !context) {
+    return (
+      <div className={`flex items-center gap-2 ${className}`}>
+        <div className="h-9 w-32 bg-muted/20 animate-pulse border-2 border-black/10 rounded-lg shadow-brutal-sm" />
+      </div>
+    )
+  }
+
+  const handleOrganizationSelect = async (org: any) => {
+    try {
+      await switchOrganization(org._id)
+      setIsOpen(false)
+      // Convex updates are reactive, but sometimes a reload is safer if 
+      // complex state depends on the org context and doesn't handle updates well.
+      // However, with our current setup, it should be reactive.
+      // window.location.reload() // Uncomment if needed
+    } catch (error) {
+      console.error('Failed to switch organization:', error)
+    }
+  }
+
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className={`flex items-center gap-3 h-11 px-4 border-3 border-black bg-white hover:bg-white hover:shadow-brutal transition-all shadow-brutal-sm rounded-xl ${className}`}
+        >
+          <div className="p-1.5 bg-black text-white rounded-md">
+            <Building2 className="h-4 w-4" />
+          </div>
+          <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
+            <span className="text-sm font-black uppercase tracking-tight truncate w-full">
+              {currentOrganization?.name || "SELECT CHURCH"}
+            </span>
+          </div>
+          <ChevronDown className={cn("h-4 w-4 text-black transition-transform duration-200", isOpen && "rotate-180")} />
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="start" className="w-[320px] p-2 border-4 border-black shadow-brutal rounded-2xl bg-white overflow-hidden">
+        <div className="p-3 mb-2 bg-muted/20 rounded-xl border-2 border-dashed border-black/20">
+          <DropdownMenuLabel className="p-0 text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2 flex items-center gap-2">
+            <Globe className="h-3 w-3" /> CURRENT CONTEXT
+          </DropdownMenuLabel>
+
+          {currentOrganization ? (
+            <div className="flex items-center gap-3 p-3 bg-black text-white rounded-lg shadow-brutal-sm border-2 border-black">
+              <Building2 className="h-5 w-5" />
+              <div className="min-w-0">
+                <div className="font-black text-sm uppercase truncate">{currentOrganization.name}</div>
+                <div className="text-[10px] font-bold text-white/60 uppercase">Active Organization</div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 text-center border-2 border-black rounded-lg">
+              <span className="font-black uppercase text-xs">NO ORGANIZATION SELECTED</span>
+            </div>
+          )}
+        </div>
+
+        <DropdownMenuSeparator className="h-1 bg-black/10 mx-2 mb-2" />
+
+        <DropdownMenuLabel className="px-3 pb-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+          SWITCH ORGANIZATION
+        </DropdownMenuLabel>
+
+        <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+          {accessibleOrganizations.length > 0 ? (
+            accessibleOrganizations.map((org: any) => {
+              const isSelected = currentOrganization?._id === org._id
+              return (
+                <DropdownMenuItem
+                  key={org._id}
+                  onClick={() => handleOrganizationSelect(org)}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg border-2 border-transparent transition-all cursor-pointer font-bold uppercase text-xs mb-1",
+                    isSelected
+                      ? "bg-accent text-black border-black shadow-brutal-sm"
+                      : "hover:bg-muted/50 hover:border-black/10"
+                  )}
+                >
+                  <Building2 className={cn("h-4 w-4", isSelected ? "text-black" : "text-muted-foreground")} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate">{org.name}</span>
+                      {isSelected && <Check className="h-4 w-4 shrink-0" />}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              )
+            })
+          ) : (
+            <div className="p-6 text-center text-xs font-bold uppercase text-muted-foreground italic border-2 border-dashed border-black/10 rounded-lg">
+              No other organizations found
+            </div>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function cn(...classes: any[]) {
+  return classes.filter(Boolean).join(' ')
+}
+
+// Compact version
+export function OrganizationSelectorCompact({ className }: OrganizationSelectorProps) {
+  const { context, isLoading } = useOrganization()
+
+  if (isLoading || !context) {
+    return (
+      <div className={`h-6 w-24 bg-muted animate-pulse rounded border-2 border-black/5 ${className}`} />
+    )
+  }
+
+  return (
+    <Badge variant="outline" className={`border-2 border-black font-black uppercase text-[10px] bg-white shadow-brutal-sm ${className}`}>
+      {context.organization?.name || "No Org"}
+    </Badge>
+  )
+}
+
+// Breadcrumb component
+export function OrganizationBreadcrumb({ className }: OrganizationSelectorProps) {
+  const { context, isLoading } = useOrganization()
+
+  if (isLoading || !context) {
+    return (
+      <div className={`h-4 w-20 bg-muted/30 animate-pulse rounded ${className}`} />
+    )
+  }
+
+  return (
+    <div className={`text-xs font-black uppercase tracking-tight flex items-center gap-2 ${className}`}>
+      <Building2 className="h-3 w-3" />
+      <span>{context.organization?.name || "Standalone"}</span>
+    </div>
+  )
+}

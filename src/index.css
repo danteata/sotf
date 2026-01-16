@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        /* Premium Church Theme - Light Mode */
+        --background: 0 0% 100%;
+        --foreground: 222.2 47.4% 11.2%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 47.4% 11.2%;
+
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 47.4% 11.2%;
+
+        /* Spiritual Purple/Blue Primary */
+        --primary: 262 83% 58%;
+        --primary-foreground: 0 0% 100%;
+
+        /* Soft Secondary */
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+
+        /* Muted Backgrounds */
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+
+        /* Warm Accent */
+        --accent: 24 70% 95%;
+        --accent-foreground: 24 70% 40%;
+
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 100%;
+
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 262 83% 58%;
+
+        --radius: 0.75rem;
+
+        /* Custom Sidebar Colors */
+        --sidebar-background: 262 50% 98%;
+        --sidebar-foreground: 222.2 47.4% 11.2%;
+        --sidebar-border: 262 30% 90%;
+        --sidebar-accent: 262 83% 58%;
+        --sidebar-accent-foreground: 0 0% 100%;
+
+        /* Success Color */
+        --success: 142 76% 36%;
+        --success-foreground: 0 0% 100%;
+    }
+
+    .dark {
+        --background: 222.2 47.4% 11.2%;
+        --foreground: 210 40% 98%;
+
+        --card: 222.2 47.4% 11.2%;
+        --card-foreground: 210 40% 98%;
+
+        --popover: 222.2 47.4% 11.2%;
+        --popover-foreground: 210 40% 98%;
+
+        --primary: 262 83% 58%;
+        --primary-foreground: 0 0% 100%;
+
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 262 83% 58%;
+
+        --sidebar-background: 222.2 47.4% 8%;
+        --sidebar-foreground: 210 40% 98%;
+        --sidebar-border: 217.2 32.6% 17.5%;
+        --sidebar-accent: 262 83% 58%;
+        --sidebar-accent-foreground: 0 0% 100%;
+
+        --success: 142 76% 36%;
+        --success-foreground: 0 0% 100%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}
+
+@layer utilities {
+
+    /* Glass Morphism */
+    .glass {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .glass-dark {
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Gradient Backgrounds */
+    .gradient-primary {
+        background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(262 83% 68%) 100%);
+    }
+
+    .gradient-secondary {
+        background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(210 40% 98%) 100%);
+    }
+
+    .gradient-accent {
+        background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(24 70% 98%) 100%);
+    }
+
+    /* Smooth Shadows */
+    .shadow-soft {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .shadow-soft-lg {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), 0 8px 32px rgba(0, 0, 0, 0.08);
+    }
+
+    .shadow-soft-xl {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 16px 64px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Hover Lift Effect */
+    .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .hover-lift:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Smooth Transitions */
+    .transition-smooth {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+}
