@@ -1,0 +1,85 @@
+'use client'
+
+import { Card, CardContent } from '@/components/ui/card'
+import { Layers, Crown, Target, Briefcase } from 'lucide-react'
+
+interface OrganizationOverviewProps {
+  organization: {
+    units?: any[];
+    totalMembers?: number;
+  } | null
+}
+
+export function OrganizationOverview({ organization }: OrganizationOverviewProps) {
+  if (!organization) return null;
+
+  const totalUnits = organization.units?.length || 0;
+  const totalMembers = organization.totalMembers || 0;
+  // Standardize on functional vs administrative units
+  const functionalUnits = organization.units?.filter(u => u.type === 'functional')?.length || 0;
+  const adminUnits = organization.units?.filter(u => u.type === 'administrative' || u.type === 'geographic')?.length || 0;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <Card className="glass-card border-border/50 shadow-soft overflow-hidden hover:shadow-lg transition-all rounded-xl">
+        <div className="h-1 bg-primary"></div>
+        <CardContent className="pt-6 p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-primary/10 text-primary rounded-lg">
+              <Layers className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold tracking-tight text-foreground">{totalMembers}</p>
+              <p className="text-sm font-medium text-muted-foreground">Total Members</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-card border-border/50 shadow-soft overflow-hidden hover:shadow-lg transition-all rounded-xl">
+        <div className="h-1 bg-secondary"></div>
+        <CardContent className="pt-6 p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-secondary/10 text-secondary rounded-lg">
+              <Crown className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold tracking-tight text-foreground">{totalUnits}</p>
+              <p className="text-sm font-medium text-muted-foreground">Total Units</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-card border-border/50 shadow-soft overflow-hidden hover:shadow-lg transition-all rounded-xl">
+        <div className="h-1 bg-emerald-500"></div>
+        <CardContent className="pt-6 p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-lg">
+              <Target className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold tracking-tight text-foreground">{functionalUnits}</p>
+              <p className="text-sm font-medium text-muted-foreground">Functional Units</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-card border-border/50 shadow-soft overflow-hidden hover:shadow-lg transition-all rounded-xl">
+        <div className="h-1 bg-amber-500"></div>
+        <CardContent className="pt-6 p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-lg">
+              <Briefcase className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-3xl font-bold tracking-tight text-foreground">{adminUnits}</p>
+              <p className="text-sm font-medium text-muted-foreground">Admin Units</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
