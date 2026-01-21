@@ -1,14 +1,13 @@
 # Makarios Church Management System
 
-A comprehensive church management system built with Next.js 14, specifically designed for Makarios Church.
+A comprehensive church management system built with Vite + React + Convex, specifically designed for Makarios Church.
 
 ## Features
 
 ### Core Technologies
 
 - 🔐 Authentication using Clerk
-- 📤 File uploads using Uploadthing
-- 🗄️ Database integration with Supabase
+- 🧠 Backend + database via Convex
 - 🎨 UI components from Radix UI and shadcn/ui
 - 💅 Styling with Tailwind CSS
 
@@ -23,7 +22,7 @@ A comprehensive church management system built with Next.js 14, specifically des
 
 ## Technical Overview
 
-The application is structured with a modern React architecture using TypeScript and follows a "client-first" approach with many components marked as "use client". It's built to gracefully handle cases where authentication (Clerk) isn't configured, showing appropriate fallback UI elements.
+The application is structured with a modern React architecture using TypeScript and is bundled with Vite. It integrates Convex for data storage and realtime queries, and Clerk for authentication. It's built to gracefully handle cases where authentication isn't configured, showing appropriate fallback UI elements.
 
 ### Development Practices
 
@@ -61,21 +60,14 @@ The application is structured with a modern React architecture using TypeScript 
    Create a `.env.local` file in the root directory with the following variables:
 
    ```
-   # Clerk Authentication (optional but recommended)
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_publishable_key
-   CLERK_SECRET_KEY=your_secret_key
-   NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-   NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-   NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-   NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+    # Clerk Authentication (optional but recommended)
+    VITE_CLERK_PUBLISHABLE_KEY=your_publishable_key
 
-   # Supabase (optional but recommended)
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+    # Convex (required)
+    VITE_CONVEX_URL=https://your-deployment.convex.cloud
 
-   # Uploadthing (optional but recommended)
-   UPLOADTHING_SECRET=your_uploadthing_secret
-   UPLOADTHING_APP_ID=your_uploadthing_app_id
+    # Google Maps (optional)
+    VITE_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
    ```
 
 4. Run the development server:

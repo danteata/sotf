@@ -9,3 +9,5 @@ memory-bank/
 
 # clerk configuration (can include secrets)
 /.clerk/
+dist/
+tsconfig.tsbuildinfo
