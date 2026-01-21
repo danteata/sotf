@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
 import { useUser } from "@clerk/clerk-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +23,7 @@ export default function AcceptInvitationPage() {
     const [isAccepting, setIsAccepting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
+    const redirectTimeoutRef = useRef<number | null>(null)
 
     useEffect(() => {
         if (!token) {
@@ -47,10 +48,9 @@ export default function AcceptInvitationPage() {
             setSuccess(true)
 
             // Redirect to appropriate dashboard after 3 seconds
-            setTimeout(() => {
-                const redirectPath = invitation.intended_role === 'ministry_leader' ? '/ministry-dashboard' :
-                    invitation.intended_role === 'region_leader' ? '/region-dashboard' : '/'
-                window.location.href = redirectPath
+            const redirectPath = invitation.intended_role === 'admin' ? '/admin' : '/'
+            redirectTimeoutRef.current = window.setTimeout(() => {
+                navigate(redirectPath, { replace: true })
             }, 3000)
         } catch (err: any) {
             console.error('Error accepting invitation:', err)
@@ -59,6 +59,14 @@ export default function AcceptInvitationPage() {
             setIsAccepting(false)
         }
     }
+
+    useEffect(() => {
+        return () => {
+            if (redirectTimeoutRef.current) {
+                window.clearTimeout(redirectTimeoutRef.current)
+            }
+        }
+    }, [])
 
     if (token === "" || (invitation === undefined && !error)) {
         return (
@@ -118,9 +126,7 @@ export default function AcceptInvitationPage() {
                             </p>
                             <div className="flex items-center gap-2">
                                 <Badge className="bg-black text-white border-2 border-black font-black uppercase py-2 px-4 text-xs rounded-xl">
-                                    {invitation?.intended_role === 'ministry_leader' ? 'MINISTRY_COMMANDER' :
-                                        invitation?.intended_role === 'region_leader' ? 'REGIONAL_OVERSEER' :
-                                            invitation?.intended_role?.toUpperCase()}
+                                    {invitation?.intended_role?.toUpperCase()}
                                 </Badge>
                                 <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                             </div>
@@ -198,9 +204,7 @@ export default function AcceptInvitationPage() {
                             </p>
                             <div className="p-4 border-3 border-black rounded-2xl bg-primary/10 flex items-center justify-between">
                                 <span className="font-black uppercase text-lg">
-                                    {invitation?.intended_role === 'ministry_leader' ? 'MINISTRY_COMMANDER' :
-                                        invitation?.intended_role === 'region_leader' ? 'REGIONAL_OVERSEER' :
-                                            invitation?.intended_role?.toUpperCase()}
+                                    {invitation?.intended_role?.toUpperCase()}
                                 </span>
                                 <Badge className="bg-black text-primary border-none font-black text-[9px] px-2 py-0.5">ACTIVE_REQ</Badge>
                             </div>

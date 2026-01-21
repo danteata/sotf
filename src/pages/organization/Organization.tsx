@@ -64,9 +64,9 @@ export default function OrganizationPage() {
     }
 
     const orgStats = {
-        divisions: chartData?.divisions.length || 0,
-        units: chartData?.units.length || 0,
-        members: chartData?.memberCounts.length || 0
+        divisions: chartData?.rootUnits?.length || 0,
+        units: chartData?.units?.length || 0,
+        members: chartData?.memberCounts?.length || 0
     }
 
     return (
