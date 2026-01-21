@@ -54,25 +54,25 @@ export const getAttendeesWithDetails = query({
             const member = await ctx.db.get(ma.member_id);
             if (!member) return null;
 
-            // Get member ministries for filtering/display
-            const memberMinistries = await ctx.db
-                .query("member_ministries")
+            // Get member units (including ministries which are units with type "ministry")
+            const memberUnits = await ctx.db
+                .query("member_units")
                 .withIndex("by_member", (q) => q.eq("member_id", member._id))
                 .collect();
 
-            const ministryNames = await Promise.all(memberMinistries.map(async (mm) => {
-                const ministry = await ctx.db.get(mm.ministry_id);
-                return ministry?.name;
+            const unitNames: string[] = [];
+            await Promise.all(memberUnits.map(async (mu: any) => {
+                const unit = await ctx.db.get(mu.unit_id);
+                if (unit) {
+                    unitNames.push((unit as any).name);
+                }
             }));
-
-            const region = member.region_id ? await ctx.db.get(member.region_id) : null;
 
             return {
                 ...member,
                 id: member._id,
                 member_id: member._id,
-                ministry_names: ministryNames.filter(Boolean),
-                region_name: region?.name,
+                unit_names: unitNames,
             };
         })).then(results => results.filter(Boolean));
     },
@@ -370,7 +370,7 @@ export const getMemberSummary = query({
         );
 
         const validRecords = records
-            .filter((r): r is NonNullable<typeof r> => r !== null)
+            .filter((r): r is any => r !== null)
             .sort((a, b) => b.date.localeCompare(a.date));
 
         return {

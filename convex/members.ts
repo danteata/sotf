@@ -1,41 +1,34 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 
-// Helper to format member with details
-async function formatMember(ctx: any, member: any) {
-    let regionName = null;
-    if (member.region_id) {
-        const region = await ctx.db.get(member.region_id);
-        if (region) regionName = region.name;
-    }
+// Helper to format member with details (typed)
+async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
 
-    // Get member ministries
-    const memberMinistries = await ctx.db
-        .query("member_ministries")
+    // Get member units (including ministries which are units with type "ministry")
+    const memberUnits = await ctx.db
+        .query("member_units")
         .withIndex("by_member", (q: any) => q.eq("member_id", member._id))
         .collect();
 
-    const ministryNames: string[] = [];
-    const ministryIds: string[] = [];
+    const unitNames: string[] = [];
+    const unitIds: Id<"units">[] = [];
 
-    await Promise.all(memberMinistries.map(async (mm: any) => {
-        const ministry = await ctx.db.get(mm.ministry_id);
-        if (ministry) {
-            ministryNames.push(ministry.name);
-            ministryIds.push(ministry._id);
+    await Promise.all(memberUnits.map(async (mu: Doc<"member_units">) => {
+        const unit = await ctx.db.get(mu.unit_id);
+        if (unit) {
+            unitNames.push(unit.name);
+            unitIds.push(unit._id);
         }
     }));
 
     return {
         ...member,
         id: member._id, // Map _id to id for frontend compatibility
-        region_name: regionName,
-        region: regionName, // Legacy compatibility
-        ministry_names: ministryNames,
-        ministries: ministryNames, // Legacy compatibility
-        ministry_ids: ministryIds // Added for easier form binding
+        unit_names: unitNames,
+        units: unitNames, // Consistency
+        unit_ids: unitIds // Re-mapped
     };
 }
 
@@ -74,50 +67,74 @@ async function resolveManagedMemberIds(ctx: any) {
 
     let managedMemberIds = new Set<Id<"members">>();
 
-    // Check Ministry Leadership
-    if (user.role === 'ministry_leader') {
-        const allMinistries = await ctx.db.query("ministries").collect();
-        const ledMinistries = allMinistries.filter((m: any) => m.leader_id === member._id);
+    // Generic Unit Leadership
+    if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
+        const ledUnits = await ctx.db
+            .query("units")
+            .filter((q: any) => q.eq(q.field("leader_id"), member._id))
+            .collect();
 
-        for (const ministry of ledMinistries) {
-            const relations = await ctx.db.query("member_ministries")
-                .withIndex("by_ministry", (q: any) => q.eq("ministry_id", ministry._id))
+        for (const unit of ledUnits) {
+            const relations = await ctx.db.query("member_units")
+                .withIndex("by_unit", (q: any) => q.eq("unit_id", unit._id))
                 .collect();
             relations.forEach((r: any) => managedMemberIds.add(r.member_id));
-        }
-    }
-
-    // Check Region Leadership
-    if (user.role === 'region_leader') {
-        const allRegions = await ctx.db.query("regions").collect();
-        const ledRegions = allRegions.filter((r: any) => r.regional_minister_id === member._id);
-        const ledRegionIds = ledRegions.map((r: any) => r._id);
-
-        if (ledRegionIds.length > 0) {
-            const allMembers = await ctx.db.query("members").collect();
-            allMembers.forEach((m: any) => {
-                if (m.region_id && ledRegionIds.some((id: any) => id === m.region_id)) {
-                    managedMemberIds.add(m._id);
-                }
-            });
         }
     }
 
     return managedMemberIds;
 }
 
-// Get all members with details
+// Get all members with details and organization/role-based filtering
 export const getAll = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
+        // Get user identity for role-based access control
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return [];
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+            .unique();
+
+        if (!user) return [];
+
         let members;
-        if (args.organization_id) {
-            members = await ctx.db
-                .query("members")
-                .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
-                .collect();
+
+        // Apply organization filtering based on user role
+        if (user.role === 'super_admin') {
+            // Super admin can see all members, optionally filtered by org
+            if (args.organization_id) {
+                members = await ctx.db
+                    .query("members")
+                    .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                    .collect();
+            } else {
+                members = await ctx.db.query("members").collect();
+            }
+        } else if (user.role === 'organization_admin' || user.role === 'admin') {
+            // Org admins can only see members in their organization
+            if (user.organization_id) {
+                members = await ctx.db
+                    .query("members")
+                    .withIndex("by_org", (q) => q.eq("organization_id", user.organization_id as Id<"organizations">))
+                    .collect();
+            } else {
+                return []; // No organization assigned
+            }
         } else {
-            members = await ctx.db.query("members").collect();
+            // Other roles can only see members they manage (through leadership roles)
+            const managedIds = await resolveManagedMemberIds(ctx);
+            if (managedIds === null) return [];
+            if (managedIds === "all") {
+                members = await ctx.db.query("members").collect();
+            } else if (managedIds.size === 0) {
+                return [];
+            } else {
+                members = await Promise.all(Array.from(managedIds).map(id => ctx.db.get(id as Id<"members">)));
+                members = members.filter((m): m is Doc<"members"> => m !== null);
+            }
         }
 
         // Sort by name
@@ -150,10 +167,9 @@ export const create = mutation({
         birth_day: v.optional(v.number()),
         gender: v.optional(v.string()),
         marital_status: v.optional(v.string()),
-        anniversary: v.optional(v.string()),
-        region_id: v.optional(v.id("regions")),
-        // Optional ministry IDs to associate immediately
-        ministry_ids: v.optional(v.array(v.id("ministries"))),
+        organization_id: v.optional(v.id("organizations")),
+        // All unit assignments go through unit_ids
+        unit_ids: v.optional(v.array(v.id("units"))),
         // Address fields
         address: v.optional(v.string()),
         city: v.optional(v.string()),
@@ -166,21 +182,24 @@ export const create = mutation({
         avatar_url: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const { ministry_ids, ...memberData } = args;
+        const { unit_ids, ...memberData } = args;
 
         const memberId = await ctx.db.insert("members", memberData);
 
-        // Add ministries if provided
-        if (ministry_ids && ministry_ids.length > 0) {
-            await Promise.all(ministry_ids.map(mid =>
-                ctx.db.insert("member_ministries", {
+        // Add unit assignments if provided (many-to-many) - includes all generic units
+        if (unit_ids && unit_ids.length > 0) {
+            await Promise.all(unit_ids.map(unitId =>
+                ctx.db.insert("member_units", {
                     member_id: memberId,
-                    ministry_id: mid
+                    unit_id: unitId,
+                    joined_date: new Date().toISOString(),
+                    is_active: true
                 })
             ));
         }
 
         const member = await ctx.db.get(memberId);
+        if (!member) throw new Error("Member not found");
         return await formatMember(ctx, member);
     },
 });
@@ -202,31 +221,28 @@ export const createBulk = mutation({
             state: v.optional(v.string()),
             zip: v.optional(v.string()),
             country: v.optional(v.string()),
-            // Ministry names to map to IDs
-            ministry_names: v.optional(v.array(v.string())),
             avatar_url: v.optional(v.string()),
-        }))
+        })),
+        target_unit_id: v.optional(v.id("units")),
+        organization_id: v.optional(v.id("organizations"))
     },
     handler: async (ctx, args) => {
-        const allMinistries = await ctx.db.query("ministries").collect();
-        const ministryMap = new Map(allMinistries.map(m => [m.name.toLowerCase(), m._id]));
-
         const results = [];
         for (const memberData of args.members) {
-            const { ministry_names, ...data } = memberData;
-            const memberId = await ctx.db.insert("members", data);
+            // Bulk upload standardizes on direct unit assignment or organization-wide if unspecified
+            const data = memberData;
 
-            if (ministry_names) {
-                for (const mname of ministry_names) {
-                    const mid = ministryMap.get(mname.toLowerCase());
-                    if (mid) {
-                        await ctx.db.insert("member_ministries", {
-                            member_id: memberId,
-                            ministry_id: mid
-                        });
-                    }
-                }
-            }
+            // Add unit_id if specified (direct assignment)
+            const memberDataWithUnit = args.target_unit_id
+                ? { ...data, unit_id: args.target_unit_id }
+                : data;
+
+            // Add organization_id if specified
+            const memberDataWithOrg = args.organization_id
+                ? { ...memberDataWithUnit, organization_id: args.organization_id }
+                : memberDataWithUnit;
+
+            const memberId = await ctx.db.insert("members", memberDataWithOrg);
             results.push(memberId);
         }
         return results;
@@ -248,7 +264,6 @@ export const update = mutation({
             gender: v.optional(v.string()),
             marital_status: v.optional(v.string()),
             anniversary: v.optional(v.string()),
-            region_id: v.optional(v.id("regions")),
             address: v.optional(v.string()),
             city: v.optional(v.string()),
             state: v.optional(v.string()),
@@ -259,33 +274,36 @@ export const update = mutation({
             plus_code: v.optional(v.string()),
             avatar_url: v.optional(v.string()),
         }),
-        ministry_ids: v.optional(v.array(v.id("ministries"))),
+        unit_ids: v.optional(v.array(v.id("units"))), // All unit assignments
     },
     handler: async (ctx, args) => {
-        const { id, updates, ministry_ids } = args;
+        const { id, updates, unit_ids } = args;
 
         await ctx.db.patch(id, updates);
 
-        // Update ministries if provided (replace all)
-        if (ministry_ids !== undefined) {
-            // Delete existing
+        // Update unit assignments if provided (replace all)
+        if (unit_ids !== undefined) {
+            // Delete existing unit assignments
             const existing = await ctx.db
-                .query("member_ministries")
+                .query("member_units")
                 .withIndex("by_member", q => q.eq("member_id", id))
                 .collect();
 
             await Promise.all(existing.map(r => ctx.db.delete(r._id)));
 
-            // Add new
-            await Promise.all(ministry_ids.map(mid =>
-                ctx.db.insert("member_ministries", {
+            // Add new unit assignments
+            await Promise.all(unit_ids.map(unitId =>
+                ctx.db.insert("member_units", {
                     member_id: id,
-                    ministry_id: mid
+                    unit_id: unitId,
+                    joined_date: new Date().toISOString(),
+                    is_active: true
                 })
             ));
         }
 
         const member = await ctx.db.get(id);
+        if (!member) throw new Error("Member not found");
         return await formatMember(ctx, member);
     },
 });
@@ -337,13 +355,13 @@ export const getRecent = query({
 export const remove = mutation({
     args: { id: v.id("members") },
     handler: async (ctx, args) => {
-        // Delete member ministries
-        const existing = await ctx.db
-            .query("member_ministries")
+        // Delete member unit assignments
+        const existingUnits = await ctx.db
+            .query("member_units")
             .withIndex("by_member", q => q.eq("member_id", args.id))
             .collect();
 
-        await Promise.all(existing.map(r => ctx.db.delete(r._id)));
+        await Promise.all(existingUnits.map(r => ctx.db.delete(r._id)));
 
         // Delete member attendance
         const attendance = await ctx.db

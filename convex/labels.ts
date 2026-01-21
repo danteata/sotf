@@ -6,14 +6,40 @@ import { Doc, Id } from "./_generated/dataModel";
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
+        // Get user identity for role-based access control
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return [];
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+            .unique();
+
+        if (!user) return [];
+
         let labels;
-        if (args.organization_id) {
-            labels = await ctx.db
-                .query("labels")
-                .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
-                .collect();
+
+        // Apply organization filtering based on user role
+        if (user.role === 'super_admin') {
+            // Super admin can see all labels, optionally filtered by org
+            if (args.organization_id) {
+                labels = await ctx.db
+                    .query("labels")
+                    .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                    .collect();
+            } else {
+                labels = await ctx.db.query("labels").collect();
+            }
         } else {
-            labels = await ctx.db.query("labels").collect();
+            // All other roles can only see labels in their organization
+            if (user.organization_id) {
+                labels = await ctx.db
+                    .query("labels")
+                    .withIndex("by_org", (q) => q.eq("organization_id", user.organization_id as Id<"organizations">))
+                    .collect();
+            } else {
+                return []; // No organization assigned
+            }
         }
 
         // Add usage_count to each label

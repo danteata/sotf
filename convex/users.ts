@@ -70,26 +70,17 @@ export const current = query({
             .first();
 
         // Get leadership roles
-        let ministryLeaderships: any[] = [];
-        let regionLeaderships: any[] = [];
+        let unitLeaderships: any[] = [];
 
         if (member) {
-            // Find ministries led by this member
-            // We need to scan ministries and check leader_id (no index on leader_id yet? Check schema)
-            // Schema: ministries has index "by_org". No index on leader_id.
-            // We can filter.
-            const allMinistries = await ctx.db.query("ministries").collect();
-            ministryLeaderships = allMinistries.filter(m => m.leader_id === member._id);
-
-            // Find regions led by this member
-            const allRegions = await ctx.db.query("regions").collect();
-            regionLeaderships = allRegions.filter(r => r.regional_minister_id === member._id);
+            // Find units led by this member
+            const allUnits = await ctx.db.query("units").collect();
+            unitLeaderships = allUnits.filter(u => u.leader_id === member._id);
         }
 
         return {
             ...user,
-            ministryLeaderships,
-            regionLeaderships
+            unitLeaderships
         };
     }
 });

@@ -29,32 +29,18 @@ async function getScopedMemberIds(ctx: any) {
 
     let managedMemberIds = new Set<Id<"members">>();
 
-    // Check Ministry Leadership
-    if (user.role === 'ministry_leader') {
-        const allMinistries = await ctx.db.query("ministries").collect();
-        const ledMinistries = allMinistries.filter((m: any) => m.leader_id === member._id);
+    // Generic Unit Leadership
+    if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
+        const ledUnits = await ctx.db
+            .query("units")
+            .filter((q: any) => q.eq(q.field("leader_id"), member._id))
+            .collect();
 
-        for (const ministry of ledMinistries) {
-            const relations = await ctx.db.query("member_ministries")
-                .withIndex("by_ministry", (q: any) => q.eq("ministry_id", ministry._id))
+        for (const unit of ledUnits) {
+            const relations = await ctx.db.query("member_units")
+                .withIndex("by_unit", (q: any) => q.eq("unit_id", unit._id))
                 .collect();
             relations.forEach((r: any) => managedMemberIds.add(r.member_id));
-        }
-    }
-
-    // Check Region Leadership
-    if (user.role === 'region_leader') {
-        const allRegions = await ctx.db.query("regions").collect();
-        const ledRegions = allRegions.filter((r: any) => r.regional_minister_id === member._id);
-        const ledRegionIds = ledRegions.map((r: any) => r._id);
-
-        if (ledRegionIds.length > 0) {
-            const allMembers = await ctx.db.query("members").collect();
-            allMembers.forEach((m: Doc<"members">) => {
-                if (m.region_id && ledRegionIds.some((id: Id<"regions">) => id === m.region_id)) {
-                    managedMemberIds.add(m._id);
-                }
-            });
         }
     }
 
@@ -141,8 +127,10 @@ export const getDashboardData = query({
             };
         }));
 
-        // 4. Ministries
-        const activeMinistries = await ctx.db.query("ministries").filter(q => q.eq(q.field("active"), true)).collect();
+        // 4. Active Units
+        const activeUnits = await ctx.db.query("units")
+            .filter(q => q.eq(q.field("active"), true))
+            .collect();
 
         // 5. Birthdays
         const currentMonth = now.getMonth() + 1;
@@ -155,7 +143,7 @@ export const getDashboardData = query({
                 newMembersThisMonthCount,
                 weeklyAttendance,
                 attendanceChange: Math.round(attendanceChange * 10) / 10,
-                activeMinistriesCount: activeMinistries.length,
+                activeUnitsCount: activeUnits.length,
                 upcomingEventsCount: upcomingEvents.length,
                 nextEventName: upcomingEvents.length > 0 ? upcomingEvents[0].title : 'No upcoming events',
             },

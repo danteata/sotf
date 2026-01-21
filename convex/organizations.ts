@@ -85,60 +85,49 @@ export const getChartData = query({
         const organization = await ctx.db.get(orgId);
         if (!organization) return null;
 
-        const divisions = await ctx.db
-            .query("divisions")
-            .withIndex("by_org", (q) => q.eq("organization_id", orgId))
-            .collect();
-
+        // Get all units for this organization
         const units = await ctx.db
             .query("units")
             .withIndex("by_org", (q) => q.eq("organization_id", orgId))
             .collect();
 
-        const subunits = await ctx.db
-            .query("subunits")
-            .collect(); // We might need a by_org index on subunits too if it grow large
+        // Get root level units (divisions/administrative units)
+        const rootUnits = units.filter(u => u.depth === 0 || u.depth === undefined);
 
-        // Filter subunits by units belonging to this org
-        const unitIds = new Set(units.map(u => u._id));
-        const filteredSubunits = subunits.filter(s => unitIds.has(s.unit_id));
+        // Get child units grouped by parent
+        const childUnits = units.filter(u => u.depth !== undefined && u.depth > 0);
 
         const members = await ctx.db
             .query("members")
             .withIndex("by_org_status", (q) => q.eq("organization_id", orgId).eq("status", "active"))
             .collect();
 
-        const memberCounts = units.map((unit) => ({
-            unit_id: unit._id,
-            count: members.filter((m) => m.unit_id === unit._id).length,
+        // Calculate member counts per unit using member_units junction table
+        const memberCounts = await Promise.all(units.map(async (unit) => {
+            const unitMembers = await ctx.db
+                .query("member_units")
+                .withIndex("by_unit", (q) => q.eq("unit_id", unit._id))
+                .collect();
+
+            const activeMembers = unitMembers.filter(mu => mu.is_active);
+            return {
+                unit_id: unit._id,
+                count: activeMembers.length,
+            };
         }));
 
         return {
             organization,
-            divisions,
+            rootUnits,
             units,
-            subunits: filteredSubunits,
+            childUnits,
             memberCounts,
+            totalMembers: members.length, // Total unique members in organization
         };
     },
 });
 
-export const moveUnit = mutation({
-    args: {
-        unitId: v.id("units"),
-        targetType: v.string(), // "division" or "organization"
-        targetId: v.optional(v.id("divisions")),
-    },
-    handler: async (ctx, args) => {
-        const { unitId, targetType, targetId } = args;
-        const updates: any = {
-            parent_organization_type: targetType,
-            division_id: targetType === "division" ? targetId : undefined,
-        };
-        await ctx.db.patch(unitId, updates);
-        return true;
-    }
-});
+
 
 export const update = mutation({
     args: {
@@ -167,7 +156,6 @@ export const getTerminology = query({
         organization_id: v.optional(v.id("organizations")),
         division_id: v.optional(v.id("divisions")),
         unit_id: v.optional(v.id("units")),
-        sub_unit_id: v.optional(v.id("subunits")),
     },
     handler: async (ctx, args) => {
         // 1. Get global defaults from app_config
@@ -195,13 +183,10 @@ export const getTerminology = query({
             if (org) {
                 if (org.level1_singular) result.division_term = org.level1_singular;
                 if (org.level1_plural) result.division_term_plural = org.level1_plural;
-                if (org.level2_singular) result.region_term = org.level2_singular;
-                if (org.level2_plural) result.region_term_plural = org.level2_plural;
                 if (org.level3_singular) result.unit_term = org.level3_singular;
                 if (org.level3_plural) result.unit_term_plural = org.level3_plural;
                 if (org.level4_singular) result.sub_unit_term = org.level4_singular;
                 if (org.level4_plural) result.sub_unit_term_plural = org.level4_plural;
-                if (org.ministry_term) result.ministry_term = org.ministry_term;
             }
         }
 
@@ -221,23 +206,13 @@ export const getTerminology = query({
             if (unitTerm) overrides.push(unitTerm);
         }
 
-        if (args.sub_unit_id) {
-            const subTerm = await ctx.db
-                .query("terminologies")
-                .withIndex("by_sub_unit", q => q.eq("sub_unit_id", args.sub_unit_id!))
-                .first();
-            if (subTerm) overrides.push(subTerm);
-        }
 
         // 3. Apply overrides from least specific to most specific
         // Actually, the array is currently [org, division, unit, subunit] which is exactly what we want
         for (const override of overrides) {
             const fields = [
-                'ministry_term', 'ministry_term_plural', 'ministry_leader_term',
-                'region_term', 'region_term_plural', 'regional_leader_term',
                 'unit_term', 'unit_term_plural', 'unit_leader_term',
-                'division_term', 'division_term_plural', 'division_leader_term',
-                'sub_unit_term', 'sub_unit_term_plural', 'sub_unit_leader_term'
+                'division_term', 'division_term_plural', 'division_leader_term'
             ];
             for (const field of fields) {
                 if (override[field]) {

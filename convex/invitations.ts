@@ -7,8 +7,7 @@ export const create = mutation({
         email: v.string(),
         member_id: v.optional(v.id("members")),
         intended_role: v.string(),
-        intended_ministries: v.optional(v.array(v.string())),
-        intended_regions: v.optional(v.array(v.string())),
+        intended_units: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -22,8 +21,7 @@ export const create = mutation({
             member_id: args.member_id,
             invited_by: identity?.subject,
             intended_role: args.intended_role,
-            intended_ministries: args.intended_ministries || [],
-            intended_regions: args.intended_regions || [],
+            intended_units: args.intended_units || [],
             invitation_token: token,
             status: "pending",
             expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -94,18 +92,8 @@ export const accept = mutation({
         }
 
         // Apply leadership
-        // Ministries
-        if (invitation.intended_ministries) {
-            for (const ministryId of invitation.intended_ministries as any[]) {
-                // Ensure valid ID
-                // Note: intended_ministries is array of strings. Cast to Id.
-                // We trust the ID because we wrote it.
-                // But better to check type or use `existing` check.
-                // Since `leader_id` is just a field, we can patch.
-                // Wait, users.current checks `leader_id === member._id`.
-                // We need the MEMBER ID.
-                // If invitation has `member_id`, use it.
-                // If not, try to find member by email.
+        if (invitation.intended_units) {
+            for (const unitId of invitation.intended_units as any[]) {
                 let memberId = invitation.member_id;
                 if (!memberId) {
                     const memberCodes = await ctx.db.query("members").withIndex("by_email", q => q.eq("email", user.email)).first();
@@ -113,30 +101,9 @@ export const accept = mutation({
                 }
 
                 if (memberId) {
-                    // Patch ministry
-                    // Need to convert string ID to `Id<"ministries">`.
-                    // Since schema defines id as system id, we can use `ctx.db.normalizeId`.
-                    const mId = ctx.db.normalizeId("ministries", ministryId);
-                    if (mId) {
-                        await ctx.db.patch(mId, { leader_id: memberId });
-                    }
-                }
-            }
-        }
-
-        // Regions
-        if (invitation.intended_regions) {
-            for (const regionId of invitation.intended_regions as any[]) {
-                let memberId = invitation.member_id;
-                if (!memberId) {
-                    const memberCodes = await ctx.db.query("members").withIndex("by_email", q => q.eq("email", user.email)).first();
-                    memberId = memberCodes?._id;
-                }
-
-                if (memberId) {
-                    const rId = ctx.db.normalizeId("regions", regionId);
-                    if (rId) {
-                        await ctx.db.patch(rId, { regional_minister_id: memberId });
+                    const uId = ctx.db.normalizeId("units", unitId);
+                    if (uId) {
+                        await ctx.db.patch(uId, { leader_id: memberId });
                     }
                 }
             }

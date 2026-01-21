@@ -10,7 +10,6 @@ export default defineSchema({
         role: v.string(), // 'super_admin', 'organization_admin', 'division_admin', 'unit_admin', 'sub_unit_admin'
         organization_id: v.optional(v.string()), // UUID from migration, keeping as string for now
         division_id: v.optional(v.string()),
-        region_id: v.optional(v.string()), // Added for backward compatibility
         unit_id: v.optional(v.string()),
         active: v.boolean(),
     }).index("by_clerk_id", ["clerk_user_id"]),
@@ -33,13 +32,7 @@ export default defineSchema({
         sort_order: v.number(),
     }).index("by_value", ["value"]),
 
-    regions: defineTable({
-        name: v.string(),
-        description: v.optional(v.string()),
-        regional_minister_id: v.optional(v.id("members")),
-        active: v.boolean(),
-        organization_id: v.optional(v.id("organizations")),
-    }).index("by_org", ["organization_id"]),
+    // Legacy regions table removed - now handled by units with type "geographic"
 
     features: defineTable({
         name: v.string(),
@@ -61,64 +54,53 @@ export default defineSchema({
         level3_plural: v.optional(v.string()),
         level4_singular: v.optional(v.string()),
         level4_plural: v.optional(v.string()),
-        ministry_term: v.optional(v.string()),
     }),
 
-    divisions: defineTable({
-        name: v.string(),
-        description: v.optional(v.string()),
-        organization_id: v.id("organizations"),
-        active: v.boolean(),
-    }).index("by_org", ["organization_id"]),
-
+    // Nested organizational units with types
     units: defineTable({
         name: v.string(),
         description: v.optional(v.string()),
         organization_id: v.id("organizations"),
-        division_id: v.optional(v.id("divisions")),
-        parent_organization_type: v.string(), // 'division' | 'organization'
+        parent_unit_id: v.optional(v.id("units")), // Self-referencing for nesting
+        type: v.string(), // 'organization', 'administrative', 'functional', 'geographic'
+        category: v.optional(v.string()), // Additional classification
+        leader_id: v.optional(v.id("members")),
+        depth: v.optional(v.number()), // 0 = root level under organization
+        path: v.optional(v.string()), // Materialized path for efficient queries, e.g., "/org/admin-church-a/youth"
         active: v.boolean(),
+        // Legacy fields for migration
+        parent_organization_type: v.optional(v.string()),
+        division_id: v.optional(v.string()),
+        // Location data
+        address: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        country: v.optional(v.string()),
+        latitude: v.optional(v.number()),
+        longitude: v.optional(v.number()),
+        plus_code: v.optional(v.string()),
     })
         .index("by_org", ["organization_id"])
-        .index("by_division", ["division_id"]),
-
-    subunits: defineTable({
-        name: v.string(),
-        description: v.optional(v.string()),
-        unit_id: v.id("units"),
-        active: v.boolean(),
-        leader_id: v.optional(v.id("members")),
-        type: v.optional(v.string()), // 'administrative' | 'ministry'
-        ministry_category: v.optional(v.string()),
-        is_template: v.optional(v.boolean()),
-    }).index("by_unit", ["unit_id"]),
+        .index("by_parent", ["parent_unit_id"])
+        .index("by_type", ["type"])
+        .index("by_org_type", ["organization_id", "type"])
+        .index("by_path", ["path"]),
 
     terminologies: defineTable({
         organization_id: v.id("organizations"),
         division_id: v.optional(v.id("divisions")),
         unit_id: v.optional(v.id("units")),
-        sub_unit_id: v.optional(v.id("subunits")),
-        level: v.string(), // 'organization', 'division', 'unit', 'sub_unit'
-        ministry_term: v.optional(v.string()),
-        ministry_term_plural: v.optional(v.string()),
-        ministry_leader_term: v.optional(v.string()),
-        region_term: v.optional(v.string()),
-        region_term_plural: v.optional(v.string()),
-        regional_leader_term: v.optional(v.string()),
+        level: v.string(), // 'organization', 'division', 'unit'
         unit_term: v.optional(v.string()),
         unit_term_plural: v.optional(v.string()),
         unit_leader_term: v.optional(v.string()),
         division_term: v.optional(v.string()),
         division_term_plural: v.optional(v.string()),
         division_leader_term: v.optional(v.string()),
-        sub_unit_term: v.optional(v.string()),
-        sub_unit_term_plural: v.optional(v.string()),
-        sub_unit_leader_term: v.optional(v.string()),
     })
         .index("by_org", ["organization_id"])
         .index("by_division", ["division_id"])
-        .index("by_unit", ["unit_id"])
-        .index("by_sub_unit", ["sub_unit_id"]),
+        .index("by_unit", ["unit_id"]),
 
     members: defineTable({
         name: v.string(),
@@ -133,8 +115,11 @@ export default defineSchema({
         anniversary: v.optional(v.string()),
         organization_id: v.optional(v.id("organizations")),
         division_id: v.optional(v.id("divisions")),
-        region_id: v.optional(v.id("regions")),
-        unit_id: v.optional(v.id("units")),
+        // Removed single unit_id - now using member_units junction table
+        // App access for church members vs app users distinction
+        app_access: v.optional(v.boolean()), // true = can login to app, false/null = church member only
+        app_access_granted_date: v.optional(v.string()),
+        app_access_granted_by: v.optional(v.string()), // clerk_user_id of who granted access
         // Address fields
         address: v.optional(v.string()),
         city: v.optional(v.string()),
@@ -147,10 +132,20 @@ export default defineSchema({
         avatar_url: v.optional(v.string()),
     })
         .index("by_org", ["organization_id"])
-        .index("by_unit", ["unit_id"])
-        .index("by_region", ["region_id"])
         .index("by_email", ["email"])
         .index("by_org_status", ["organization_id", "status"]),
+
+    // Many-to-many relationship between members and units
+    member_units: defineTable({
+        member_id: v.id("members"),
+        unit_id: v.id("units"),
+        joined_date: v.optional(v.string()), // When they joined this specific unit
+        role: v.optional(v.string()), // Optional role in this unit (e.g., "singer", "leader")
+        is_active: v.boolean(), // Whether they're currently active in this unit
+    })
+        .index("by_member", ["member_id"])
+        .index("by_unit", ["unit_id"])
+        .index("by_member_unit", ["member_id", "unit_id"]),
 
 
     member_labels: defineTable({
@@ -162,20 +157,8 @@ export default defineSchema({
         .index("by_member", ["member_id"])
         .index("by_label", ["label_id"]),
 
-    ministries: defineTable({
-        name: v.string(),
-        description: v.optional(v.string()),
-        leader_id: v.optional(v.id("members")),
-        active: v.boolean(),
-        organization_id: v.optional(v.id("organizations")),
-    }).index("by_org", ["organization_id"]),
+    // Legacy organizational structures removed - now handled by units table
 
-    member_ministries: defineTable({
-        member_id: v.id("members"),
-        ministry_id: v.id("ministries"),
-    })
-        .index("by_member", ["member_id"])
-        .index("by_ministry", ["ministry_id"]),
 
     events: defineTable({
         title: v.string(),
@@ -221,8 +204,7 @@ export default defineSchema({
         member_id: v.optional(v.id("members")),
         invited_by: v.optional(v.string()), // clerk_user_id
         intended_role: v.string(),
-        intended_ministries: v.optional(v.array(v.string())), // Using string to store IDs from client 
-        intended_regions: v.optional(v.array(v.string())),
+        intended_units: v.optional(v.array(v.string())), // Using string to store IDs from client 
         invitation_token: v.string(),
         status: v.string(), // 'pending', 'accepted', 'revoked'
         expires_at: v.optional(v.number()),

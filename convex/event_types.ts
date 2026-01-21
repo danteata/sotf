@@ -74,7 +74,7 @@ export const resetToDefaults = mutation({
             { value: 'sunday-service', label: 'Sunday Service', color: 'default', icon: 'church', is_active: true, sort_order: 1 },
             { value: 'bible-study', label: 'Bible Study', color: 'secondary', icon: 'book', is_active: true, sort_order: 2 },
             { value: 'youth-group', label: 'Youth Group', color: 'outline', icon: 'users', is_active: true, sort_order: 3 },
-            { value: 'children-ministry', label: 'Children Ministry', color: 'secondary', icon: 'heart', is_active: true, sort_order: 4 },
+            { value: 'children-youth', label: 'Children & Youth', color: 'secondary', icon: 'heart', is_active: true, sort_order: 4 },
             { value: 'prayer-meeting', label: 'Prayer Meeting', color: 'outline', icon: 'hands', is_active: true, sort_order: 5 },
             { value: 'worship-night', label: 'Worship Night', color: 'default', icon: 'music', is_active: true, sort_order: 6 },
             { value: 'community-outreach', label: 'Community Outreach', color: 'outline', icon: 'globe', is_active: true, sort_order: 7 },
