@@ -26,14 +26,6 @@ import { Id } from "../../convex/_generated/dataModel"
 import { Settings, Shield, Layout, Sparkles, Save, RotateCcw } from "lucide-react"
 
 const settingsSchema = z.object({
-  // Global terminology (Stored in app_config)
-  ministry_term: z.string().min(1, "Ministry term is required"),
-  ministry_term_plural: z.string().min(1, "Ministry plural term is required"),
-  ministry_leader_term: z.string().min(1, "Ministry leader term is required"),
-  region_term: z.string().min(1, "Region term is required"),
-  region_term_plural: z.string().min(1, "Region plural term is required"),
-  regional_leader_term: z.string().min(1, "Regional leader term is required"),
-
   // General settings (Stored in app_config)
   app_name: z.string().min(1, "App name is required"),
   church_name: z.string().min(1, "Church name is required"),
@@ -50,7 +42,6 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const { context } = useOrganization()
 
   const currentOrg = useQuery(api.organizations.current)
   const terminologyConfigs = useQuery(api.app_config.getByCategory, { category: 'terminology' })
@@ -69,20 +60,13 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
     level3_plural: 'Units',
     level4_singular: 'Sub-Unit',
     level4_plural: 'Sub-Units',
-    ministry_term: 'Ministry'
   })
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      ministry_term: "Ministry",
-      ministry_term_plural: "Ministries",
-      ministry_leader_term: "Ministry Leader",
-      region_term: "Region",
-      region_term_plural: "Regions",
-      regional_leader_term: "Regional Minister",
-      app_name: "Church Management System",
-      church_name: "Your Church Name",
+      app_name: "Management System",
+      church_name: "Your Organization Name",
     },
   })
 
@@ -112,7 +96,6 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
         level3_plural: currentOrg.level3_plural || 'Units',
         level4_singular: currentOrg.level4_singular || 'Sub-Unit',
         level4_plural: currentOrg.level4_plural || 'Sub-Units',
-        ministry_term: currentOrg.ministry_term || 'Ministry'
       })
     }
   }, [open, terminologyConfigs, generalConfigs, currentOrg, form])
@@ -122,10 +105,8 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
     try {
       // Save global configs
       const promises = Object.entries(data).map(([key, value]) => {
-        const category = ['ministry_term', 'ministry_term_plural', 'ministry_leader_term', 'region_term', 'region_term_plural', 'regional_leader_term'].includes(key)
-          ? 'terminology'
-          : 'general'
-        return setConfigMutation({ key, value, category })
+        const category = 'general'
+        return setConfigMutation({ key, value: String(value), category })
       })
 
       await Promise.all(promises)
@@ -166,7 +147,6 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
       level3_plural: 'Units',
       level4_singular: 'Sub-Unit',
       level4_plural: 'Sub-Units',
-      ministry_term: 'Ministry'
     })
   }
 
@@ -178,19 +158,19 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
             <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <Settings className="h-5 w-5" />
             </div>
-            System Control
+            System Control Center
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Architect the terminology and structure of your foundation
+            Architect the terminology and structure of your foundation.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
           <Tabs defaultValue="terminology" className="space-y-6">
             <TabsList className="bg-muted/50 p-1 rounded-xl w-full grid grid-cols-3">
-              <TabsTrigger value="terminology" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Global Terms</TabsTrigger>
-              <TabsTrigger value="organization" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Org Structure</TabsTrigger>
-              <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">General Config</TabsTrigger>
+              <TabsTrigger value="terminology" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Identity</TabsTrigger>
+              <TabsTrigger value="organization" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Structure</TabsTrigger>
+              <TabsTrigger value="general" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">General</TabsTrigger>
             </TabsList>
 
             <TabsContent value="terminology" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -198,55 +178,24 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
                 <Card className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
                   <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
                     <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" /> Ministry Definitions
+                      <Sparkles className="h-4 w-4 text-primary" /> Application Branding
                     </CardTitle>
-                    <CardDescription>Define the core terminology for service areas</CardDescription>
+                    <CardDescription>Define the core identity of your system</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Singular Term</Label>
-                        <Input placeholder="e.g. Ministry" {...form.register("ministry_term")} className="bg-background/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Plural Term</Label>
-                        <Input placeholder="e.g. Ministries" {...form.register("ministry_term_plural")} className="bg-background/50" />
-                      </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Interface Name</Label>
+                      <Input placeholder="CMS" {...form.register("app_name")} className="bg-background/50 h-11" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Leader Assignment Label</Label>
-                      <Input placeholder="e.g. Ministry Leader" {...form.register("ministry_leader_term")} className="bg-background/50" />
+                      <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Organization Label</Label>
+                      <Input placeholder="Organization Name" {...form.register("church_name")} className="bg-background/50 h-11" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
-                  <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Layout className="h-4 w-4 text-secondary-foreground" /> Regional Definitions
-                    </CardTitle>
-                    <CardDescription>Terminology for geographic or large groupings</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Singular Term</Label>
-                        <Input placeholder="e.g. Region" {...form.register("region_term")} className="bg-background/50" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Plural Term</Label>
-                        <Input placeholder="e.g. Regions" {...form.register("region_term_plural")} className="bg-background/50" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Regional Leader Label</Label>
-                      <Input placeholder="e.g. Regional Minister" {...form.register("regional_leader_term")} className="bg-background/50" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Button type="submit" disabled={isLoading} className="w-full shadow-soft hover:shadow-lg transition-all">
-                  {isLoading ? "Saving..." : "Commit Global Terms"}
+                <Button type="submit" disabled={isLoading} className="w-full h-12 shadow-soft hover:shadow-lg transition-all">
+                  {isLoading ? "Saving..." : "Commit Branding Changes"}
                 </Button>
               </form>
             </TabsContent>
@@ -269,47 +218,47 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 1 (Top) Singular</Label>
-                    <Input value={orgTerms.level1_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level1_singular: e.target.value })} className="bg-background/50" />
+                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 1 Singular</Label>
+                    <Input value={orgTerms.level1_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level1_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 2 Singular</Label>
-                    <Input value={orgTerms.level2_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level2_singular: e.target.value })} className="bg-background/50" />
+                    <Input value={orgTerms.level2_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level2_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 3 Singular</Label>
-                    <Input value={orgTerms.level3_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level3_singular: e.target.value })} className="bg-background/50" />
+                    <Input value={orgTerms.level3_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level3_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 4 Singular</Label>
-                    <Input value={orgTerms.level4_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level4_singular: e.target.value })} className="bg-background/50" />
+                    <Input value={orgTerms.level4_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level4_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 1 (Top) Plural</Label>
-                    <Input value={orgTerms.level1_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level1_plural: e.target.value })} className="bg-background/50" />
+                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 1 Plural</Label>
+                    <Input value={orgTerms.level1_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level1_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 2 Plural</Label>
-                    <Input value={orgTerms.level2_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level2_plural: e.target.value })} className="bg-background/50" />
+                    <Input value={orgTerms.level2_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level2_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 3 Plural</Label>
-                    <Input value={orgTerms.level3_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level3_plural: e.target.value })} className="bg-background/50" />
+                    <Input value={orgTerms.level3_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level3_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 4 Plural</Label>
-                    <Input value={orgTerms.level4_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level4_plural: e.target.value })} className="bg-background/50" />
+                    <Input value={orgTerms.level4_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level4_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-2">
-                <Button onClick={handleSaveOrgTerminology} disabled={isLoading} className="flex-1 shadow-soft hover:shadow-lg transition-all">
-                  <Save className="mr-2 h-4 w-4" /> Save Hierarchy
+              <div className="flex gap-4 pt-4 border-t">
+                <Button onClick={handleSaveOrgTerminology} disabled={isLoading} className="flex-1 h-12 shadow-soft hover:shadow-lg transition-all">
+                  <Save className="mr-2 h-4 w-4" /> Save Structure
                 </Button>
-                <Button variant="outline" onClick={handleResetOrgTerminology} className="shadow-sm">
+                <Button variant="outline" onClick={handleResetOrgTerminology} className="shadow-sm h-12">
                   <RotateCcw className="mr-2 h-4 w-4" /> Reset
                 </Button>
               </div>
@@ -319,24 +268,19 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
               <Card className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
                 <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
                   <CardTitle className="text-base font-semibold flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-emerald-600" /> Identity Settings
+                    <Shield className="h-4 w-4 text-primary" /> Identity Settings
                   </CardTitle>
-                  <CardDescription>General application branding</CardDescription>
+                  <CardDescription>General application configuration</CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Software Branding Name</Label>
-                    <Input placeholder="CMS" {...form.register("app_name")} className="bg-background/50" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Default Organization Display Name</Label>
-                    <Input placeholder="Church Name" {...form.register("church_name")} className="bg-background/50" />
+                  <div className="text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg border border-dashed text-center">
+                    Additional general configurations will appear here as the system evolves.
                   </div>
                 </CardContent>
               </Card>
 
-              <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading} className="w-full shadow-soft hover:shadow-lg transition-all">
-                {isLoading ? "Saving..." : "Save General Config"}
+              <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading} className="w-full h-12 shadow-soft hover:shadow-lg transition-all">
+                {isLoading ? "Saving..." : "Commit General Settings"}
               </Button>
             </TabsContent>
           </Tabs>

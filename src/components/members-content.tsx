@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { Download, Filter, Plus, Search, Upload, Users } from "lucide-react"
-import { useTerminology, getMinistryLabels } from "@/hooks/use-terminology"
+import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { BulkUploadDialog } from "@/components/bulk-upload-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Member } from "@/types/database"
 import { cn } from "@/lib/utils"
+import { useOrganization } from "@clerk/clerk-react"
 
 interface MembersContentProps {
   initialMembers: Member[]
@@ -21,16 +22,14 @@ interface MembersContentProps {
 
 export function MembersContent({ initialMembers }: MembersContentProps) {
   const [statusFilter, setStatusFilter] = useState("all")
-  const [ministryFilter, setMinistryFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
-  const { terminology } = useTerminology()
-  const ministryLabels = getMinistryLabels(terminology)
-
-  const ministriesData = useQuery(api.ministries.getAll, { activeOnly: true });
-  const ministries = ministriesData || [];
+  const { organization } = useOrganization()
+  const unitsData = useQuery(api.units.listByOrg, organization?._id ? {
+    organization_id: organization._id
+  } : "skip");
 
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]
@@ -40,17 +39,6 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       filtered = filtered.filter(member => member.status === statusFilter)
     }
 
-    // Apply ministry filter
-    if (ministryFilter !== "all") {
-      filtered = filtered.filter(member => {
-        if (!member.ministries || !Array.isArray(member.ministries)) {
-          return false
-        }
-        return member.ministries.some(ministry =>
-          ministry && ministry.trim() === ministryFilter.trim()
-        )
-      })
-    }
 
     // Apply search filter
     if (searchQuery) {
@@ -62,7 +50,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       )
     }
     return filtered;
-  }, [initialMembers, statusFilter, ministryFilter, searchQuery])
+  }, [initialMembers, statusFilter, searchQuery])
 
   const totalMembers = filteredMembers.length
 
@@ -136,21 +124,6 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="visitor">Visitor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-3">
-              <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue placeholder={ministryLabels.single} />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg shadow-lg border-border/50">
-                  <SelectItem value="all">All {ministryLabels.plural}</SelectItem>
-                  {ministries.map((ministry) => (
-                    <SelectItem key={ministry._id} value={ministry.name}>
-                      {ministry.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -32,7 +32,7 @@ interface NavigationItem {
 
 export function RoleBasedNavigation() {
   const { pathname } = useLocation()
-  const { role, isAdmin, isMinistryLeader, isRegionLeader, isLoading } = useUserRole()
+  const { role, isAdmin, isLoading } = useUserRole()
   const { terminology } = useTerminology()
 
   const navigationItems: NavigationItem[] = [
@@ -40,49 +40,37 @@ export function RoleBasedNavigation() {
       title: "Dashboard",
       href: "/",
       icon: Home,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader", "member"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "member"]
     },
     {
       title: "Members",
       href: "/members",
       icon: Users,
-      roles: ["admin", "organization_admin"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {
       title: "Organization",
       href: "/organization",
       icon: Building2,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+      roles: ["admin", "organization_admin", "division_admin"]
     },
     {
-      title: "Sub-Units",
-      href: "/sub-units",
+      title: "Units",
+      href: "/units",
       icon: Layers,
       roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
-    },
-    {
-      title: `My ${terminology.ministry_term}`,
-      href: "/ministry-dashboard",
-      icon: Heart,
-      roles: ["ministry_leader"]
-    },
-    {
-      title: "My Region",
-      href: "/region-dashboard",
-      icon: MapPin,
-      roles: ["region_leader"]
     },
     {
       title: "Events",
       href: "/events",
       icon: Calendar,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {
       title: "Attendance",
       href: "/attendance",
       icon: UserCheck,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {
       title: "Financial",
@@ -94,13 +82,13 @@ export function RoleBasedNavigation() {
       title: "Reports",
       href: "/reports",
       icon: BarChart3,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {
       title: "Map",
       href: "/map",
       icon: MapPin,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "ministry_leader", "region_leader"]
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
     },
     {
       title: "User Management",
@@ -123,10 +111,8 @@ export function RoleBasedNavigation() {
 
     // Show items based on role
     if (isAdmin) return item.roles.includes("admin")
-    if (isMinistryLeader && role === "ministry_leader") return item.roles.includes("ministry_leader")
-    if (isRegionLeader && role === "region_leader") return item.roles.includes("region_leader")
 
-    // Check for organization roles
+    // Check for specific role access
     if (role && item.roles.includes(role)) return true
 
     // Default member access
@@ -183,8 +169,7 @@ export function RoleBasedNavigation() {
 
 // Role indicator component
 export function RoleIndicator() {
-  const { role, user, ministryLeaderships, regionLeaderships, isLoading } = useUserRole()
-  const { terminology } = useTerminology()
+  const { role, user, isLoading } = useUserRole()
 
   if (isLoading || !user) return null
 
@@ -200,22 +185,11 @@ export function RoleIndicator() {
         return { label: 'Division Admin', color: 'default' as const }
       case 'unit_admin':
         return { label: 'Unit Admin', color: 'secondary' as const }
-      case 'sub_unit_admin':
-        return { label: 'Sub-Unit Admin', color: 'secondary' as const }
-      case 'ministry_leader':
-        return {
-          label: `${terminology.ministry_term} Leader`,
-          color: 'default' as const,
-          subtitle: ministryLeaderships.map(m => m.name).join(', ')
-        }
-      case 'region_leader':
-        return {
-          label: 'Region Leader',
-          color: 'secondary' as const,
-          subtitle: regionLeaderships.map(r => r.name).join(', ')
-        }
       default:
-        return { label: 'Member', color: 'outline' as const }
+        return {
+          label: 'Member',
+          color: 'outline' as const
+        }
     }
   }
 
@@ -235,11 +209,6 @@ export function RoleIndicator() {
             {roleInfo.label}
           </Badge>
         </div>
-        {roleInfo.subtitle && (
-          <p className="text-xs text-sidebar-foreground/60 truncate max-w-full leading-tight">
-            {roleInfo.subtitle}
-          </p>
-        )}
       </div>
     </div>
   )

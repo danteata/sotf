@@ -63,8 +63,8 @@ export function useEventTypes() {
   // Map Convex data to EventType interface and apply terminology
   const eventTypes: EventType[] = eventTypesList.map((dbType: any) => {
     let label = dbType.label
-    if (dbType.value === 'children-ministry') {
-      label = `Children ${terminology.ministry_term}`
+    if (dbType.value === 'children-youth') {
+      label = `Children & Youth`
     }
     return {
       _id: dbType._id,
@@ -78,7 +78,7 @@ export function useEventTypes() {
     }
   })
 
-  const addEventType = async (eventType: Omit<EventType, 'value'> & { value?: string }) => {
+  const addEventType = async (eventType: Omit<EventType, 'value' | '_id'> & { value?: string; _id?: string }) => {
     try {
       await createEventType({
         value: eventType.value || eventType.label.toLowerCase().replace(/\s+/g, '-'),

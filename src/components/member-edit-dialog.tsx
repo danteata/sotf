@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
-import { getRegionLabels, getMinistryLabels, useTerminology } from "@/hooks/use-terminology"
+import { getUnitLabels, useTerminology } from "@/hooks/use-terminology"
 import { useToast } from "@/components/ui/use-toast"
 import { convertPlusCodeToLatLng } from "@/lib/google-maps-utils"
 import { useQuery, useMutation } from "convex/react"
@@ -37,7 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Member, Ministry, Region } from "@/types/database"
+import { Member, UserRole, Unit } from "@/types/database"
 import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -46,8 +46,7 @@ import { Upload, X } from "lucide-react"
 
 const memberSchema = z.object({
   title: z.string().optional(),
-  region: z.string().optional(),
-  ministries: z.array(z.string()).optional(), // Ministry IDs
+  unit_ids: z.array(z.string()).optional(),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
@@ -64,7 +63,6 @@ const memberSchema = z.object({
   zip: z.string().optional(),
   country: z.string().optional(),
   plus_code: z.string().optional(),
-  // skills: z.string().optional(),
   avatar: z.string().optional(),
 })
 
@@ -85,14 +83,12 @@ export function MemberEditDialog({
 }: MemberEditDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState("basic")
-  const [ministries, setMinistries] = useState<any[]>([])
-  const [regions, setRegions] = useState<any[]>([])
-  const [memberMinistryIds, setMemberMinistryIds] = useState<string[]>([])
+  const [availableUnits, setAvailableUnits] = useState<any[]>([])
+  const [memberUnitIds, setMemberUnitIds] = useState<string[]>([])
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const { toast } = useToast()
   const { terminology } = useTerminology()
-  const ministryLabels = getMinistryLabels(terminology)
-  const regionLabels = getRegionLabels(terminology)
+  const unitLabels = getUnitLabels(terminology)
 
   // Split the name into first and last name
   let firstName: string = ""
@@ -123,34 +119,27 @@ export function MemberEditDialog({
       zip: member.zip || "",
       country: member.country || "United States",
       plus_code: member.plus_code || "",
-      ministries: memberMinistryIds,
-      region: member.region || "",
+      unit_ids: memberUnitIds,
       avatar: member.avatar || "",
     },
   });
 
-  form.register("region")
-
-  // Load ministries and regions using Convex
-  const ministriesData = useQuery(api.ministries.getAll, open ? { activeOnly: true } : "skip");
-  const regionsData = useQuery(api.regions.getAll, open ? { activeOnly: true } : "skip");
+  // Load all units using Convex
+  const unitsData = useQuery(api.units.listByOrg, open ? {
+    organization_id: 'current_org' as any
+  } : "skip");
   const updateMember = useMutation(api.members.update);
 
   useEffect(() => {
-    if (ministriesData) setMinistries(ministriesData);
-    if (regionsData) setRegions(regionsData);
-  }, [ministriesData, regionsData]);
+    if (unitsData) setAvailableUnits(unitsData.map((u: any) => ({ ...u, id: u._id })));
+  }, [unitsData]);
 
   // Initial loading of member data into form
   useEffect(() => {
     if (open && member) {
-      // Use passed member data. 
-      // Note: member.ministry_ids comes from the updated getAll query.
-      // If it's missing (e.g. legacy type), might need a fallback or ensure type includes it.
-      // Casting member to include ministry_ids for now if not in type.
       const m = member as any;
-      const currentMinistryIds = m.ministry_ids || [];
-      setMemberMinistryIds(currentMinistryIds);
+      const currentUnitIds = m.unit_ids || [];
+      setMemberUnitIds(currentUnitIds);
 
       setUploadedImageUrl(member.avatar_url || member.avatar || null);
 
@@ -172,53 +161,32 @@ export function MemberEditDialog({
         zip: member.zip || "",
         country: member.country || "United States",
         plus_code: member.plus_code || "",
-        ministries: currentMinistryIds,
-        region: member.region || "", // This might be name. We prefer IDs but form uses names?
-        // Wait, In MemberDialog we switched to IDs. Here we should check if 'member.region' is name or ID.
-        // In formatMember: region: regionName. So it is NAME.
-        // But our Select uses ID now (if we updated it? We updated MemberDialog, NOT MemberEditDialog yet).
-        // We SHOULD update MemberEditDialog to use IDs for region too.
-        // But formatMember returns region NAME.
-        // Does it return region_id? Yes, member object has region_id (from db).
-        // formatMember spreads ...member. So region_id is present!
-        // So we should use member.region_id.
+        unit_ids: currentUnitIds,
         avatar: member.avatar_url || member.avatar || "",
       });
-
-      // If we want to set region by ID:
-      if (member.region_id) {
-        form.setValue("region", member.region_id as any);
-      }
     }
   }, [open, member, form]);
 
-  // Handle photo upload completion
   const handlePhotoUpload = (url: string) => {
     setUploadedImageUrl(url)
     form.setValue("avatar", url)
   }
 
-  // Remove uploaded photo
   const removePhoto = () => {
     setUploadedImageUrl(null)
     form.setValue("avatar", "")
   }
 
   async function onSubmit(data: MemberFormValues) {
-    console.log("Edit form submitted with data:", data);
     setIsLoading(true)
     try {
-      // Find region ID if data.region is a name, but if we switched to IDs it's an ID.
-      // If we use member.region_id, it's an ID.
-      // Let's assume we update the Select to use IDs.
-
       let latLng: { lat: number; lng: number } | null = null;
       if (data.plus_code) {
         latLng = await convertPlusCodeToLatLng(data.plus_code);
       }
 
       await updateMember({
-        id: member.id as any, // Cast id
+        id: member._id || (member as any).id,
         updates: {
           name: `${data.first_name} ${data.last_name}`,
           email: data.email,
@@ -233,13 +201,12 @@ export function MemberEditDialog({
           state: data.state,
           zip: data.zip,
           country: data.country,
-          region_id: data.region as any,
           plus_code: data.plus_code,
           latitude: latLng?.lat,
           longitude: latLng?.lng,
           avatar_url: data.avatar,
         },
-        ministry_ids: data.ministries ? data.ministries.map(id => id as any) : [],
+        unit_ids: data.unit_ids ? data.unit_ids.map(id => id as any) : [],
       });
 
       toast({
@@ -273,20 +240,20 @@ export function MemberEditDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
                 <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
                 <TabsTrigger value="photo" className="text-xs sm:text-sm">Photo</TabsTrigger>
-                <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
+                <TabsTrigger value="unit" className="text-xs sm:text-sm">{unitLabels.single}</TabsTrigger>
                 <TabsTrigger value="labels" className="text-xs sm:text-sm">Labels</TabsTrigger>
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="title"
                     render={({ field }) => (
                       <FormItem className="md:col-span-1">
@@ -308,7 +275,7 @@ export function MemberEditDialog({
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="first_name"
                     render={({ field }) => (
                       <FormItem className="md:col-span-3">
@@ -324,7 +291,7 @@ export function MemberEditDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="last_name"
                     render={({ field }) => (
                       <FormItem>
@@ -338,7 +305,7 @@ export function MemberEditDialog({
                   />
 
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="gender"
                     render={({ field }) => (
                       <FormItem>
@@ -360,7 +327,7 @@ export function MemberEditDialog({
                   />
                 </div>
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="dob"
                   render={({ field }) => (
                     <FormItem>
@@ -375,11 +342,11 @@ export function MemberEditDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="birth_month"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Birth Month (for notifications)</FormLabel>
+                        <FormLabel>Birth Month</FormLabel>
                         <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                           <FormControl>
                             <SelectTrigger>
@@ -406,11 +373,11 @@ export function MemberEditDialog({
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="birth_day"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Birth Day (for notifications)</FormLabel>
+                        <FormLabel>Birth Day</FormLabel>
                         <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                           <FormControl>
                             <SelectTrigger>
@@ -431,37 +398,11 @@ export function MemberEditDialog({
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="region"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{regionLabels.single}</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select region" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {regions.map(region => (
-                              <SelectItem key={region.id} value={region.id}>
-                                {region.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
               </TabsContent>
 
               <TabsContent value="contact" className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -475,7 +416,7 @@ export function MemberEditDialog({
                 />
 
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
@@ -489,7 +430,7 @@ export function MemberEditDialog({
                 />
 
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
@@ -504,7 +445,7 @@ export function MemberEditDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="city"
                     render={({ field }) => (
                       <FormItem>
@@ -517,7 +458,7 @@ export function MemberEditDialog({
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="state"
                     render={({ field }) => (
                       <FormItem>
@@ -533,7 +474,7 @@ export function MemberEditDialog({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="zip"
                     render={({ field }) => (
                       <FormItem>
@@ -546,7 +487,7 @@ export function MemberEditDialog({
                     )}
                   />
                   <FormField
-                    control={form.control}
+                    control={form.control as any}
                     name="country"
                     render={({ field }) => (
                       <FormItem>
@@ -561,7 +502,7 @@ export function MemberEditDialog({
                 </div>
 
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="plus_code"
                   render={({ field }) => (
                     <FormItem>
@@ -610,15 +551,15 @@ export function MemberEditDialog({
                     </div>
 
                     <p className="text-sm text-muted-foreground text-center">
-                      Upload a photo for this member. Supported formats: JPG, PNG, GIF. Max size: 4MB.
+                      Upload a photo for this member. Max size: 4MB.
                     </p>
                   </div>
                 </div>
               </TabsContent>
 
-              <TabsContent value="ministry" className="space-y-4">
+              <TabsContent value="unit" className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={form.control as any}
                   name="joined_date"
                   render={({ field }) => (
                     <FormItem>
@@ -631,50 +572,46 @@ export function MemberEditDialog({
                   )}
                 />
                 <FormField
-                  name="ministries"
-                  control={form.control}
+                  name="unit_ids"
+                  control={form.control as any}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{ministryLabels.plural}</FormLabel>
-                      <div className="space-y-2">
-                        {ministries.map(ministry => (
-                          <div key={ministry.id} className="flex items-center space-x-2">
+                      <FormLabel>{unitLabels.plural}</FormLabel>
+                      <div className="space-y-2 border rounded-md p-4 max-h-[200px] overflow-y-auto bg-background/50">
+                        {availableUnits.map(unit => (
+                          <div key={unit.id} className="flex items-center space-x-2">
                             <input
                               type="checkbox"
-                              id={`ministry-${ministry.id}`}
-                              checked={field.value?.includes(ministry.id) || false}
+                              id={`unit-${unit.id}`}
+                              checked={field.value?.includes(unit.id) || false}
                               onChange={(e) => {
-                                const currentMinistries = field.value || [];
-                                console.log('Current ministries before change:', currentMinistries);
-                                console.log('Checkbox checked:', e.target.checked, 'for ministry:', ministry.name, 'ID:', ministry.id);
-
+                                const current = field.value || [];
                                 if (e.target.checked) {
-                                  const newMinistries = [...currentMinistries, ministry.id];
-                                  console.log('New ministries after adding:', newMinistries);
-                                  field.onChange(newMinistries);
+                                  field.onChange([...current, unit.id]);
                                 } else {
-                                  const newMinistries = currentMinistries.filter((m: string) => m !== ministry.id);
-                                  console.log('New ministries after removing:', newMinistries);
-                                  field.onChange(newMinistries);
+                                  field.onChange(current.filter((m: string) => m !== unit.id));
                                 }
                               }}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
                             />
                             <label
-                              htmlFor={`ministry-${ministry.id}`}
-                              className="text-sm font-medium text-gray-700 cursor-pointer"
+                              htmlFor={`unit-${unit.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
-                              {ministry.name}
+                              {unit.name} <span className="text-xs text-muted-foreground ml-1">({unit.type})</span>
                             </label>
                           </div>
                         ))}
+                        {availableUnits.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">No units available.</p>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {field.value?.map((ministryId: string) => {
-                          const ministry = ministries.find(m => m.id === ministryId);
-                          return ministry ? (
-                            <Badge key={ministryId} variant="secondary">
-                              {ministry.name}
+                        {field.value?.map((unitId: string) => {
+                          const unit = availableUnits.find(u => u.id === unitId);
+                          return unit ? (
+                            <Badge key={unitId} variant="secondary" className="font-normal">
+                              {unit.name}
                             </Badge>
                           ) : null;
                         })}
@@ -686,12 +623,12 @@ export function MemberEditDialog({
 
               <TabsContent value="labels" className="space-y-4">
                 <div className="text-sm text-muted-foreground mb-4">
-                  Assign labels to categorize this member. Labels help you organize and filter your church members.
+                  Assign labels to categorize this member. Labels help you organize and filter your members.
                 </div>
-                <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="border rounded-lg p-4 bg-muted/20">
                   <h4 className="font-medium mb-3">Member Labels</h4>
                   <LabelSelector
-                    memberId={member.id || ''}
+                    memberId={(member as any)._id || (member as any).id || ''}
                     variant="full"
                   />
                 </div>

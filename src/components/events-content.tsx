@@ -48,7 +48,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { UpcomingEvents } from '@/components/upcoming-events'
 import { EventDialog } from '@/components/event-dialog'
-import { useTerminology, getMinistryLabels } from '@/hooks/use-terminology'
+import { useTerminology, getUnitLabels } from '@/hooks/use-terminology'
 import { useEventTypes } from '@/hooks/use-event-types'
 import { format, isAfter, isBefore, startOfDay } from 'date-fns'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -76,7 +76,7 @@ export function EventsContent() {
 
   const { terminology, isLoading: terminologyLoading } = useTerminology()
   const { eventTypes } = useEventTypes()
-  const ministryLabels = getMinistryLabels(terminology)
+  const unitLabels = getUnitLabels(terminology)
 
   const isLoading = events === undefined || terminologyLoading
 
@@ -210,8 +210,8 @@ export function EventsContent() {
               iconBg="bg-blue-500/10 text-blue-500"
             />
             <StatCard
-              label={`${terminology.ministry_term}s`}
-              value={events.filter((e: any) => e.event_type_label?.toLowerCase().includes(terminology.ministry_term.toLowerCase())).length.toString()}
+              label={unitLabels.plural}
+              value={events.filter((e: any) => e.event_type_label?.toLowerCase().includes(terminology.unit_term.toLowerCase())).length.toString()}
               icon={<Users className="h-4 w-4" />}
               iconBg="bg-purple-500/10 text-purple-500"
             />

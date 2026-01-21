@@ -25,10 +25,16 @@ export function AbsentMembers() {
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
 
   // Convex Queries
-  const allMembers = useQuery(api.members.getAll, {}) || []
+  // Convex Queries
+  const membersData = useQuery(api.members.getAll, {}) || []
+  const allMembers = useMemo(() => membersData.map((m: any) => ({
+    ...m,
+    id: m._id,
+    _id: m._id
+  })), [membersData])
   const attendanceRecords = useQuery(api.attendance.listWithMembers) || []
 
-  const loading = allMembers === undefined || attendanceRecords === undefined;
+  const loading = membersData === undefined || attendanceRecords === undefined;
 
   // Set default event type when event types are loaded
   useMemo(() => {
@@ -205,7 +211,7 @@ export function AbsentMembers() {
               <TableHead>Status</TableHead>
               <TableHead>Last Attendance</TableHead>
               <TableHead>Consecutive Absences</TableHead>
-              <TableHead>Ministries</TableHead>
+              <TableHead>Units</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -301,8 +307,8 @@ export function AbsentMembers() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {member.ministry_names?.length > 0 ? (
-                        member.ministry_names.map((min: string, index: number) => (
+                      {member.unit_names?.length > 0 ? (
+                        member.unit_names.map((min: string, index: number) => (
                           <Badge key={index} variant="outline">
                             {min}
                           </Badge>

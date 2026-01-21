@@ -159,4 +159,46 @@
     .transition-smooth {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    /* Flame Effect */
+    .flame {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(ellipse at center, #ff6b35 0%, #ff8c42 20%, transparent 70%);
+        border-radius: 50%;
+        filter: blur(40px);
+        opacity: 0.6;
+        animation: float 6s ease-in-out infinite;
+    }
+
+    /* Float Animation */
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0px) translateX(0px);
+        }
+
+        25% {
+            transform: translateY(-10px) translateX(5px);
+        }
+
+        50% {
+            transform: translateY(-20px) translateX(0px);
+        }
+
+        75% {
+            transform: translateY(-10px) translateX(-5px);
+        }
+    }
+
+    /* Animation Delays */
+    .animation-delay-2000 {
+        animation-delay: 2s;
+    }
+
+    .animation-delay-4000 {
+        animation-delay: 4s;
+    }
 }

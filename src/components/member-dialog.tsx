@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { format } from "date-fns"
 import {
   Dialog,
   DialogContent,
@@ -18,18 +17,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUploader } from "@/components/file-uploader"
 import { useToast } from "@/components/ui/use-toast"
-import { cn } from "@/lib/utils"
-// Removed database-utils imports
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
-import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
+import { useOrganization } from "@/hooks/use-organization"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Upload, X } from "lucide-react"
+import { Upload, X, Check } from "lucide-react"
+import { Checkbox } from "@radix-ui/react-checkbox"
 
 const memberSchema = z.object({
   title: z.string().optional(),
-  region: z.string().optional(),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
@@ -45,7 +42,7 @@ const memberSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   country: z.string().optional(),
-  ministries: z.array(z.string()).optional(), // Ministry IDs
+  unit_ids: z.array(z.string()).optional(),
   skills: z.string().optional(),
   avatar_url: z.string().optional(),
 })
@@ -61,13 +58,8 @@ interface MemberDialogProps {
 export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProps) {
   const [activeTab, setActiveTab] = useState("basic")
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [ministries, setMinistries] = useState<any[]>([])
-  const [regions, setRegions] = useState<any[]>([])
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const { toast } = useToast()
-  const { terminology } = useTerminology()
-  const ministryLabels = getMinistryLabels(terminology)
-  const regionLabels = getRegionLabels(terminology)
 
   const {
     register,
@@ -82,7 +74,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
       title: "",
       status: "visitor",
       country: "United States",
-      ministries: [],
+      unit_ids: [],
     },
   })
 
@@ -91,30 +83,19 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     register("title")
     register("gender")
     register("status")
-    register("region")
     register("birth_month")
     register("birth_day")
+    register("unit_ids")
   }, [register])
 
-  useEffect(() => {
-    register("ministries")
-  }, [register])
-
-  // Load ministries and regions when dialog opens
-  // Load ministries and regions using Convex
-  // We use "skip" if the dialog is not open to avoid unnecessary fetches
-  const ministriesData = useQuery(api.ministries.getAll, open ? { activeOnly: true } : "skip");
-  const regionsData = useQuery(api.regions.getAll, open ? { activeOnly: true } : "skip");
+  // Load units when dialog opens
+  const { organization } = useOrganization()
+  const unitsData = useQuery(api.units.listByOrg, open && organization ? { organization_id: organization._id } : "skip");
 
   const createMember = useMutation(api.members.create);
 
-  // Update local state when query data arrives
-  useEffect(() => {
-    if (ministriesData) setMinistries(ministriesData);
-    if (regionsData) setRegions(regionsData);
-  }, [ministriesData, regionsData]);
-
-  // Removed existing useEffect that called getMinistries/getRegions
+  const functionalUnits = unitsData?.filter(unit => unit.type === "functional" || unit.type === "ministry") || [];
+  const adminUnits = unitsData?.filter(unit => unit.type === "administrative" || unit.type === "geographic") || [];
 
   // Handle photo upload completion
   const handlePhotoUpload = (url: string) => {
@@ -128,8 +109,17 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     setValue("avatar_url", "")
   }
 
+  // Handle unit selection changes
+  const handleUnitToggle = (unitId: string, checked: boolean) => {
+    const currentUnits = watch("unit_ids") || [];
+    if (checked) {
+      setValue("unit_ids", [...currentUnits, unitId]);
+    } else {
+      setValue("unit_ids", currentUnits.filter(id => id !== unitId));
+    }
+  };
+
   const onSubmit = async (data: MemberFormData) => {
-    console.log("Form submitted with data:", data);
     setIsSubmitting(true)
     try {
       await createMember({
@@ -146,8 +136,8 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
         state: data.state,
         zip: data.zip,
         country: data.country,
-        region_id: data.region as any,
-        ministry_ids: data.ministries ? data.ministries.map(id => id as any) : [],
+        organization_id: organization?._id,
+        unit_ids: (data.unit_ids || []).map(id => id as any),
         avatar_url: data.avatar_url,
       });
 
@@ -194,8 +184,8 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
               <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
+              <TabsTrigger value="units" className="text-xs sm:text-sm">Unit Assignment</TabsTrigger>
               <TabsTrigger value="photo" className="text-xs sm:text-sm">Photo</TabsTrigger>
-              <TabsTrigger value="ministry" className="text-xs sm:text-sm">{ministryLabels.single}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="basic" className="space-y-4 pt-4">
@@ -236,6 +226,24 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                     <span className="text-sm text-destructive">{errors.last_name.message}</span>
                   )}
                 </div>
+                <div>
+                  <Label htmlFor="status" className="after:content-['*'] after:text-red-500 after:ml-0.5">
+                    Status
+                  </Label>
+                  <Select onValueChange={(value) => setValue("status", value)} defaultValue="visitor">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="visitor">Visitor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.status && (
+                    <span className="text-sm text-destructive">{errors.status.message}</span>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -260,29 +268,22 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="birth_month">Birth Month (for notifications)</Label>
+                  <Label htmlFor="birth_month">Birth Month</Label>
                   <Select onValueChange={(value) => setValue("birth_month", parseInt(value))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select month" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">January</SelectItem>
-                      <SelectItem value="2">February</SelectItem>
-                      <SelectItem value="3">March</SelectItem>
-                      <SelectItem value="4">April</SelectItem>
-                      <SelectItem value="5">May</SelectItem>
-                      <SelectItem value="6">June</SelectItem>
-                      <SelectItem value="7">July</SelectItem>
-                      <SelectItem value="8">August</SelectItem>
-                      <SelectItem value="9">September</SelectItem>
-                      <SelectItem value="10">October</SelectItem>
-                      <SelectItem value="11">November</SelectItem>
-                      <SelectItem value="12">December</SelectItem>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                        <SelectItem key={month} value={month.toString()}>
+                          {new Date(0, month - 1).toLocaleString('en', { month: 'long' })}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="birth_day">Birth Day (for notifications)</Label>
+                  <Label htmlFor="birth_day">Birth Day</Label>
                   <Select onValueChange={(value) => setValue("birth_day", parseInt(value))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select day" />
@@ -291,42 +292,6 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
                         <SelectItem key={day} value={day.toString()}>
                           {day}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="status" className="after:content-['*'] after:text-red-500 after:ml-0.5">
-                    Membership Status
-                  </Label>
-                  <Select onValueChange={(value) => setValue("status", value)} defaultValue="visitor">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="visitor">Visitor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.status && (
-                    <span className="text-sm text-destructive">{errors.status.message}</span>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="region">{regionLabels.single}</Label>
-                  <Select onValueChange={(value) => setValue("region", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map((region) => (
-                        <SelectItem key={region.id} value={region.id}>
-                          {region.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -357,131 +322,124 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input {...register("address")} />
-                </div>
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Input {...register("address")} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="city">City</Label>
                   <Input {...register("city")} />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="zip">ZIP Code</Label>
+                  <Label htmlFor="state">State</Label>
+                  <Input {...register("state")} />
+                </div>
+                <div>
+                  <Label htmlFor="zip">ZIP</Label>
                   <Input {...register("zip")} />
                 </div>
-                <div>
-                  <Label htmlFor="country">Country</Label>
-                  <Input {...register("country")} defaultValue="United States" />
-                </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="photo" className="space-y-4 pt-4">
+            <TabsContent value="units" className="space-y-6 pt-4">
               <div className="space-y-4">
-                <Label>Member Photo</Label>
-                <div className="flex flex-col items-center space-y-4">
-                  {uploadedImageUrl ? (
-                    <div className="relative">
-                      <Avatar className="w-32 h-32">
-                        <AvatarImage src={uploadedImageUrl} alt="Member photo" />
-                        <AvatarFallback>
-                          {watch("first_name") && watch("last_name")
-                            ? `${watch("first_name")[0]}${watch("last_name")[0]}`.toUpperCase()
-                            : "MP"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute -top-2 -right-2 rounded-full w-6 h-6 p-0"
-                        onClick={removePhoto}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
-                      <Upload className="w-8 h-8 text-gray-400" />
-                    </div>
-                  )}
-
-                  <div className="w-full max-w-md">
-                    <FileUploader onUploadComplete={handlePhotoUpload} />
-                  </div>
-
-                  <p className="text-sm text-muted-foreground text-center">
-                    Upload a photo for this member. Supported formats: JPG, PNG, GIF. Max size: 4MB.
+                <div>
+                  <Label className="text-base font-semibold">Functional Units</Label>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Select functional units (e.g., departments, teams, groups)
                   </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto border rounded-xl p-4">
+                    {functionalUnits.map((unit) => (
+                      <div key={unit._id} className="flex items-center space-x-3 p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                        <Checkbox
+                          id={`unit-${unit._id}`}
+                          checked={watch("unit_ids")?.includes(unit._id) || false}
+                          onCheckedChange={(checked) => handleUnitToggle(unit._id, !!checked)}
+                        />
+                        <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1">
+                          {unit.name}
+                        </label>
+                      </div>
+                    ))}
+                    {functionalUnits.length === 0 && (
+                      <div className="col-span-2 text-center py-4 text-muted-foreground">
+                        No functional units available.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
 
-            <TabsContent value="ministry" className="space-y-4 pt-4">
-              <div>
-                <Label htmlFor="ministries">{ministryLabels.plural}</Label>
-                <input
-                  type="hidden"
-                  {...register("ministries")}
-                  value={watch("ministries")?.join(",")}
-                />
-                <div className="space-y-2 mt-2">
-                  {ministries.map((ministry) => (
-                    <div key={ministry.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`ministry-${ministry.id}`}
-                        checked={watch("ministries")?.includes(ministry.id) || false}
-                        onChange={(e) => {
-                          const currentMinistries = watch("ministries") || [];
-                          console.log('Add dialog - Current ministries before change:', currentMinistries);
-                          console.log('Add dialog - Checkbox checked:', e.target.checked, 'for ministry:', ministry.name, 'ID:', ministry.id);
-
-                          if (e.target.checked) {
-                            const newMinistries = [...currentMinistries, ministry.id];
-                            console.log('Add dialog - New ministries after adding:', newMinistries);
-                            setValue("ministries", newMinistries);
-                          } else {
-                            const newMinistries = currentMinistries.filter((m) => m !== ministry.id);
-                            console.log('Add dialog - New ministries after removing:', newMinistries);
-                            setValue("ministries", newMinistries);
-                          }
-                        }}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label
-                        htmlFor={`ministry-${ministry.id}`}
-                        className="text-sm font-medium text-gray-700 cursor-pointer"
-                      >
-                        {ministry.name}
-                      </label>
-                    </div>
-                  ))}
+                <div>
+                  <Label className="text-base font-semibold">Administrative Units</Label>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Select administrative or geographic units
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto border rounded-xl p-4">
+                    {adminUnits.map((unit) => (
+                      <div key={unit._id} className="flex items-center space-x-3 p-2 hover:bg-muted/50 rounded-lg transition-colors">
+                        <Checkbox
+                          id={`unit-${unit._id}`}
+                          checked={watch("unit_ids")?.includes(unit._id) || false}
+                          onCheckedChange={(checked) => handleUnitToggle(unit._id, !!checked)}
+                        />
+                        <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1">
+                          {unit.name}
+                        </label>
+                      </div>
+                    ))}
+                    {adminUnits.length === 0 && (
+                      <div className="col-span-2 text-center py-4 text-muted-foreground">
+                        No administrative units available.
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {watch("ministries")?.map((ministryId) => {
-                    const ministry = ministries.find(m => m.id === ministryId);
-                    return ministry ? (
-                      <Badge key={ministryId} variant="secondary">
-                        {ministry.name}
+
+                <div className="flex flex-wrap gap-2">
+                  {watch("unit_ids")?.map((unitId) => {
+                    const unit = unitsData?.find(u => u._id === unitId);
+                    return unit ? (
+                      <Badge key={unitId} variant="secondary" className="flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        {unit.name}
                       </Badge>
                     ) : null;
                   })}
                 </div>
               </div>
             </TabsContent>
+
+            <TabsContent value="photo" className="space-y-4 pt-4">
+              <div className="flex flex-col items-center space-y-4">
+                <Avatar className="w-32 h-32 border-2 border-dashed border-muted">
+                  <AvatarImage src={uploadedImageUrl || ""} />
+                  <AvatarFallback className="bg-muted">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
+                  </AvatarFallback>
+                </Avatar>
+                {uploadedImageUrl && (
+                  <Button variant="ghost" size="sm" onClick={removePhoto} className="text-destructive">
+                    <X className="w-4 h-4 mr-1" /> Remove Photo
+                  </Button>
+                )}
+                <div className="w-full max-w-sm">
+                  <FileUploader onUploadComplete={handlePhotoUpload} />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Supported formats: JPG, PNG, GIF. Recommended size: 400x400px.
+                </p>
+              </div>
+            </TabsContent>
           </Tabs>
 
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="pt-6 border-t">
+            <Button variant="ghost" type="button" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save Member"}
+            <Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
+              {isSubmitting ? "Saving..." : "Create Member"}
             </Button>
           </DialogFooter>
         </form>

@@ -50,20 +50,19 @@ export function UserManagement() {
   const [activeTab, setActiveTab] = useState<'users' | 'invitations'>('users')
 
   const usersData = useQuery(api.users.list);
-  const ministriesData = useQuery(api.ministries.getAll, {});
-  const regionsData = useQuery(api.regions.getAll, {});
+
+  // Use units table for leadership assignment
+  const unitsData = useQuery(api.units.list, {});
   const membersData = useQuery(api.members.getAll, {});
 
   const updateRole = useMutation(api.users.updateRole);
-  const updateMinistry = useMutation(api.ministries.update);
-  const updateRegion = useMutation(api.regions.update);
+  const updateUnit = useMutation(api.units.update);
 
   const users = (usersData || []) as any[];
-  const ministries = ministriesData || [];
-  const regions = regionsData || [];
-  const members = membersData || [];
+  const allUnits = (unitsData || []).map((m: any) => ({ ...m, id: m._id }));
+  const members = (membersData || []).map((m: any) => ({ ...m, id: m._id }));
 
-  const isLoading = usersData === undefined || ministriesData === undefined || regionsData === undefined;
+  const isLoading = usersData === undefined || unitsData === undefined;
 
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -72,11 +71,9 @@ export function UserManagement() {
 
   // Form state for editing user
   const [selectedRole, setSelectedRole] = useState<UserRole>('member')
-  const [selectedMinistries, setSelectedMinistries] = useState<string[]>([])
-  const [selectedRegions, setSelectedRegions] = useState<string[]>([])
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([])
 
-  const [originalMinistries, setOriginalMinistries] = useState<string[]>([]);
-  const [originalRegions, setOriginalRegions] = useState<string[]>([]);
+  const [originalUnits, setOriginalUnits] = useState<string[]>([]);
 
   const handleEditUser = (user: any) => {
     setEditingUser(user)
@@ -86,21 +83,13 @@ export function UserManagement() {
     const member = members.find(m => m.email === user.email);
     const memberId = member?._id;
 
-    // Load member's current ministry leaderships
-    const currentMinistries = memberId
-      ? ministries.filter(m => m.leader_id === memberId).map(m => m._id)
+    // Load member's current unit leaderships
+    const currentUnits = memberId
+      ? allUnits.filter((u: any) => u.leader_id === memberId).map((u: any) => u._id)
       : [];
 
-    setSelectedMinistries(currentMinistries);
-    setOriginalMinistries(currentMinistries);
-
-    // Load member's current region leaderships
-    const currentRegions = memberId
-      ? regions.filter(r => r.regional_minister_id === memberId).map(r => r._id)
-      : [];
-
-    setSelectedRegions(currentRegions);
-    setOriginalRegions(currentRegions);
+    setSelectedUnits(currentUnits);
+    setOriginalUnits(currentUnits);
 
     setIsDialogOpen(true)
   }
@@ -117,31 +106,17 @@ export function UserManagement() {
       const memberId = member?._id;
 
       if (memberId) {
-        // Handle Ministry Leadership Changes
-        const addedMinistries = selectedMinistries.filter(id => !originalMinistries.includes(id));
-        for (const mId of addedMinistries) {
-          await updateMinistry({ id: mId as Id<"ministries">, updates: { leader_id: memberId } });
+        // Handle Unit Leadership Changes
+        const addedUnits = selectedUnits.filter(id => !originalUnits.includes(id));
+        for (const uId of addedUnits) {
+          await updateUnit({ id: uId as Id<"units">, updates: { leader_id: memberId } });
         }
 
-        const removedMinistries = originalMinistries.filter(id => !selectedMinistries.includes(id));
-        for (const mId of removedMinistries) {
-          const ministry = ministries.find(m => m._id === mId);
-          if (ministry?.leader_id === memberId) {
-            await updateMinistry({ id: mId as Id<"ministries">, updates: { leader_id: undefined } });
-          }
-        }
-
-        // Handle Region Leadership Changes
-        const addedRegions = selectedRegions.filter(id => !originalRegions.includes(id));
-        for (const rId of addedRegions) {
-          await updateRegion({ id: rId as Id<"regions">, updates: { regional_minister_id: memberId } });
-        }
-
-        const removedRegions = originalRegions.filter(id => !selectedRegions.includes(id));
-        for (const rId of removedRegions) {
-          const region = regions.find(r => r._id === rId);
-          if (region?.regional_minister_id === memberId) {
-            await updateRegion({ id: rId as Id<"regions">, updates: { regional_minister_id: undefined } });
+        const removedUnits = originalUnits.filter(id => !selectedUnits.includes(id));
+        for (const uId of removedUnits) {
+          const unit = allUnits.find((u: any) => u._id === uId);
+          if (unit?.leader_id === memberId) {
+            await updateUnit({ id: uId as Id<"units">, updates: { leader_id: undefined } });
           }
         }
       }
@@ -243,10 +218,6 @@ export function UserManagement() {
                   <SelectItem value="organization_admin">Organization Admin</SelectItem>
                   <SelectItem value="division_admin">Division Admin</SelectItem>
                   <SelectItem value="unit_admin">Unit Admin</SelectItem>
-                  <SelectItem value="ministry_leader">
-                    {terminology.ministry_term} Leader
-                  </SelectItem>
-                  <SelectItem value="region_leader">Region Leader</SelectItem>
                   <SelectItem value="member">Member</SelectItem>
                 </SelectContent>
               </Select>
@@ -298,28 +269,18 @@ export function UserManagement() {
                                 ? 'destructive'
                                 : user.role === 'organization_admin'
                                   ? 'destructive'
-                                  : user.role === 'division_admin' || user.role === 'unit_admin'
-                                    ? 'default'
-                                    : user.role === 'ministry_leader'
-                                      ? 'secondary'
-                                      : user.role === 'region_leader'
-                                        ? 'outline'
-                                        : 'outline'
+                                  : 'default'
                             }
                           >
-                            {user.role === 'ministry_leader'
-                              ? `${terminology.ministry_term} Leader`
-                              : user.role === 'region_leader'
-                                ? 'Region Leader'
-                                : user.role === 'super_admin'
-                                  ? 'Super Admin'
-                                  : user.role === 'organization_admin'
-                                    ? 'Organization Admin'
-                                    : user.role === 'division_admin'
-                                      ? 'Division Admin'
-                                      : user.role === 'unit_admin'
-                                        ? 'Unit Admin'
-                                        : 'Member'}
+                            {user.role === 'super_admin'
+                              ? 'Super Admin'
+                              : user.role === 'organization_admin'
+                                ? 'Organization Admin'
+                                : user.role === 'division_admin'
+                                  ? 'Division Admin'
+                                  : user.role === 'unit_admin'
+                                    ? 'Unit Admin'
+                                    : 'Member'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -375,88 +336,42 @@ export function UserManagement() {
                       <SelectItem value="division_admin">Division Admin</SelectItem>
                       <SelectItem value="organization_admin">Organization Admin</SelectItem>
                       <SelectItem value="super_admin">Super Admin</SelectItem>
-                      <SelectItem value="ministry_leader">
-                        {terminology.ministry_term} Leader
-                      </SelectItem>
-                      <SelectItem value="region_leader">
-                        Region Leader
-                      </SelectItem>
 
                     </SelectContent>
                   </Select>
                 </div>
 
-                {(selectedRole === 'ministry_leader' ||
-                  selectedRole === 'organization_admin' ||
+                {(selectedRole === 'organization_admin' ||
                   selectedRole === 'division_admin' ||
                   selectedRole === 'unit_admin') && (
                     <div>
-                      <Label>{terminology.ministry_term} Leadership</Label>
+                      <Label>Unit Leadership</Label>
                       <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {ministries.map((ministry) => (
+                        {allUnits.map((unit: any) => (
                           <div
-                            key={ministry._id}
+                            key={unit._id}
                             className="flex items-center space-x-2"
                           >
                             <Checkbox
-                              id={ministry._id}
-                              checked={selectedMinistries.includes(ministry._id)}
+                              id={unit._id}
+                              checked={selectedUnits.includes(unit._id)}
                               onCheckedChange={(checked: boolean | "indeterminate") => {
                                 if (checked) {
-                                  setSelectedMinistries([
-                                    ...selectedMinistries,
-                                    ministry._id,
+                                  setSelectedUnits([
+                                    ...selectedUnits,
+                                    unit._id,
                                   ])
                                 } else {
-                                  setSelectedMinistries(
-                                    selectedMinistries.filter(
-                                      (id) => id !== ministry._id
+                                  setSelectedUnits(
+                                    selectedUnits.filter(
+                                      (id) => id !== unit._id
                                     )
                                   )
                                 }
                               }}
                             />
-                            <Label htmlFor={ministry._id} className="text-sm">
-                              {ministry.name}
-                            </Label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                {(selectedRole === 'region_leader' ||
-                  selectedRole === 'organization_admin' ||
-                  selectedRole === 'division_admin' ||
-                  selectedRole === 'unit_admin') && (
-                    <div>
-                      <Label>Region Leadership</Label>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {regions.map((region) => (
-                          <div
-                            key={region._id}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              id={region._id}
-                              checked={selectedRegions.includes(region._id)}
-                              onCheckedChange={(checked: boolean | "indeterminate") => {
-                                if (checked) {
-                                  setSelectedRegions([
-                                    ...selectedRegions,
-                                    region._id,
-                                  ])
-                                } else {
-                                  setSelectedRegions(
-                                    selectedRegions.filter(
-                                      (id) => id !== region._id
-                                    )
-                                  )
-                                }
-                              }}
-                            />
-                            <Label htmlFor={region._id} className="text-sm">
-                              {region.name}
+                            <Label htmlFor={unit._id} className="text-sm">
+                              {unit.name}
                             </Label>
                           </div>
                         ))}

@@ -38,6 +38,7 @@ interface ChartNode {
   id: string
   name: string
   type: 'organization' | 'division' | 'unit'
+  unitType?: string // The actual unit type from database (ministry, administrative, geographic)
   level: number
   parentId?: string
   children: ChartNode[]
@@ -63,115 +64,142 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const [zoom, setZoom] = useState(1)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showDetails, setShowDetails] = useState(true)
-  const [dragOverNode, setDragOverNode] = useState<ChartNode | null>(null)
+  const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null)
   const [draggedNode, setDraggedNode] = useState<ChartNode | null>(null)
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [isPanning, setIsPanning] = useState(false)
+  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
 
   // Dialog states
   const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false)
-  const [moveDialogOpen, setMoveDialogOpen] = useState(false)
 
   // Convex Queries & Mutations
-  const chartData = useQuery(api.organizations.getChartData, {
-    organization_id: organizationId as Id<"organizations"> || undefined
-  });
-  const moveUnitMutation = useMutation(api.organizations.moveUnit);
+  const chartData = useQuery(api.organizations.getChartData, {});
+  const moveUnitMutation = useMutation(api.units.moveUnit);
+
+  // Constants for layout
+  const NODE_WIDTH = 200
+  const NODE_HEIGHT = 80
+  const LEVEL_HEIGHT = 180
+  const MIN_SPACING = 40
 
   const buildChartStructure = (
     org: any,
-    divisions: any[],
-    units: any[],
-    memberCounts: any[]
-  ): ChartNode => {
-    // Create organization node
-    const orgNode: ChartNode = {
+    allUnits: any[],
+    memberCounts: any[],
+    totalMembers: number
+  ): { root: ChartNode, map: Map<string, ChartNode> } => {
+    // 1. Create the root node (Organization)
+    const calculatedTotal = memberCounts?.reduce((sum, mc) => sum + (mc.count || 0), 0) || 0
+    const actualTotal = totalMembers || calculatedTotal
+
+    const rootNode: ChartNode = {
       id: org._id,
       name: org.name,
       type: 'organization',
       level: 0,
       children: [],
-      memberCount: memberCounts.length,
+      memberCount: actualTotal,
       isExpanded: true,
-      x: 400,
-      y: 50,
-      width: 200,
-      height: 80
+      x: 0, y: 0, // Will be set in second pass
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT
     }
 
-    // Add direct units (not under divisions)
-    const directUnits = units.filter(u => !u.division_id)
-    directUnits.forEach((unit, index) => {
-      const unitMemberCount = memberCounts.filter(m => m.unit_id === unit._id).length
-      const unitNode: ChartNode = {
+    // 2. Build hierarchical tree structure
+    const unitMap = new Map<string, ChartNode>()
+
+    allUnits.forEach(unit => {
+      const node: ChartNode = {
         id: unit._id,
         name: unit.name,
         type: 'unit',
-        level: 1,
-        parentId: org._id,
+        unitType: unit.type,
+        level: (unit.depth || 0) + 1,
+        parentId: unit.parent_unit_id || org._id,
         children: [],
-        memberCount: unitMemberCount,
-        isExpanded: false,
-        x: 200 + (index * 250),
-        y: 200,
-        width: 180,
-        height: 60
+        memberCount: memberCounts?.find(mc => mc.unit_id === unit._id)?.count || 0,
+        isExpanded: true,
+        x: 0, y: 0,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT - 20
       }
-      orgNode.children.push(unitNode)
+      unitMap.set(unit._id, node)
     })
 
-    // Add divisions with their units
-    divisions.forEach((division, divisionIndex) => {
-      const divisionNode: ChartNode = {
-        id: division._id,
-        name: division.name,
-        type: 'division',
-        level: 1,
-        parentId: org._id,
-        children: [],
-        memberCount: 0,
-        isExpanded: true,
-        x: 150 + (divisionIndex * 300),
-        y: 200,
-        width: 180,
-        height: 60
+    // Attach units to their parents
+    allUnits.forEach(unit => {
+      const node = unitMap.get(unit._id)!
+      if (unit.parent_unit_id) {
+        const parent = unitMap.get(unit.parent_unit_id)
+        if (parent) parent.children.push(node)
+      } else {
+        rootNode.children.push(node)
+      }
+    })
+
+    // 3. First Pass: Calculate subtree widths
+    const subtreeWidthMap = new Map<string, number>()
+    const calculateSubtreeWidth = (node: ChartNode): number => {
+      if (node.children.length === 0) {
+        subtreeWidthMap.set(node.id, node.width)
+        return node.width
       }
 
-      // Add units under this division
-      const divisionUnits = units.filter(u => u.division_id === division._id)
-      divisionUnits.forEach((unit, unitIndex) => {
-        const unitMemberCount = memberCounts.filter(m => m.unit_id === unit._id).length
-        divisionNode.memberCount += unitMemberCount
-
-        const unitNode: ChartNode = {
-          id: unit._id,
-          name: unit.name,
-          type: 'unit',
-          level: 2,
-          parentId: division._id,
-          children: [],
-          memberCount: unitMemberCount,
-          isExpanded: false,
-          x: divisionNode.x - 50 + (unitIndex * 120),
-          y: 350,
-          width: 160,
-          height: 50
-        }
-        divisionNode.children.push(unitNode)
+      let totalChildrenWidth = 0
+      node.children.forEach((child, i) => {
+        totalChildrenWidth += calculateSubtreeWidth(child)
+        if (i < node.children.length - 1) totalChildrenWidth += MIN_SPACING
       })
 
-      orgNode.children.push(divisionNode)
-    })
+      const width = Math.max(node.width, totalChildrenWidth)
+      subtreeWidthMap.set(node.id, width)
+      return width
+    }
 
-    return orgNode
+    calculateSubtreeWidth(rootNode)
+
+    // 4. Second Pass: Position nodes
+    const positionNodes = (node: ChartNode, startX: number, y: number) => {
+      const totalWidth = subtreeWidthMap.get(node.id)!
+      node.x = startX + (totalWidth - node.width) / 2
+      node.y = y
+
+      let currentX = startX
+      node.children.forEach(child => {
+        const childWidth = subtreeWidthMap.get(child.id)!
+        positionNodes(child, currentX, y + LEVEL_HEIGHT)
+        currentX += childWidth + MIN_SPACING
+      })
+    }
+
+    // Center everything relative to x=500
+    const totalRootWidth = subtreeWidthMap.get(rootNode.id)!
+    positionNodes(rootNode, 500 - (totalRootWidth / 2), 50)
+
+    // Build flat map
+    const finalMap = new Map<string, ChartNode>()
+    finalMap.set(rootNode.id, rootNode)
+    // Walk the tree to get all nodes in the map (more reliable than just unitMap if positions changed)
+    const fillMap = (n: ChartNode) => {
+      finalMap.set(n.id, n)
+      n.children.forEach(fillMap)
+    }
+    fillMap(rootNode)
+
+    return { root: rootNode, map: finalMap }
   }
 
-  const rootNode = useMemo(() => {
-    if (!chartData) return null;
-    return buildChartStructure(
+  const { rootNode, nodeMap } = useMemo(() => {
+    if (!chartData) return { rootNode: null, nodeMap: new Map<string, ChartNode>() };
+    const result = buildChartStructure(
       chartData.organization,
-      chartData.divisions,
       chartData.units,
-      chartData.memberCounts
+      chartData.memberCounts,
+      chartData.totalMembers
     );
+    return { rootNode: result.root, nodeMap: result.map };
   }, [chartData]);
 
   const handleNodeClick = (node: ChartNode) => {
@@ -179,12 +207,11 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     setNodeDetailsOpen(true)
   }
 
-  const handleUnitMove = async (unitId: string, targetType: 'division' | 'organization', targetId?: string) => {
+  const handleUnitMove = async (unitId: string, newParentId?: string) => {
     try {
       await moveUnitMutation({
         unitId: unitId as Id<"units">,
-        targetType,
-        targetId: targetId as Id<"divisions">
+        newParentId: newParentId ? newParentId as Id<"units"> : undefined
       });
       toast({
         title: "Success",
@@ -206,105 +233,116 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     setPanOffset({ x: 0, y: 0 })
   }
 
-  const getNodeColor = (type: string): string => {
-    switch (type) {
-      case 'organization': return '#1f2937' // gray-800
-      case 'division': return '#3b82f6' // blue-500
-      case 'unit': return '#10b981' // emerald-500
-      default: return '#6b7280' // gray-500
+  const getNodeColor = (node: ChartNode): string => {
+    if (node.type === 'organization') return '#1f2937' // gray-800
+    if (node.type === 'unit') {
+      // Use unit type for color coding
+      switch (node.unitType) {
+        case 'ministry': return '#10b981' // emerald-500 (green)
+        case 'administrative': return '#3b82f6' // blue-500
+        case 'geographic': return '#8b5cf6' // purple-500
+        default: return '#6b7280' // gray-500
+      }
+    }
+    return '#6b7280' // gray-500 for other types
+  }
+
+  const getNodeTypeLabel = (node: ChartNode): string => {
+    if (node.type === 'organization') return 'Organization'
+    if (node.type === 'division') return 'Division'
+    if (node.type === 'unit') {
+      // Return the actual unit type from database
+      switch (node.unitType) {
+        case 'ministry': return 'Ministry'
+        case 'administrative': return 'Administrative'
+        case 'geographic': return 'Geographic'
+        default: return 'Unit'
+      }
+    }
+    return node.type
+  }
+
+  const getTransformedPoint = (clientX: number, clientY: number, svg: SVGSVGElement) => {
+    const point = svg.createSVGPoint()
+    point.x = clientX
+    point.y = clientY
+    const ctm = svg.getScreenCTM()?.inverse()
+    if (!ctm) return { x: clientX, y: clientY }
+    const transformed = point.matrixTransform(ctm)
+    return { x: transformed.x, y: transformed.y }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent, node?: ChartNode) => {
+    const svg = e.currentTarget.closest('svg')
+    if (!svg) return
+
+    if (node) {
+      if (node.type === 'organization') return // Can't move root
+      e.stopPropagation()
+      setDraggedNode(node)
+      setIsDragging(true)
+      const point = getTransformedPoint(e.clientX, e.clientY, svg)
+      setMousePos(point)
+    } else {
+      // Background click - start panning
+      setIsPanning(true)
+      setLastMousePos({ x: e.clientX, y: e.clientY })
     }
   }
 
-  const getNodeTypeLabel = (type: string): string => {
-    switch (type) {
-      case 'organization': return 'Organization'
-      case 'division': return 'Division'
-      case 'unit': return 'Unit'
-      default: return type
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const svg = e.currentTarget.closest('svg')
+    if (!svg) return
+
+    if (isDragging && draggedNode) {
+      const point = getTransformedPoint(e.clientX, e.clientY, svg)
+      setMousePos(point)
+
+      // Detect potential drop target
+      const elements = document.elementsFromPoint(e.clientX, e.clientY)
+      const nodeElement = elements.find(el => el.hasAttribute('data-node-id'))
+      if (nodeElement) {
+        const id = nodeElement.getAttribute('data-node-id')
+        if (id && id !== draggedNode.id) {
+          setDragOverNodeId(id)
+        } else {
+          setDragOverNodeId(null)
+        }
+      } else {
+        setDragOverNodeId(null)
+      }
+    } else if (isPanning) {
+      const dx = (e.clientX - lastMousePos.x) / zoom
+      const dy = (e.clientY - lastMousePos.y) / zoom
+      setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }))
+      setLastMousePos({ x: e.clientX, y: e.clientY })
     }
+  }
+
+  const handleMouseUp = async (e: React.MouseEvent) => {
+    if (isDragging && draggedNode) {
+      if (dragOverNodeId && dragOverNodeId !== draggedNode.parentId) {
+        await handleUnitMove(draggedNode.id, dragOverNodeId)
+      }
+    }
+
+    setIsDragging(false)
+    setIsPanning(false)
+    setDraggedNode(null)
+    setDragOverNodeId(null)
   }
 
   const renderNode = (node: ChartNode): React.JSX.Element => {
-    const isDraggedOver = dragOverNode?.id === node.id
+    const isDraggedOver = dragOverNodeId === node.id
     const isBeingDragged = draggedNode?.id === node.id
 
     return (
       <g key={node.id}>
-        {/* Node rectangle */}
-        <rect
-          x={node.x}
-          y={node.y}
-          width={node.width}
-          height={node.height}
-          fill={getNodeColor(node.type)}
-          stroke={isDraggedOver ? '#3b82f6' : 'white'}
-          strokeWidth={isDraggedOver ? 3 : 2}
-          rx={12} // Rounded corners
-          filter="url(#shadow)" // Soft shadow
-          className={`cursor-pointer transition-all ${isBeingDragged ? 'opacity-50' : 'hover:opacity-90'}`}
-          onClick={() => handleNodeClick(node)}
-          onMouseDown={(e) => {
-            if (node.type === 'unit') {
-              const dragEnd = (ev: MouseEvent) => {
-                const elements = document.elementsFromPoint(ev.clientX, ev.clientY)
-                const targetElement = elements.find(el => el.tagName === 'rect' && el !== e.target)
-                if (targetElement) {
-                  const targetId = targetElement.getAttribute('data-node-id');
-                  const targetType = targetElement.getAttribute('data-node-type') as any;
-                  if (targetId && (targetType === 'division' || targetType === 'organization')) {
-                    handleUnitMove(node.id, targetType, targetType === 'division' ? targetId : undefined);
-                  }
-                }
-                setDraggedNode(null)
-                setDragOverNode(null)
-                document.removeEventListener('mouseup', dragEnd)
-              }
-              setDraggedNode(node)
-              document.addEventListener('mouseup', dragEnd)
-            }
-          }}
-          data-node-id={node.id}
-          data-node-type={node.type}
-        />
-
-        {/* Node content */}
-        <text
-          x={node.x + node.width / 2}
-          y={node.y + 20}
-          textAnchor="middle"
-          className="text-sm font-semibold fill-white"
-          style={{ fontSize: '13px', pointerEvents: 'none', fontFamily: 'inherit' }}
-        >
-          {node.name}
-        </text>
-
-        <text
-          x={node.x + node.width / 2}
-          y={node.y + 35}
-          textAnchor="middle"
-          className="text-xs fill-white/80"
-          style={{ fontSize: '10px', pointerEvents: 'none', fontFamily: 'inherit' }}
-        >
-          {getNodeTypeLabel(node.type)}
-        </text>
-
-        {showDetails && (
-          <text
-            x={node.x + node.width / 2}
-            y={node.y + 50}
-            textAnchor="middle"
-            className="text-xs fill-white/60"
-            style={{ fontSize: '9px', pointerEvents: 'none', fontFamily: 'inherit' }}
-          >
-            {node.memberCount} members
-          </text>
-        )}
-
         {/* Connection lines to children */}
         {node.children.map(child => (
           <React.Fragment key={`line-${node.id}-${child.id}`}>
             <path
-              d={`M${node.x + node.width / 2},${node.y + node.height} C${node.x + node.width / 2},${node.y + node.height + 20} ${child.x + child.width / 2},${child.y - 20} ${child.x + child.width / 2},${child.y}`}
+              d={`M${node.x + node.width / 2},${node.y + node.height} C${node.x + node.width / 2},${node.y + node.height + 20} ${child.x + child.width / 2},${child.y - 40} ${child.x + child.width / 2},${child.y}`}
               fill="none"
               stroke="#cbd5e1"
               strokeWidth={2}
@@ -313,6 +351,63 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
             {renderNode(child)}
           </React.Fragment>
         ))}
+
+        {/* Node rectangle */}
+        <rect
+          x={node.x}
+          y={node.y}
+          width={node.width}
+          height={node.height}
+          fill={getNodeColor(node)}
+          stroke={isDraggedOver ? '#3b82f6' : 'white'}
+          strokeWidth={isDraggedOver ? 4 : 0}
+          rx={16}
+          filter="url(#shadow)"
+          className={`cursor-grab active:cursor-grabbing transition-all ${isBeingDragged ? 'opacity-0' : 'hover:scale-[1.02]'}`}
+          onMouseDown={(e) => handleMouseDown(e, node)}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleNodeClick(node)
+          }}
+          data-node-id={node.id}
+        />
+
+        {/* Node content */}
+        {!isBeingDragged && (
+          <g style={{ pointerEvents: 'none' }}>
+            <text
+              x={node.x + node.width / 2}
+              y={node.y + (showDetails ? 30 : 45)}
+              textAnchor="middle"
+              className="text-sm font-bold fill-white"
+              style={{ fontSize: '14px' }}
+            >
+              {node.name}
+            </text>
+
+            <text
+              x={node.x + node.width / 2}
+              y={node.y + (showDetails ? 45 : 45)}
+              textAnchor="middle"
+              className="text-xs fill-white/80 font-medium"
+              style={{ fontSize: '11px' }}
+            >
+              {getNodeTypeLabel(node)}
+            </text>
+
+            {showDetails && (
+              <text
+                x={node.x + node.width / 2}
+                y={node.y + 65}
+                textAnchor="middle"
+                className="text-xs fill-white/60"
+                style={{ fontSize: '10px' }}
+              >
+                {node.memberCount || 0} members
+              </text>
+            )}
+          </g>
+        )}
       </g>
     )
   }
@@ -352,8 +447,8 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
 
   return (
     <div className="space-y-4">
-      <Card className="shadow-soft rounded-xl border border-border/50">
-        <CardHeader className="border-b border-border/50 pb-4">
+      <Card className="shadow-soft rounded-xl border border-border/50 overflow-hidden">
+        <CardHeader className="border-b border-border/50 pb-4 bg-white">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg font-bold">
@@ -395,25 +490,23 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="p-0">
-          <div className="bg-slate-50/50 relative overflow-hidden h-[600px] cursor-move active:cursor-grabbing">
+        <CardContent className="p-0 bg-slate-50/30">
+          <div className="relative overflow-hidden h-[700px]">
             <svg
               width="100%"
               height="100%"
-              viewBox="0 0 1000 600"
-              className="w-full h-full"
-              style={{
-                transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
-                transformOrigin: 'top left',
-                transition: 'transform 0.2s ease-out'
-              }}
+              style={{ cursor: isDragging ? 'grabbing' : isPanning ? 'move' : 'default' }}
+              onMouseDown={(e) => handleMouseDown(e)}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
             >
               <defs>
                 <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-                  <feOffset dx="1" dy="2" result="offsetblur" />
+                  <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+                  <feOffset dx="0" dy="4" result="offsetblur" />
                   <feComponentTransfer>
-                    <feFuncA type="linear" slope="0.2" />
+                    <feFuncA type="linear" slope="0.15" />
                   </feComponentTransfer>
                   <feMerge>
                     <feMergeNode />
@@ -421,7 +514,54 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                   </feMerge>
                 </filter>
               </defs>
-              {rootNode && renderNode(rootNode)}
+
+              <g
+                style={{
+                  transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
+                  transformOrigin: '0 0',
+                  transition: (isDragging || isPanning) ? 'none' : 'transform 0.2s ease-out'
+                }}
+              >
+                {rootNode && renderNode(rootNode)}
+
+                {/* Dragging Ghost/Line */}
+                {isDragging && draggedNode && (
+                  <g>
+                    {/* Potential Connection Wire */}
+                    {dragOverNodeId && nodeMap.get(dragOverNodeId) && (
+                      <path
+                        d={`M${nodeMap.get(dragOverNodeId)!.x + nodeMap.get(dragOverNodeId)!.width / 2},${nodeMap.get(dragOverNodeId)!.y + nodeMap.get(dragOverNodeId)!.height} C${nodeMap.get(dragOverNodeId)!.x + nodeMap.get(dragOverNodeId)!.width / 2},${nodeMap.get(dragOverNodeId)!.y + nodeMap.get(dragOverNodeId)!.height + 40} ${mousePos.x},${mousePos.y - 40} ${mousePos.x},${mousePos.y}`}
+                        fill="none"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        strokeDasharray="4 4"
+                      />
+                    )}
+
+                    {/* Dragged Node Ghost */}
+                    <rect
+                      x={mousePos.x - draggedNode.width / 2}
+                      y={mousePos.y - draggedNode.height / 2}
+                      width={draggedNode.width}
+                      height={draggedNode.height}
+                      fill={getNodeColor(draggedNode)}
+                      rx={16}
+                      opacity={0.8}
+                      filter="url(#shadow)"
+                      style={{ pointerEvents: 'none' }}
+                    />
+                    <text
+                      x={mousePos.x}
+                      y={mousePos.y}
+                      textAnchor="middle"
+                      className="text-sm font-bold fill-white"
+                      style={{ fontSize: '14px', pointerEvents: 'none', dominantBaseline: 'middle' }}
+                    >
+                      {draggedNode.name}
+                    </text>
+                  </g>
+                )}
+              </g>
             </svg>
           </div>
         </CardContent>
@@ -442,7 +582,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
               {selectedNode?.name}
             </DialogTitle>
             <DialogDescription>
-              {getNodeTypeLabel(selectedNode?.type || '')} Overview
+              {selectedNode ? getNodeTypeLabel(selectedNode) : 'Unit'} Overview
             </DialogDescription>
           </DialogHeader>
 
@@ -453,7 +593,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                   <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Type</Label>
                   <div>
                     <Badge variant="outline" className="font-medium bg-secondary/20 border-secondary-foreground/20">
-                      {getNodeTypeLabel(selectedNode.type)}
+                      {getNodeTypeLabel(selectedNode)}
                     </Badge>
                   </div>
                 </div>

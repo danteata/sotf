@@ -15,20 +15,12 @@ interface AttendeesDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   record: any | null
-  ministries?: string[]
-  ministryId?: string
-  regions?: string[]
-  source?: string
 }
 
 export function AttendeesDialog({
   open,
   onOpenChange,
   record,
-  ministries,
-  ministryId,
-  regions,
-  source,
 }: AttendeesDialogProps) {
   const attendanceId = record?.attendance_id || record?._id || record?.id;
 
@@ -39,18 +31,8 @@ export function AttendeesDialog({
 
   const loading = open && rawAttendees === undefined;
 
-  // Apply frontend filtering for source-specific views
-  const attendees = (rawAttendees || []).filter((a): a is NonNullable<typeof a> => {
-    if (!a) return false;
-    if (source === 'ministry') {
-      const filterIds = ministryId ? [ministryId] : (ministries ?? []);
-      return true;
-    }
-    if (source === 'region' && regions && regions.length > 0 && a.region_id) {
-      return (regions as string[]).includes(a.region_id.toString());
-    }
-    return true;
-  });
+  // No frontend filtering for source-specific views needed anymore
+  const attendees = (rawAttendees || []).filter((a): a is NonNullable<typeof a> => !!a);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,18 +75,6 @@ export function AttendeesDialog({
                     <div className="text-xs text-muted-foreground">
                       {a.email}
                     </div>
-                    {source === 'region' && (
-                      <div className="text-xs text-muted-foreground">
-                        Region: {a.region_name || 'Unknown'}
-                      </div>
-                    )}
-                    {source === 'ministry' &&
-                      Array.isArray(a.ministry_names) &&
-                      a.ministry_names.length > 0 && (
-                        <div className="text-xs text-muted-foreground">
-                          Ministries: {a.ministry_names.join(', ')}
-                        </div>
-                      )}
                   </div>
                 </li>
               ))}

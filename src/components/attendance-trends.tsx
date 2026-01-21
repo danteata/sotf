@@ -49,14 +49,9 @@ export function AttendanceTrends() {
   }
 
   const { weeklyData, monthlyData, eventComparisonData, activeEventTypes } = trendsData
-
-  // Mock demographic data since it's not in the DB yet
-  const demographicData = [
-    { name: "Adults", count: Math.floor((weeklyData[weeklyData.length - 1]?.count || 100) * 0.65) },
-    { name: "Youth", count: Math.floor((weeklyData[weeklyData.length - 1]?.count || 100) * 0.15) },
-    { name: "Children", count: Math.floor((weeklyData[weeklyData.length - 1]?.count || 100) * 0.15) },
-    { name: "Seniors", count: Math.floor((weeklyData[weeklyData.length - 1]?.count || 100) * 0.05) }
-  ]
+  const hasWeeklyData = Array.isArray(weeklyData) && weeklyData.length > 0
+  const hasMonthlyData = Array.isArray(monthlyData) && monthlyData.length > 0
+  const hasComparisonData = Array.isArray(eventComparisonData) && eventComparisonData.length > 0
 
   return (
     <div className="space-y-8">
@@ -86,33 +81,39 @@ export function AttendanceTrends() {
               <CardDescription>Pulse of the community over the last 11 weeks</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
-                    <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                        border: "1px solid rgba(0,0,0,0.1)",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                      }}
-                    />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      name="Attendees"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "#fff" }}
-                      activeDot={{ r: 8, strokeWidth: 0 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              {hasWeeklyData ? (
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
+                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(255, 255, 255, 0.95)",
+                          border: "1px solid rgba(0,0,0,0.1)",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        name="Attendees"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={3}
+                        dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "#fff" }}
+                        activeDot={{ r: 8, strokeWidth: 0 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
+                  No weekly attendance data available yet.
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -123,61 +124,48 @@ export function AttendanceTrends() {
                 <CardDescription>Percentage variance week-over-week</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={weeklyData.slice(1).map((week, index) => ({
-                        name: week.name,
-                        growth: weeklyData[index].count > 0 ?
-                          parseFloat((((week.count - weeklyData[index].count) / weeklyData[index].count) * 100).toFixed(1)) : 0
-                      }))}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                      <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#888888" />
-                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
-                      <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.95)",
-                          border: "1px solid rgba(0,0,0,0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        }}
-                      />
-                      <Bar dataKey="growth" name="Growth %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.8} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                {hasWeeklyData ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={weeklyData.slice(1).map((week, index) => ({
+                          name: week.name,
+                          growth: weeklyData[index].count > 0 ?
+                            parseFloat((((week.count - weeklyData[index].count) / weeklyData[index].count) * 100).toFixed(1)) : 0
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#888888" />
+                        <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                        <Tooltip
+                          cursor={{ fill: 'transparent' }}
+                          contentStyle={{
+                            backgroundColor: "rgba(255, 255, 255, 0.95)",
+                            border: "1px solid rgba(0,0,0,0.1)",
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        <Bar dataKey="growth" name="Growth %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.8} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+                    Not enough data to calculate growth yet.
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
               <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
                 <CardTitle className="text-lg font-semibold">Community Composition</CardTitle>
-                <CardDescription>Demographic distribution (Estimated)</CardDescription>
+                <CardDescription>Demographic distribution (Coming soon)</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={demographicData}
-                      layout="vertical"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} strokeOpacity={0.1} />
-                      <XAxis type="number" tick={{ fontSize: 12 }} stroke="#888888" />
-                      <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} width={70} stroke="#888888" />
-                      <Tooltip
-                        cursor={{ fill: 'transparent' }}
-                        contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.95)",
-                          border: "1px solid rgba(0,0,0,0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        }}
-                      />
-                      <Bar dataKey="count" name="Total" fill="hsl(var(--secondary))" radius={[0, 4, 4, 0]} opacity={0.8} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+                  Demographic breakdown will appear once member profiles include age groups.
                 </div>
               </CardContent>
             </Card>
@@ -196,38 +184,44 @@ export function AttendanceTrends() {
               <CardDescription>Strategic vision over the past 12 months</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
-                    <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                        border: "1px solid rgba(0,0,0,0.1)",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      name="Attendance"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={3}
-                      fillOpacity={1}
-                      fill="url(#colorCount)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              {hasMonthlyData ? (
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
+                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(255, 255, 255, 0.95)",
+                          border: "1px solid rgba(0,0,0,0.1)",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="count"
+                        name="Attendance"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={3}
+                        fillOpacity={1}
+                        fill="url(#colorCount)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
+                  No monthly attendance data available yet.
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -244,33 +238,39 @@ export function AttendanceTrends() {
               <CardDescription>Relative performance of all active event protocols</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={eventComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                    <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
-                    <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "rgba(255, 255, 255, 0.95)",
-                        border: "1px solid rgba(0,0,0,0.1)",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                      }}
-                    />
-                    <Legend iconType="circle" />
-                    {activeEventTypes.map((eventType, index) => (
-                      <Bar
-                        key={eventType.id}
-                        dataKey={eventType.label}
-                        fill={eventType.color || `hsl(${index * 45 + 200}, 70%, 50%)`}
-                        radius={[4, 4, 0, 0]}
-                        stackId="a"
+              {hasComparisonData ? (
+                <div className="h-[400px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={eventComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
+                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "rgba(255, 255, 255, 0.95)",
+                          border: "1px solid rgba(0,0,0,0.1)",
+                          borderRadius: "8px",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        }}
                       />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                      <Legend iconType="circle" />
+                      {activeEventTypes.map((eventType, index) => (
+                        <Bar
+                          key={eventType.id}
+                          dataKey={eventType.label}
+                          fill={eventType.color || `hsl(${index * 45 + 200}, 70%, 50%)`}
+                          radius={[4, 4, 0, 0]}
+                          stackId="a"
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
+                  No event comparison data available yet.
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -281,37 +281,43 @@ export function AttendanceTrends() {
                 <CardDescription>Percentage of total engagement by protocol</CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.95)",
-                          border: "1px solid rgba(0,0,0,0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
-                        }}
-                      />
-                      <Pie
-                        data={activeEventTypes.map((et, index) => ({
-                          name: et.label,
-                          value: eventComparisonData[eventComparisonData.length - 1][et.label] || 0
-                        }))}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {activeEventTypes.map((et, index) => (
-                          <Cell key={index} fill={et.color || `hsl(${index * 45 + 200}, 70%, 50%)`} />
-                        ))}
-                      </Pie>
-                      <Legend verticalAlign="bottom" height={36} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+                {hasComparisonData ? (
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "rgba(255, 255, 255, 0.95)",
+                            border: "1px solid rgba(0,0,0,0.1)",
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          }}
+                        />
+                        <Pie
+                          data={activeEventTypes.map((et) => ({
+                            name: et.label,
+                            value: eventComparisonData[eventComparisonData.length - 1][et.label] || 0
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {activeEventTypes.map((et, index) => (
+                            <Cell key={index} fill={et.color || `hsl(${index * 45 + 200}, 70%, 50%)`} />
+                          ))}
+                        </Pie>
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+                    Event impact data will appear once services are recorded.
+                  </div>
+                )}
               </CardContent>
             </Card>
 

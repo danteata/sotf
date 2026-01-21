@@ -76,7 +76,7 @@ const MESSAGE_CATEGORIES: Array<{ value: string; label: string; description: str
     { value: 'bible-study', label: 'Bible Study', description: 'Scripture teaching and study' },
     { value: 'missions', label: 'Missions', description: 'Missions and global outreach' },
     { value: 'family-life', label: 'Family Life', description: 'Family relationships and parenting' },
-    { value: 'leadership', label: 'Leadership', description: 'Leadership and ministry development' },
+    { value: 'leadership', label: 'Leadership', description: 'Leadership and functional development' },
     { value: 'special-occasion', label: 'Special Occasion', description: 'Weddings, funerals, anniversaries' },
     { value: 'other', label: 'Other', description: 'Other message categories' },
 ]
@@ -85,6 +85,9 @@ interface ServiceMetadataSummaryDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
     summary?: ServiceMetadataSummary | null
+    onSave?: (data: any) => Promise<void>
+    events?: any[]
+    members?: any[]
 }
 
 export function ServiceMetadataSummaryDialog({

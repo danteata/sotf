@@ -1,104 +1,97 @@
 
 import { useState } from "react"
-import { Plus, Settings, Trash2, Edit, RefreshCw, Shield, Map, Zap, Database } from "lucide-react"
+import { Plus, Settings, Trash2, Edit, RefreshCw, Shield, Map, Zap, Database, Users, Building, Layers } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
-import type { Ministry, Region } from "@/types/database"
+import type { Unit } from "@/types/database"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { MinistryDialog } from "@/components/ministry-dialog"
-import { RegionDialog } from "@/components/region-dialog"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { EventTypesManagement } from "@/components/event-types-management"
-import { useTerminology, getMinistryLabels, getRegionLabels } from "@/hooks/use-terminology"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
 
 export function AdminContent() {
-  // Convex Queries
-  const ministries = useQuery(api.ministries.getAll, { activeOnly: false }) || []
-  const regions = useQuery(api.regions.getAll, { activeOnly: false }) || []
+  const allUnits = useQuery(api.units.listByOrg, { organization_id: 'current_org' as any }) || []
+  const units = allUnits
 
-  const isLoading = ministries === undefined || regions === undefined
+  const isLoading = allUnits === undefined
 
   // Convex Mutations
-  const updateMinistryMutation = useMutation(api.ministries.update)
-  const removeMinistryMutation = useMutation(api.ministries.remove)
-  const updateRegionMutation = useMutation(api.regions.update)
-  const removeRegionMutation = useMutation(api.regions.remove)
+  const updateUnitMutation = useMutation(api.units.update)
+  const removeUnitMutation = useMutation(api.units.remove)
 
-  const [isMinistryDialogOpen, setIsMinistryDialogOpen] = useState(false)
-  const [isRegionDialogOpen, setIsRegionDialogOpen] = useState(false)
+  const [isUnitDialogOpen, setIsUnitDialogOpen] = useState(false)
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false)
-  const [editingMinistry, setEditingMinistry] = useState<Ministry | null>(null)
-  const [editingRegion, setEditingRegion] = useState<Region | null>(null)
-
-  const { terminology } = useTerminology()
-  const ministryLabels = getMinistryLabels(terminology)
-  const regionLabels = getRegionLabels(terminology)
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
+  const [unitTypeFilter, setUnitTypeFilter] = useState<'all' | 'functional' | 'geographic' | 'administrative'>('all')
 
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean
-    type: 'ministry' | 'region'
-    item: Ministry | Region | null
-  }>({ open: false, type: 'ministry', item: null })
+    type: 'unit'
+    item: Unit | null
+  }>({ open: false, type: 'unit', item: null })
 
-  const handleDeleteMinistry = async (ministry: Ministry) => {
+  // Filter units based on selected type
+  const filteredUnits = unitTypeFilter === 'all'
+    ? units
+    : units.filter(unit => unit.type === unitTypeFilter)
+
+  const handleDeleteUnit = async (unit: Unit) => {
     try {
-      await removeMinistryMutation({ id: ministry.id as any })
-      toast.success(`${ministryLabels.single} removed successfully`)
-      setDeleteDialog({ open: false, type: 'ministry', item: null })
+      await removeUnitMutation({ id: unit._id as any })
+      toast.success(`${unit.name} removed successfully`)
+      setDeleteDialog({ open: false, type: 'unit', item: null })
     } catch (error) {
-      console.error("Error deleting ministry:", error)
-      toast.error(`Critical failure removing ${ministryLabels.single.toLowerCase()}`)
+      console.error("Error deleting unit:", error)
+      toast.error(`Critical failure removing unit`)
     }
   }
 
-  const handleDeleteRegion = async (region: Region) => {
+  const handleToggleUnitStatus = async (unit: Unit) => {
     try {
-      await removeRegionMutation({ id: region.id as any })
-      toast.success(`${regionLabels.single} removed successfully`)
-      setDeleteDialog({ open: false, type: 'region', item: null })
-    } catch (error) {
-      console.error("Error deleting region:", error)
-      toast.error(`Critical failure removing ${regionLabels.single.toLowerCase()}`)
-    }
-  }
-
-  const handleToggleMinistryStatus = async (ministry: Ministry) => {
-    try {
-      await updateMinistryMutation({
-        id: ministry.id as any,
-        updates: { active: !ministry.active }
+      await updateUnitMutation({
+        id: unit._id as any,
+        updates: { active: !unit.active }
       })
-      toast.success(`Status updated for ${ministry.name}`)
+      toast.success(`Status updated for ${unit.name}`)
     } catch (error) {
-      console.error("Error updating ministry:", error)
+      console.error("Error updating unit:", error)
       toast.error("Failed to toggle status")
     }
   }
 
-  const handleToggleRegionStatus = async (region: Region) => {
-    try {
-      await updateRegionMutation({
-        id: region.id as any,
-        updates: { active: !region.active }
-      })
-      toast.success(`Status updated for ${region.name}`)
-    } catch (error) {
-      console.error("Error updating region:", error)
-      toast.error("Failed to toggle status")
+  const getUnitTypeLabel = (type: string) => {
+    switch (type) {
+      case 'functional': return 'Functional'
+      case 'geographic': return 'Geographic'
+      case 'administrative': return 'Administrative'
+      case 'organization': return 'Organization'
+      default: return type.charAt(0).toUpperCase() + type.slice(1)
     }
   }
+
+  const getUnitTypeIcon = (type: string) => {
+    switch (type) {
+      case 'functional': return <Layers className="h-4 w-4" />
+      case 'geographic': return <Map className="h-4 w-4" />
+      case 'administrative': return <Building className="h-4 w-4" />
+      default: return <Shield className="h-4 w-4" />
+    }
+  }
+
+  const Loader2 = ({ className }: { className?: string }) => (
+    <RefreshCw className={cn("animate-spin", className)} />
+  )
 
   if (isLoading) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-20 gap-4 animate-in fade-in duration-500">
-        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
+        <RefreshCw className="h-10 w-10 animate-spin text-primary/50" />
         <p className="text-muted-foreground text-sm font-medium">Synchronizing configuration...</p>
       </div>
     )
@@ -128,13 +121,10 @@ export function AdminContent() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="ministries" className="w-full">
+      <Tabs defaultValue="units" className="w-full">
         <TabsList className="bg-muted/50 p-1 rounded-xl w-full md:w-auto inline-flex overflow-x-auto">
-          <TabsTrigger value="ministries" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
-            {ministryLabels.plural}
-          </TabsTrigger>
-          <TabsTrigger value="regions" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
-            {regionLabels.plural}
+          <TabsTrigger value="units" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
+            Organizational Units
           </TabsTrigger>
           <TabsTrigger value="events" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
             Operations
@@ -144,23 +134,36 @@ export function AdminContent() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="ministries" className="mt-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <TabsContent value="units" className="mt-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden">
             <CardHeader className="border-b border-border/50 bg-muted/20 px-6 py-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl font-bold tracking-tight text-foreground">{ministryLabels.plural}</CardTitle>
+                  <CardTitle className="text-xl font-bold tracking-tight text-foreground">Organizational Units</CardTitle>
                   <CardDescription>
-                    Deploy and manage organizational {ministryLabels.plural.toLowerCase()}
+                    Manage all units including functional teams, geographic locations, and administrative divisions
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={() => setIsMinistryDialogOpen(true)}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Unit
-                </Button>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={unitTypeFilter}
+                    onChange={(e) => setUnitTypeFilter(e.target.value as any)}
+                    className="px-3 py-2 border border-border rounded-lg bg-background text-sm"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="functional">Functional</option>
+                    <option value="geographic">Geographic</option>
+                    <option value="administrative">Administrative</option>
+                    <option value="organization">Organization</option>
+                  </select>
+                  <Button
+                    onClick={() => setIsUnitDialogOpen(true)}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add New Unit
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -168,27 +171,42 @@ export function AdminContent() {
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-border/50">
                     <TableHead className="py-4 pl-6 font-medium">Name</TableHead>
-                    <TableHead className="hidden sm:table-cell font-medium">Specifications</TableHead>
-                    <TableHead className="hidden md:table-cell font-medium">{ministryLabels.leader}</TableHead>
+                    <TableHead className="hidden sm:table-cell font-medium">Type</TableHead>
+                    <TableHead className="hidden md:table-cell font-medium">Description</TableHead>
+                    <TableHead className="hidden lg:table-cell font-medium">Leader</TableHead>
                     <TableHead className="font-medium">Status</TableHead>
                     <TableHead className="text-right pr-6 w-[150px] font-medium">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ministries.map((ministry) => (
-                    <TableRow key={ministry.id} className="border-border/50 hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium py-4 pl-6 text-foreground">{ministry.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{ministry.description || "-"}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary" className="bg-muted text-muted-foreground font-normal rounded-md">{ministry.leader_name || ministry.leader || "Unassigned"}</Badge>
+                  {filteredUnits.map((unit) => (
+                    <TableRow key={unit._id} className="border-border/50 hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-medium py-4 pl-6 text-foreground">
+                        <div className="flex items-center gap-2">
+                          {getUnitTypeIcon(unit.type)}
+                          {unit.name}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant="outline" className="text-xs">
+                          {getUnitTypeLabel(unit.type)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+                        {unit.description || "-"}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground font-normal rounded-md text-xs">
+                          {(unit as any).leader_name || "Unassigned"}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`cursor-pointer font-medium px-2.5 py-0.5 rounded-full border ${ministry.active ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border"}`}
-                          onClick={() => handleToggleMinistryStatus(ministry)}
+                          className={`cursor-pointer font-medium px-2.5 py-0.5 rounded-full border text-xs ${unit.active ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border"}`}
+                          onClick={() => handleToggleUnitStatus(unit)}
                         >
-                          {ministry.active ? "Active" : "Standby"}
+                          {unit.active ? "Active" : "Standby"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-6">
@@ -198,8 +216,8 @@ export function AdminContent() {
                             size="sm"
                             className="h-8 w-8 p-0 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
                             onClick={() => {
-                              setEditingMinistry(ministry)
-                              setIsMinistryDialogOpen(true)
+                              setEditingUnit(unit as any)
+                              setIsUnitDialogOpen(true)
                             }}
                           >
                             <Edit className="h-4 w-4" />
@@ -210,8 +228,8 @@ export function AdminContent() {
                             className="h-8 w-8 p-0 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                             onClick={() => setDeleteDialog({
                               open: true,
-                              type: 'ministry',
-                              item: ministry
+                              type: 'unit',
+                              item: unit as any
                             })}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -220,104 +238,17 @@ export function AdminContent() {
                       </TableCell>
                     </TableRow>
                   ))}
-                  {ministries.length === 0 && (
+                  {filteredUnits.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-2">
                           <Database className="h-8 w-8 opacity-20" />
-                          <p className="text-sm">No active units deployed</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="regions" className="mt-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden">
-            <CardHeader className="border-b border-border/50 bg-muted/20 px-6 py-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl font-bold tracking-tight text-foreground">{regionLabels.plural}</CardTitle>
-                  <CardDescription>
-                    Manage geographical {regionLabels.plural.toLowerCase()} and distribution sectors
-                  </CardDescription>
-                </div>
-                <Button
-                  onClick={() => setIsRegionDialogOpen(true)}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm rounded-lg"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Sector
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent border-border/50">
-                    <TableHead className="py-4 pl-6 font-medium">Sector Name</TableHead>
-                    <TableHead className="hidden sm:table-cell font-medium">Geography</TableHead>
-                    <TableHead className="hidden md:table-cell font-medium">{regionLabels.leader}</TableHead>
-                    <TableHead className="font-medium">Status</TableHead>
-                    <TableHead className="text-right pr-6 w-[150px] font-medium">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {regions.map((region) => (
-                    <TableRow key={region.id} className="border-border/50 hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium py-4 pl-6 text-foreground">{region.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">{region.description || "-"}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary" className="bg-muted text-muted-foreground font-normal rounded-md">{region.regional_minister_name || "Unassigned"}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`cursor-pointer font-medium px-2.5 py-0.5 rounded-full border ${region.active ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border"}`}
-                          onClick={() => handleToggleRegionStatus(region)}
-                        >
-                          {region.active ? "Active" : "Standby"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
-                            onClick={() => {
-                              setEditingRegion(region)
-                              setIsRegionDialogOpen(true)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeleteDialog({
-                              open: true,
-                              type: 'region',
-                              item: region
-                            })}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {regions.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                        <div className="flex flex-col items-center gap-2">
-                          <Map className="h-8 w-8 opacity-20" />
-                          <p className="text-sm">No active sectors prioritized</p>
+                          <p className="text-sm">
+                            {unitTypeFilter === 'all'
+                              ? "No organizational units found"
+                              : `No ${unitTypeFilter} units found`
+                            }
+                          </p>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -375,35 +306,14 @@ export function AdminContent() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialogs */}
-      <MinistryDialog
-        open={isMinistryDialogOpen}
-        onOpenChange={(open: boolean) => {
-          setIsMinistryDialogOpen(open)
-          if (!open) setEditingMinistry(null)
-        }}
-        ministry={editingMinistry}
-      />
-
-      <RegionDialog
-        open={isRegionDialogOpen}
-        onOpenChange={(open: boolean) => {
-          setIsRegionDialogOpen(open)
-          if (!open) setEditingRegion(null)
-        }}
-        region={editingRegion}
-      />
-
       <DeleteConfirmDialog
         open={deleteDialog.open}
         onOpenChange={(open: boolean) => setDeleteDialog({ ...deleteDialog, open })}
         title="Confirm Deletion"
         description={`Are you sure you want to delete the unit "${deleteDialog.item?.name}"? All associated data will be removed. This action cannot be undone.`}
         onConfirm={() => {
-          if (deleteDialog.type === 'ministry' && deleteDialog.item) {
-            handleDeleteMinistry(deleteDialog.item as Ministry)
-          } else if (deleteDialog.type === 'region' && deleteDialog.item) {
-            handleDeleteRegion(deleteDialog.item as Region)
+          if (deleteDialog.type === 'unit' && deleteDialog.item) {
+            handleDeleteUnit(deleteDialog.item)
           }
         }}
       />
@@ -416,21 +326,6 @@ export function AdminContent() {
   )
 }
 
-function Loader2({ className }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  )
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
 }

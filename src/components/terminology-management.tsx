@@ -36,7 +36,6 @@ export function TerminologyManagement() {
     level3_plural: 'Units',
     level4_singular: 'Sub-Unit',
     level4_plural: 'Sub-Units',
-    ministry_term: 'Ministry'
   })
 
   useEffect(() => {
@@ -50,7 +49,6 @@ export function TerminologyManagement() {
         level3_plural: organizationData.level3_plural || 'Units',
         level4_singular: organizationData.level4_singular || 'Sub-Unit',
         level4_plural: organizationData.level4_plural || 'Sub-Units',
-        ministry_term: 'Ministry'
       })
     }
   }, [organizationData])
@@ -83,15 +81,14 @@ export function TerminologyManagement() {
 
   const handleResetToDefaults = () => {
     setFormData({
-      level1_singular: 'Denomination',
-      level1_plural: 'Denominations',
-      level2_singular: 'Council',
-      level2_plural: 'Councils',
-      level3_singular: 'Branch',
-      level3_plural: 'Branches',
+      level1_singular: 'Organization',
+      level1_plural: 'Organizations',
+      level2_singular: 'Division',
+      level2_plural: 'Divisions',
+      level3_singular: 'Unit',
+      level3_plural: 'Units',
       level4_singular: 'Sub-Unit',
       level4_plural: 'Sub-Units',
-      ministry_term: 'Ministry'
     })
   }
 
@@ -130,54 +127,47 @@ export function TerminologyManagement() {
 
       <div className="grid gap-6">
         {/* Current Terminology Preview */}
-        <Card className="border-4 shadow-brutal-sm">
+        <Card className="border-4 shadow-brutal-sm rounded-xl overflow-hidden">
           <CardHeader className="bg-primary/5 border-b-4 border-black dark:border-white">
             <CardTitle className="flex items-center gap-2 uppercase font-black">
               <Settings className="h-5 w-5" />
               Current Terminology
             </CardTitle>
-            <CardDescription className="font-bold">
+            <CardDescription className="font-bold text-muted-foreground">
               Preview how your custom terms will appear in the system
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-black uppercase">{formData.level1_singular} Level</Label>
                 <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level1_singular}</Badge>
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level1_plural}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level1_singular}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level1_plural}</Badge>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm font-black uppercase">{formData.level2_singular} Level</Label>
                 <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level2_singular}</Badge>
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level2_plural}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level2_singular}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level2_plural}</Badge>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm font-black uppercase">{formData.level3_singular} Level</Label>
                 <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level3_singular}</Badge>
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level3_plural}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level3_singular}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level3_plural}</Badge>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm font-black uppercase">{formData.level4_singular} Level</Label>
                 <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level4_singular}</Badge>
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.level4_plural}</Badge>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-black uppercase">Ministry Term</Label>
-                <div className="flex flex-wrap gap-1">
-                  <Badge variant="outline" className="border-2 border-black font-bold">{formData.ministry_term}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level4_singular}</Badge>
+                  <Badge variant="outline" className="border-2 border-black font-bold h-7">{formData.level4_plural}</Badge>
                 </div>
               </div>
             </div>
@@ -185,10 +175,10 @@ export function TerminologyManagement() {
         </Card>
 
         {/* Terminology Settings */}
-        <Card className="border-4 shadow-brutal-sm">
+        <Card className="border-4 shadow-brutal-sm rounded-xl overflow-hidden">
           <CardHeader className="bg-secondary/5 border-b-4 border-black dark:border-white">
             <CardTitle className="uppercase font-black">Customize Terminology</CardTitle>
-            <CardDescription className="font-bold">
+            <CardDescription className="font-bold text-muted-foreground">
               Set custom terms for your organization's hierarchy levels
             </CardDescription>
           </CardHeader>
@@ -196,21 +186,21 @@ export function TerminologyManagement() {
             {/* Organization Level */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="org-singular" className="font-bold">Organization Singular *</Label>
+                <Label htmlFor="org-singular" className="font-bold">Level 1 Singular *</Label>
                 <Input
                   id="org-singular"
                   value={formData.level1_singular}
                   onChange={(e) => setFormData({ ...formData, level1_singular: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="org-plural" className="font-bold">Organization Plural *</Label>
+                <Label htmlFor="org-plural" className="font-bold">Level 1 Plural *</Label>
                 <Input
                   id="org-plural"
                   value={formData.level1_plural}
                   onChange={(e) => setFormData({ ...formData, level1_plural: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
             </div>
@@ -218,21 +208,21 @@ export function TerminologyManagement() {
             {/* Division Level */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="division-singular" className="font-bold">Division Singular</Label>
+                <Label htmlFor="division-singular" className="font-bold">Level 2 Singular</Label>
                 <Input
                   id="division-singular"
                   value={formData.level2_singular}
                   onChange={(e) => setFormData({ ...formData, level2_singular: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="division-plural" className="font-bold">Division Plural</Label>
+                <Label htmlFor="division-plural" className="font-bold">Level 2 Plural</Label>
                 <Input
                   id="division-plural"
                   value={formData.level2_plural}
                   onChange={(e) => setFormData({ ...formData, level2_plural: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
             </div>
@@ -240,21 +230,21 @@ export function TerminologyManagement() {
             {/* Unit Level */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="unit-singular" className="font-bold">Unit Singular</Label>
+                <Label htmlFor="unit-singular" className="font-bold">Level 3 Singular</Label>
                 <Input
                   id="unit-singular"
                   value={formData.level3_singular}
                   onChange={(e) => setFormData({ ...formData, level3_singular: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit-plural" className="font-bold">Unit Plural</Label>
+                <Label htmlFor="unit-plural" className="font-bold">Level 3 Plural</Label>
                 <Input
                   id="unit-plural"
                   value={formData.level3_plural}
                   onChange={(e) => setFormData({ ...formData, level3_plural: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
             </div>
@@ -262,43 +252,43 @@ export function TerminologyManagement() {
             {/* Sub-Unit Level */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="subunit-singular" className="font-bold">Sub-Unit Singular</Label>
+                <Label htmlFor="subunit-singular" className="font-bold">Level 4 Singular</Label>
                 <Input
                   id="subunit-singular"
                   value={formData.level4_singular}
                   onChange={(e) => setFormData({ ...formData, level4_singular: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="subunit-plural" className="font-bold">Sub-Unit Plural</Label>
+                <Label htmlFor="subunit-plural" className="font-bold">Level 4 Plural</Label>
                 <Input
                   id="subunit-plural"
                   value={formData.level4_plural}
                   onChange={(e) => setFormData({ ...formData, level4_plural: e.target.value })}
-                  className="border-2 border-black"
+                  className="border-2 border-black h-11"
                 />
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-black pt-6">
+            <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t-2 border-black">
               <Button
                 onClick={handleSaveTerminology}
                 disabled={isSaving}
-                className="font-black uppercase border-4 border-black hover:translate-x-1 hover:translate-y-1 transition-all"
+                className="font-black uppercase border-4 border-black hover:translate-x-1 hover:translate-y-1 transition-all h-12 px-8"
               >
                 {isSaving ? (
                   <RefreshCw className="h-4 w-4 animate-spin mr-2" />
                 ) : (
                   <Save className="h-4 w-4 mr-2" />
                 )}
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? 'Saving...' : 'Save Settings'}
               </Button>
 
               <Button
                 variant="outline"
                 onClick={handleResetToDefaults}
-                className="font-black uppercase border-4 border-black hover:bg-accent transition-all"
+                className="font-black uppercase border-4 border-black hover:bg-accent transition-all h-12 px-8"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Reset Defaults
@@ -308,20 +298,23 @@ export function TerminologyManagement() {
         </Card>
 
         {/* Usage Examples */}
-        <Card className="border-4 shadow-brutal-sm">
+        <Card className="border-4 shadow-brutal-sm rounded-xl overflow-hidden">
           <CardHeader className="bg-accent/5 border-b-4 border-black dark:border-white">
-            <CardTitle className="uppercase font-black">Usage Examples</CardTitle>
+            <CardTitle className="uppercase font-black">System Integration</CardTitle>
           </CardHeader>
-          <CardContent className="pt-6 font-bold">
+          <CardContent className="pt-6 font-bold text-muted-foreground">
             <div className="space-y-4 text-sm">
-              <div>
-                <strong>Navigation:</strong> "{formData.level1_plural}" → "{formData.level2_plural}" → "{formData.level3_plural}" → "{formData.level4_plural}"
+              <div className="flex justify-between items-center border-b pb-2">
+                <span>Breadcrumb Pattern:</span>
+                <span className="text-foreground">"{formData.level1_plural}" → "{formData.level2_plural}" → "{formData.level3_plural}"</span>
               </div>
-              <div>
-                <strong>User Roles:</strong> {formData.level1_singular} Admin, {formData.level2_singular} Admin, {formData.level3_singular} Admin, {formData.level4_singular} Admin
+              <div className="flex justify-between items-center border-b pb-2">
+                <span>Administrative Roles:</span>
+                <span className="text-foreground">{formData.level1_singular} Admin, {formData.level2_singular} Admin</span>
               </div>
-              <div>
-                <strong>Organization Selector:</strong> Switch between your {formData.level4_plural.toLowerCase()}
+              <div className="flex justify-between items-center border-b pb-2">
+                <span>Direct Reports:</span>
+                <span className="text-foreground">{formData.level3_plural} under {formData.level2_singular}</span>
               </div>
             </div>
           </CardContent>

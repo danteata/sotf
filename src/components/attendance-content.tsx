@@ -13,12 +13,12 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
-import { useUserRole, useManagedMembers, useAccessibleMinistriesAndRegions } from "@/hooks/use-user-role"
+import { useUserRole, useManagedMembers, useAccessibleUnits } from "@/hooks/use-user-role"
 
 export function AttendanceContent() {
   const { isAdmin } = useUserRole();
   const { members, isLoading: membersLoading } = useManagedMembers();
-  const { ministries, regions, isLoading: filtersLoading } = useAccessibleMinistriesAndRegions();
+  const { ministries, isLoading: filtersLoading } = useAccessibleUnits();
 
   const stats = useQuery(api.attendance.getStats);
   const loading = stats === undefined || filtersLoading || membersLoading;
@@ -218,14 +218,12 @@ export function AttendanceContent() {
           <AttendanceForm
             availableMembers={members}
             availableMinistries={ministries}
-            availableRegions={regions}
           />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 pt-4">
           <AttendanceHistory
             availableMinistries={ministries}
-            availableRegions={regions}
             filtersLoading={filtersLoading}
           />
         </TabsContent>
@@ -272,7 +270,7 @@ export function AttendanceContent() {
           setShowMetadataDialog(false);
         }}
         events={[]} // Fetch events from Convex if needed
-        members={members.map(m => ({ id: m.id || m._id, name: m.name, ministries: m.ministry_names || [] }))}
+        members={members.map(m => ({ id: m.id, name: m.name, units: m.unit_names || [] }))}
       />
     </div>
   )

@@ -60,14 +60,11 @@ interface PotentialLeader {
   last_name?: string
   email?: string
   phone?: string
-  region_name?: string
-  ministry_names: string[]
+  unit_names: string[]
   has_account: boolean
   invitation_status: string | null
-  led_ministry_ids: string[]
-  led_ministry_names: string[]
-  led_region_ids: string[]
-  led_region_names: string[]
+  led_unit_ids: string[]
+  led_unit_names: string[]
 }
 
 export function LeaderInvitationSystem() {
@@ -76,8 +73,8 @@ export function LeaderInvitationSystem() {
 
   // Convex Queries
   const members = useQuery(api.members.getAll, {}) || []
-  const ministries = useQuery(api.ministries.getAll, {}) || []
-  const regions = useQuery(api.regions.getAll, {}) || []
+  const unitsData = useQuery(api.units.listByOrg, { organization_id: 'current_org' as any });
+  const allUnits = unitsData || [];
   const users = useQuery(api.users.list) || []
   const invitations = useQuery(api.invitations.list) || []
 
@@ -101,37 +98,32 @@ export function LeaderInvitationSystem() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [memberSearchQuery, setMemberSearchQuery] = useState('')
 
-  const isLoading = members.length === 0 && ministries.length === 0 && regions.length === 0;
+  const isLoading = members.length === 0 && allUnits.length === 0;
 
   // Derive Potential Leaders from state
   const potentialLeaders: PotentialLeader[] = members
-    .filter(member => {
-      // Check if member leads any ministry or region
-      const leadsMinistry = ministries.some(m => m.leader_id === member._id);
-      const leadsRegion = regions.some(r => r.regional_minister_id === member._id);
-      return leadsMinistry || leadsRegion;
+    .filter((member: any) => {
+      // Check if member leads any unit
+      const leadsUnit = allUnits.some((u: any) => u.leader_id === member._id);
+      return leadsUnit;
     })
-    .map(member => {
-      const ledMinistries = ministries.filter(m => m.leader_id === member._id);
-      const ledRegions = regions.filter(r => r.regional_minister_id === member._id);
-      const invitation = invitations.find(i => i.member_id === member._id || i.email === member.email);
-      const hasAccount = users.some(u => u.email === member.email);
+    .map((member: any) => {
+      const ledUnits = allUnits.filter((u: any) => u.leader_id === member._id);
+      const invitation = invitations.find((i: any) => i.member_id === member._id || i.email === member.email);
+      const hasAccount = users.some((u: any) => u.email === member.email);
 
       return {
         id: member._id,
         name: member.name,
-        first_name: member.first_name, // Assuming these exist in member or needs parsing
+        first_name: member.first_name,
         last_name: member.last_name,
         email: member.email,
         phone: member.phone,
-        region_name: member.region_name,
-        ministry_names: member.ministry_names || [],
+        unit_names: member.unit_names || [],
         has_account: hasAccount,
         invitation_status: invitation?.status || null,
-        led_ministry_ids: ledMinistries.map(m => m._id),
-        led_ministry_names: ledMinistries.map(m => m.name),
-        led_region_ids: ledRegions.map(r => r._id),
-        led_region_names: ledRegions.map(r => r.name),
+        led_unit_ids: ledUnits.map((u: any) => u._id),
+        led_unit_names: ledUnits.map((u: any) => u.name),
       };
     });
 
@@ -147,12 +139,9 @@ export function LeaderInvitationSystem() {
       roleFilter === 'all' ||
       (roleFilter === 'no_account' && !leader.has_account) ||
       (roleFilter === 'has_account' && leader.has_account) ||
-      (roleFilter === 'ministry_leader' &&
-        leader.led_ministry_names &&
-        leader.led_ministry_names.length > 0) ||
-      (roleFilter === 'region_leader' &&
-        leader.led_region_names &&
-        leader.led_region_names.length > 0)
+      (roleFilter === 'unit_leader' &&
+        leader.led_unit_names &&
+        leader.led_unit_names.length > 0)
 
     return matchesSearch && matchesRole
   })
@@ -181,14 +170,13 @@ export function LeaderInvitationSystem() {
         const leader = potentialLeaders.find(l => l.id === leaderId);
         if (!leader || !leader.email) continue;
 
-        const role = leader.led_region_ids.length > 0 ? 'region_leader' : 'ministry_leader';
+        const role = 'unit_admin';
 
         await createInvitation({
           email: leader.email,
           member_id: leader.id as Id<"members">,
           intended_role: role,
-          intended_ministries: leader.led_ministry_ids,
-          intended_regions: leader.led_region_ids,
+          intended_units: leader.led_unit_ids as Id<"units">[],
         });
       }
 
@@ -214,13 +202,12 @@ export function LeaderInvitationSystem() {
     if (!leader || !leader.email) return;
 
     try {
-      const role = leader.led_region_ids.length > 0 ? 'region_leader' : 'ministry_leader';
+      const role = 'unit_admin';
       const result = await createInvitation({
         email: leader.email,
         member_id: leader.id as Id<"members">,
         intended_role: role,
-        intended_ministries: leader.led_ministry_ids,
-        intended_regions: leader.led_region_ids,
+        intended_units: leader.led_unit_ids as Id<"units">[],
       });
 
       const link = `${window.location.origin}/accept-invitation?token=${result.token}`;
@@ -282,11 +269,10 @@ export function LeaderInvitationSystem() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
-                Leader Invitation System
+                {terminology.unit_leader_term} Invitation System
               </CardTitle>
               <CardDescription>
-                Invite ministry and region leaders to create accounts and access
-                their dashboards
+                Invite {terminology.unit_term} leaders to create accounts and access their dashboards
               </CardDescription>
             </div>
             <Button
@@ -317,10 +303,9 @@ export function LeaderInvitationSystem() {
                 <SelectItem value="all">All Leaders</SelectItem>
                 <SelectItem value="no_account">No Account</SelectItem>
                 <SelectItem value="has_account">Has Account</SelectItem>
-                <SelectItem value="ministry_leader">
-                  {terminology.ministry_term} Leaders
+                <SelectItem value="unit_leader">
+                  {terminology.unit_term} Leaders
                 </SelectItem>
-                <SelectItem value="region_leader">Region Leaders</SelectItem>
               </SelectContent>
             </Select>
             <Button
@@ -392,24 +377,14 @@ export function LeaderInvitationSystem() {
                       <TableCell>{leader.email}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {leader.led_ministry_names &&
-                            leader.led_ministry_names.map((ministry, index) => (
+                          {leader.led_unit_names &&
+                            leader.led_unit_names.map((unitName, index) => (
                               <Badge
                                 key={index}
                                 variant="default"
                                 className="text-xs"
                               >
-                                {ministry}
-                              </Badge>
-                            ))}
-                          {leader.led_region_names &&
-                            leader.led_region_names.map((region, index) => (
-                              <Badge
-                                key={index}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {region}
+                                {unitName}
                               </Badge>
                             ))}
                         </div>
@@ -582,7 +557,7 @@ export function LeaderInvitationSystem() {
                           className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${selectedMemberId === m._id ? 'bg-primary/10 border-primary' : ''
                             }`}
                           onClick={() => {
-                            setSelectedMemberId(m._id);
+                            setSelectedMemberId(m._id as string);
                             setAdminInviteForm({
                               ...adminInviteForm,
                               email: m.email || '',

@@ -24,15 +24,13 @@ import { Id } from "../../convex/_generated/dataModel"
 
 interface AttendanceFormProps {
   availableMembers?: any[]
-  availableMinistries?: any[]
-  availableRegions?: any[]
+  availableUnits?: any[]
   onSuccess?: () => void
 }
 
 export function AttendanceForm({
   availableMembers = [],
-  availableMinistries = [],
-  availableRegions = [],
+  availableUnits = [],
   onSuccess
 }: AttendanceFormProps) {
   const [date, setDate] = useState<Date | undefined>(new Date())
@@ -45,8 +43,7 @@ export function AttendanceForm({
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
 
   // Filters
-  const [ministryFilter, setMinistryFilter] = useState("all")
-  const [regionFilter, setRegionFilter] = useState("all")
+  const [unitFilter, setUnitFilter] = useState("all")
 
   // Convex Mutations
   const recordFullAttendance = useMutation(api.attendance.recordFullAttendance)
@@ -95,24 +92,19 @@ export function AttendanceForm({
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (member.email && member.email.toLowerCase().includes(searchQuery.toLowerCase()))
 
-    const matchesMinistry =
-      ministryFilter === "all" ||
-      (member.ministry_names && member.ministry_names.includes(ministryFilter)) ||
-      (member.ministries && member.ministries.includes(ministryFilter))
+    const matchesUnit =
+      unitFilter === "all" ||
+      (member.unit_names && member.unit_names.includes(unitFilter)) ||
+      (member.units && member.units.includes(unitFilter))
 
-    const matchesRegion =
-      regionFilter === "all" ||
-      member.region_name === regionFilter ||
-      member.region === regionFilter
-
-    return matchesSearch && matchesMinistry && matchesRegion
+    return matchesSearch && matchesUnit
   })
 
   const handleSelectAll = () => {
     if (selectedMembers.length === filteredMembers.length) {
       setSelectedMembers([])
     } else {
-      setSelectedMembers(filteredMembers.map((member) => member.id || member._id))
+      setSelectedMembers(filteredMembers.map((member) => member.id))
     }
   }
 
@@ -229,33 +221,16 @@ export function AttendanceForm({
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="space-y-2 flex-1">
-              <Label>Filter by Ministry</Label>
-              <Select value={ministryFilter} onValueChange={setMinistryFilter}>
+              <Label>Filter by Unit</Label>
+              <Select value={unitFilter} onValueChange={setUnitFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select ministry" />
+                  <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Ministries</SelectItem>
-                  {availableMinistries.map((ministry: any) => (
-                    <SelectItem key={ministry.id || ministry._id} value={ministry.name}>
-                      {ministry.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 flex-1">
-              <Label>Filter by Region</Label>
-              <Select value={regionFilter} onValueChange={setRegionFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select region" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {availableRegions.map((region: any) => (
-                    <SelectItem key={region.id || region._id} value={region.name}>
-                      {region.name}
+                  <SelectItem value="all">All Units</SelectItem>
+                  {availableUnits.map((unit: any) => (
+                    <SelectItem key={unit.id} value={unit.name}>
+                      {unit.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -299,8 +274,7 @@ export function AttendanceForm({
                     </TableHead>
                     <TableHead className="min-w-[180px]">Name</TableHead>
                     <TableHead className="hidden md:table-cell">Phone</TableHead>
-                    <TableHead className="hidden md:table-cell">Region</TableHead>
-                    <TableHead className="hidden md:table-cell">Ministries</TableHead>
+                    <TableHead className="hidden md:table-cell">Units</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -312,11 +286,11 @@ export function AttendanceForm({
                     </TableRow>
                   ) : (
                     filteredMembers.map((member) => (
-                      <TableRow key={member.id || member._id}>
+                      <TableRow key={member.id}>
                         <TableCell>
                           <Checkbox
-                            checked={selectedMembers.includes(member.id || member._id)}
-                            onCheckedChange={() => handleSelectMember(member.id || member._id)}
+                            checked={selectedMembers.includes(member.id)}
+                            onCheckedChange={() => handleSelectMember(member.id)}
                           />
                         </TableCell>
                         <TableCell>
@@ -332,11 +306,8 @@ export function AttendanceForm({
                           {member.phone}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          {member.region_name || member.region || 'None'}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           <div className="flex flex-wrap gap-1">
-                            {(member.ministry_names || member.ministries || []).map((m: string, i: number) => (
+                            {(member.unit_names || member.units || []).map((m: string, i: number) => (
                               <Badge key={i} variant="outline" className="text-[10px]">
                                 {m}
                               </Badge>

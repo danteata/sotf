@@ -1,9 +1,18 @@
 import { Id } from "../../convex/_generated/dataModel"
 
-export interface Member {
-  _id?: Id<"members">
-  _creationTime?: number
+// Helper type for consistent ID usage
+export type MemberId = Id<"members"> | string;
+
+// Normalized interface with consistent ID usage
+export interface BaseResource {
   id?: string
+  _id?: string
+  created_at?: string | number
+  updated_at?: string | number
+}
+
+export interface Member extends BaseResource {
+  _id?: Id<"members">
   title?: string
   first_name: string
   last_name: string
@@ -20,56 +29,50 @@ export interface Member {
   joined_date: string
   address?: string
   city?: string
-  region?: string // Legacy field - will be replaced by region_id
-  region_id?: string
   state?: string
   zip?: string
   country?: string
-  ministries?: string[] // Legacy field - will be replaced by member_ministries junction
+  // Units (functional, administrative, etc.) are handled via junction
+  unit_ids?: Id<"units">[]
   skills?: string
   avatar_url?: string
   initials: string
-  created_at?: string
-  updated_at?: string
   latitude?: number
   longitude?: number
   plus_code?: string
 }
 
-// New interfaces for the improved database structure
-export interface Ministry {
-  _id?: Id<"ministries">
+// Unit interface now handles all organizational units
+export interface Unit extends BaseResource {
+  _id?: Id<"units">
   _creationTime?: number
-  id?: string
   name: string
   description?: string
-  leader?: string
-  leader_id?: string
+  type: string // e.g. 'organization', 'administrative', 'functional', 'geographic'
+  category?: string
+  leader_id?: Id<"members">
   leader_name?: string
+  depth?: number
+  path?: string
+  parent_unit_id?: Id<"units">
+  organization_id?: string
+  organization_name?: string
+  division_id?: string
+  division_name?: string
   active: boolean
-  created_at?: string | number
-  updated_at?: string | number
+  address?: string
+  city?: string
+  state?: string
+  country?: string
+  latitude?: number
+  longitude?: number
+  plus_code?: string
 }
 
-export interface Region {
-  _id?: Id<"regions">
-  _creationTime?: number
-  id?: string
-  name: string
-  description?: string
-  regional_minister_id?: string
-  regional_minister_name?: string
-  active: boolean
-  created_at?: string | number
-  updated_at?: string | number
-}
-
-export interface MemberMinistry {
-  id: string
-  member_id: string
-  ministry_id: string
-  created_at: string
-}
+// Type guard for unit types
+export const isValidUnitType = (type: string): type is 'organization' | 'administrative' | 'functional' | 'geographic' => {
+  return ['organization', 'administrative', 'functional', 'geographic'].includes(type);
+};
 
 export interface MemberAttendance {
   id: string
@@ -90,8 +93,6 @@ export interface Organization {
   updated_at: string
 }
 
-
-
 export interface Division {
   id: string
   name: string
@@ -105,75 +106,19 @@ export interface Division {
   updated_at: string
 }
 
-export interface Unit {
-  id: string
-  name: string
-  description?: string
-  organization_id: string
-  organization_name?: string
-  division_id?: string
-  division_name?: string
-  unit_admin_id?: string
-  unit_admin_name?: string
-  address?: string
-  city?: string
-  state?: string
-  country?: string
-  latitude?: number
-  longitude?: number
-  active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface SubUnit {
-  id: string
-  name: string
-  description?: string
-  organization_id: string
-  organization_name?: string
-  division_id?: string
-  division_name?: string
-  unit_id?: string
-  unit_name?: string
-  sub_unit_admin_id?: string
-  sub_unit_admin_name?: string
-  address?: string
-  city?: string
-  state?: string
-  country?: string
-  latitude?: number
-  longitude?: number
-  active: boolean
-  // New inheritance fields
-  type?: 'administrative' | 'ministry'
-  ministry_category?: string
-  inheritance_level?: 'organization' | 'division' | 'unit'
-  inherited_from?: string
-  is_template?: boolean
-  template_name?: string
-  parent_ministry_id?: string
-  // Virtual fields from views
-  connected_ministries_count?: number
-  created_at: string
-  updated_at: string
-}
-
 // Organization Context for UI (Generic)
 export interface OrganizationContext {
   organization?: Organization | null
   division?: Division | null
   unit?: Unit | null
-  subUnit?: SubUnit | null
   userRole: UserRole
   accessibleOrganizations: Organization[]
   accessibleDivisions: Division[]
   accessibleUnits: Unit[]
-  accessibleSubUnits: SubUnit[]
 }
 
 // Role-based access control types
-export type UserRole = 'super_admin' | 'admin' | 'organization_admin' | 'division_admin' | 'unit_admin' | 'sub_unit_admin' | 'ministry_leader' | 'region_leader' | 'member'
+export type UserRole = 'super_admin' | 'admin' | 'organization_admin' | 'division_admin' | 'unit_admin' | 'sub_unit_admin' | 'member'
 
 // Organization Terminology Types
 export interface OrganizationTerminology {
@@ -181,68 +126,38 @@ export interface OrganizationTerminology {
   organization_id: string
   division_id?: string
   unit_id?: string
-  sub_unit_id?: string
-  ministry_term?: string
-  ministry_term_plural?: string
-  ministry_leader_term?: string
-  region_term?: string
-  region_term_plural?: string
-  regional_leader_term?: string
   unit_term?: string
   unit_term_plural?: string
   unit_leader_term?: string
   division_term?: string
   division_term_plural?: string
   division_leader_term?: string
-  sub_unit_term?: string
-  sub_unit_term_plural?: string
-  sub_unit_leader_term?: string
-  level: 'organization' | 'division' | 'unit' | 'sub_unit'
+  level: 'organization' | 'division' | 'unit'
   created_by: string
   created_at: string
   updated_at: string
 }
 
-export interface User {
-  id: string
+export interface User extends BaseResource {
+  _id?: Id<"users">
   clerk_user_id?: string
   email: string
   name: string
   role: UserRole
   is_active: boolean
-  created_at?: string | number
-  updated_at?: string | number
-}
-
-export interface UserMinistryLeadership {
-  id: string
-  user_id: string
-  ministry_id: string
-  created_at: string
-}
-
-export interface UserRegionLeadership {
-  id: string
-  user_id: string
-  region_id: string
-  created_at: string
+  organization_id?: string
+  division_id?: string
+  unit_id?: string
 }
 
 // Enhanced member interface with relational data
 export interface MemberWithDetails extends Member {
-  region_name?: string
-  ministry_names?: string[]
-  ministries_detail?: Ministry[]
-  region_detail?: Region
+  units_detail?: Unit[]
 }
 
 // Enhanced member interface with leadership information
 export interface MemberWithLeadership extends Member {
-  region_name?: string
-  region_leader_user_id?: string
-  ministry_names?: string[]
-  ministry_ids?: string[]
-  ministry_leader_user_ids?: string[]
+  unit_leader_for?: Unit[]
 }
 
 export interface AttendanceRecord {
@@ -276,8 +191,8 @@ export interface Event {
   title: string
   date: string
   time?: string
-  type?: string  // Legacy field - will be deprecated
-  event_type_id?: string  // Foreign key to event_types table
+  type?: string
+  event_type_id?: string
   description?: string
   location?: string
   attendees_count?: number
@@ -451,16 +366,16 @@ export interface ServiceMetadataSummary {
 
 // Message categories for dropdown
 export type MessageCategory =
-  | 'christian-living'
-  | 'evangelism'
-  | 'discipleship'
+  | 'functional-living'
+  | 'outreach'
+  | 'education'
   | 'worship'
-  | 'prayer'
-  | 'bible-study'
-  | 'missions'
-  | 'family-life'
+  | 'community'
+  | 'study'
+  | 'development'
+  | 'family'
   | 'leadership'
-  | 'special-occasion'
+  | 'event'
   | 'other'
 
 export interface MessageCategoryOption {
@@ -484,15 +399,15 @@ export interface Label {
   id: string
   name: string
   description?: string
-  color: string // Hex color code for visual identification
-  category?: string // e.g., 'status', 'ministry', 'demographic', 'skill'
-  is_system_label: boolean // System labels can't be deleted
+  color: string
+  category?: string
+  is_system_label: boolean
   is_active: boolean
   created_by?: string
   created_by_name?: string
   created_at: string
   updated_at: string
-  usage_count?: number // How many members have this label
+  usage_count?: number
 }
 
 export interface MemberLabel {
@@ -502,7 +417,7 @@ export interface MemberLabel {
   assigned_by?: string
   assigned_by_name?: string
   assigned_at: string
-  notes?: string // Optional notes about why this label was assigned
+  notes?: string
 }
 
 // Extended member interface with labels
@@ -516,7 +431,7 @@ export interface MemberWithLabels extends Member {
 export interface BulkLabelOperation {
   member_ids: string[]
   label_ids: string[]
-  operation: 'add' | 'remove' | 'replace' // Replace will remove all existing labels first
+  operation: 'add' | 'remove' | 'replace'
   assigned_by?: string
   notes?: string
 }
@@ -524,153 +439,14 @@ export interface BulkLabelOperation {
 // Label management
 export interface LabelManagement {
   create_labels?: Label[]
-  delete_labels?: string[] // Label IDs to delete
-  update_labels?: Partial<Label>[] // Labels to update
+  delete_labels?: string[]
+  update_labels?: Partial<Label>[]
 }
 
+// Main Database structure
 export interface Database {
   public: {
     Tables: {
-      denominations: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          denomination_admin_id: string | null
-          active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          denomination_admin_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          denomination_admin_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      councils: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          denomination_id: string
-          council_admin_id: string | null
-          active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name?: string
-          description?: string | null
-          denomination_id: string
-          council_admin_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          denomination_id?: string
-          council_admin_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "councils_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      branches: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          council_id: string
-          denomination_id: string
-          branch_admin_id: string | null
-          address: string | null
-          city: string | null
-          state: string | null
-          country: string | null
-          latitude: number | null
-          longitude: number | null
-          active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          name?: string
-          description?: string | null
-          council_id?: string
-          denomination_id?: string
-          branch_admin_id?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          country?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          council_id?: string
-          denomination_id?: string
-          branch_admin_id?: string | null
-          address?: string | null
-          city?: string | null
-          state?: string | null
-          country?: string | null
-          latitude?: number | null
-          longitude?: number | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "branches_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "branches_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       users: {
         Row: {
           id: string
@@ -678,9 +454,6 @@ export interface Database {
           email: string
           name: string
           role: string
-          denomination_id: string | null
-          council_id: string | null
-          branch_id: string | null
           is_active: boolean
           created_at: string
           updated_at: string
@@ -688,12 +461,9 @@ export interface Database {
         Insert: {
           id?: string
           clerk_user_id?: string | null
-          email?: string
-          name?: string
-          role?: string
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
+          email: string
+          name: string
+          role: string
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -704,36 +474,11 @@ export interface Database {
           email?: string
           name?: string
           role?: string
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "users_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "users_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "users_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       members: {
         Row: {
@@ -754,12 +499,9 @@ export interface Database {
           joined_date: string
           address: string | null
           city: string | null
-          region: string | null
-          region_id: string | null
           state: string | null
           zip: string | null
           country: string | null
-          ministries: string[] | null
           skills: string | null
           initials: string
           created_at: string
@@ -767,9 +509,6 @@ export interface Database {
           latitude: number | null
           longitude: number | null
           plus_code: string | null
-          denomination_id: string | null
-          council_id: string | null
-          branch_id: string | null
         }
         Insert: {
           id?: string
@@ -789,12 +528,9 @@ export interface Database {
           joined_date: string
           address?: string | null
           city?: string | null
-          region?: string | null
-          region_id?: string | null
           state?: string | null
           zip?: string | null
           country?: string | null
-          ministries?: string[] | null
           skills?: string | null
           avatar_url?: string | null
           initials: string
@@ -803,9 +539,6 @@ export interface Database {
           latitude?: number | null
           longitude?: number | null
           plus_code?: string | null
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
         }
         Update: {
           id?: string
@@ -825,12 +558,9 @@ export interface Database {
           joined_date?: string
           address?: string | null
           city?: string | null
-          region?: string | null
-          region_id?: string | null
           state?: string | null
           zip?: string | null
           country?: string | null
-          ministries?: string[] | null
           skills?: string | null
           avatar_url?: string | null
           initials: string
@@ -839,165 +569,8 @@ export interface Database {
           latitude?: number | null
           longitude?: number | null
           plus_code?: string | null
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "members_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "members_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "members_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "members_region_id_fkey"
-            columns: ["region_id"]
-            isOneToOne: false
-            referencedRelation: "regions"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      ministries: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          leader: string | null
-          leader_id: string | null
-          active: boolean
-          created_at: string
-          updated_at: string
-          denomination_id: string | null
-          council_id: string | null
-          branch_id: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          leader?: string | null
-          leader_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          leader?: string | null
-          leader_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ministries_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ministries_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ministries_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      regions: {
-        Row: {
-          id: string
-          name: string
-          description: string | null
-          regional_minister_id: string | null
-          active: boolean
-          created_at: string
-          updated_at: string
-          denomination_id: string | null
-          council_id: string | null
-          branch_id: string | null
-        }
-        Insert: {
-          id?: string
-          name: string
-          description?: string | null
-          regional_minister_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
-        }
-        Update: {
-          id?: string
-          name?: string
-          description?: string | null
-          regional_minister_id?: string | null
-          active?: boolean
-          created_at?: string
-          updated_at?: string
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "regions_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "regions_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "regions_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       attendance: {
         Row: {
@@ -1008,9 +581,6 @@ export interface Database {
           id: string
           notes: string | null
           percent_change: number | null
-          denomination_id: string | null
-          council_id: string | null
-          branch_id: string | null
         }
         Insert: {
           count?: number | null
@@ -1020,9 +590,6 @@ export interface Database {
           id?: string
           notes?: string | null
           percent_change?: number | null
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
         }
         Update: {
           count?: number | null
@@ -1032,33 +599,8 @@ export interface Database {
           id?: string
           notes?: string | null
           percent_change?: number | null
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "attendance_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "attendance_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
       events: {
         Row: {
@@ -1070,9 +612,6 @@ export interface Database {
           location: string | null
           title: string | null
           type: string | null
-          denomination_id: string | null
-          council_id: string | null
-          branch_id: string | null
         }
         Insert: {
           attendees_count?: number | null
@@ -1083,9 +622,6 @@ export interface Database {
           location?: string | null
           title?: string | null
           type?: string | null
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
         }
         Update: {
           attendees_count?: number | null
@@ -1096,35 +632,9 @@ export interface Database {
           location?: string | null
           title?: string | null
           type?: string | null
-          denomination_id?: string | null
-          council_id?: string | null
-          branch_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "events_denomination_id_fkey"
-            columns: ["denomination_id"]
-            isOneToOne: false
-            referencedRelation: "denominations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "events_council_id_fkey"
-            columns: ["council_id"]
-            isOneToOne: false
-            referencedRelation: "councils"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "events_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
       }
-
     }
     Views: {
       [_ in never]: never

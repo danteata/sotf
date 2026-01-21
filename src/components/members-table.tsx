@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { MoreHorizontal, ArrowUpDown, Mail, Phone, Tag, Users } from "lucide-react"
-import { useTerminology, getMinistryLabels } from "@/hooks/use-terminology"
+import { useTerminology } from "@/hooks/use-terminology"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -41,7 +41,6 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
   const [showBulkLabels, setShowBulkLabels] = useState(false);
   const { terminology } = useTerminology()
-  const ministryLabels = getMinistryLabels(terminology)
   const { toast } = useToast()
 
   const deleteMember = useMutation(api.members.remove);
@@ -136,7 +135,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
           </div>
           <div className="flex items-center gap-2">
             <BulkLabelDialog
-              selectedMembers={members.filter(m => selectedMembers.includes(m.id || ''))}
+              selectedMembers={members.filter((m: any) => selectedMembers.includes(m.id || ''))}
               trigger={
                 <Button variant="outline" size="sm" className="gap-2 border-blue-300 hover:bg-blue-100 dark:border-blue-700 dark:hover:bg-blue-900/50">
                   <Tag className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -175,7 +174,6 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
               </TableHead>
               <TableHead className="hidden md:table-cell">Contact</TableHead>
               <TableHead className="hidden md:table-cell">City</TableHead>
-              <TableHead>Region</TableHead>
               <TableHead>
                 <div className="flex items-center space-x-2" onClick={() => handleSort("status")}>
                   <span className="font-bold">Status</span>
@@ -188,7 +186,6 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   <ArrowUpDown className="h-4 w-4 cursor-pointer" />
                 </div>
               </TableHead>
-              <TableHead className="hidden lg:table-cell">{ministryLabels.single}</TableHead>
               <TableHead className="hidden xl:table-cell">
                 <div className="flex items-center gap-2">
                   <Tag className="h-4 w-4" />
@@ -236,27 +233,8 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell font-medium">{member.city}</TableCell>
-                <TableCell className="font-medium">{member.region || 'Not assigned'}</TableCell>
                 <TableCell>{getStatusBadge(member.status)}</TableCell>
                 <TableCell className="hidden md:table-cell font-medium">{member.joined_date}</TableCell>
-                <TableCell className="hidden lg:table-cell">
-                  <div className="flex flex-wrap gap-1 max-w-[200px]">
-                    {Array.isArray(member.ministries) && member.ministries.length > 0 ? (
-                      member.ministries.slice(0, 3).map((min: string, index: number) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {min}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-sm text-muted-foreground">None</span>
-                    )}
-                    {Array.isArray(member.ministries) && member.ministries.length > 3 && (
-                      <Badge variant="outline" className="text-xs border-primary/30">
-                        +{member.ministries.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   <MemberLabels labels={(member as any).labels || []} />
                 </TableCell>

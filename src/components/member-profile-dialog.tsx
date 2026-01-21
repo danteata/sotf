@@ -55,9 +55,6 @@ export function MemberProfileDialog({
                 <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
                   {member.status?.charAt(0).toUpperCase() + member.status?.slice(1)}
                 </Badge>
-                {member.region && (
-                  <Badge variant="outline">{member.region}</Badge>
-                )}
               </div>
             </div>
           </div>
@@ -100,26 +97,6 @@ export function MemberProfileDialog({
             </CardContent>
           </Card>
 
-          {/* Ministries */}
-          {member.ministries && member.ministries.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Ministries
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {member.ministries.map((ministry, index) => (
-                    <Badge key={index} variant="outline">
-                      {ministry}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Attendance Summary */}
           <Card>

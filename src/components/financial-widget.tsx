@@ -50,7 +50,7 @@ export function FinancialWidget({
 
     // Calculate current period totals
     const currentTotals = calculateTransactionTotals(
-        (transactions || []).filter(t => {
+        (transactions || []).map(t => ({ ...t, type: t.type as any, category: t.category as any, payment_method: (t as any).payment_method as any, organization_id: t.organization_id as any })).filter(t => {
             const transactionDate = new Date(t.date)
             const now = new Date()
 
@@ -73,7 +73,7 @@ export function FinancialWidget({
 
     // Calculate previous period totals for comparison
     const previousTotals = calculateTransactionTotals(
-        (transactions || []).filter(t => {
+        (transactions || []).map(t => ({ ...t, type: t.type as any, category: t.category as any, payment_method: (t as any).payment_method as any, organization_id: t.organization_id as any })).filter(t => {
             const transactionDate = new Date(t.date)
             const now = new Date()
 

@@ -17,15 +17,12 @@ import FinancialPage from "@/pages/financial/Financial";
 import AdminDashboardPage from "@/pages/admin/AdminDashboard";
 import UserManagementPage from "@/pages/admin/UserManagement";
 import LabelManagementPage from "@/pages/admin/LabelManagement";
-import MinistryDashboardPage from "@/pages/ministries/MinistryDashboard";
-import RegionDashboardPage from "@/pages/regions/RegionDashboard";
-import SubUnitsPage from "@/pages/subunits/SubUnits";
+import UnitsPage from "@/pages/units/Units";
 import OrganizationPage from "@/pages/organization/Organization";
 import SettingsPage from "@/pages/settings/Settings";
 import ProfilePage from "@/pages/profile/Profile";
 import AttendancePage from "@/pages/attendance/Attendance";
 import ReportsPage from "@/pages/reports/Reports";
-import MapPage from "@/pages/map/Map";
 
 function Protected({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useConvexAuth();
@@ -117,26 +114,10 @@ export default function App() {
                     }
                 />
                 <Route
-                    path="/ministry-dashboard"
+                    path="/units"
                     element={
                         <Protected>
-                            <MinistryDashboardPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/region-dashboard"
-                    element={
-                        <Protected>
-                            <RegionDashboardPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/sub-units"
-                    element={
-                        <Protected>
-                            <SubUnitsPage />
+                            <UnitsPage />
                         </Protected>
                     }
                 />
@@ -177,14 +158,6 @@ export default function App() {
                     element={
                         <Protected>
                             <ReportsPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/map"
-                    element={
-                        <Protected>
-                            <MapPage />
                         </Protected>
                     }
                 />

@@ -427,7 +427,7 @@ export function FinancialTransactionDialog({
                                                                     id: m._id,
                                                                     name: m.name,
                                                                     email: m.email || '',
-                                                                    initials: m.name.split(' ').map(n => n[0]).join('').toUpperCase()
+                                                                    initials: m.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
                                                                 })) || []}
                                                                 value={field.value || ""}
                                                                 onValueChange={field.onChange}

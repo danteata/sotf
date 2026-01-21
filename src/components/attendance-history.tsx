@@ -42,24 +42,19 @@ import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 
 interface AttendanceHistoryProps {
-  availableMinistries?: any[]
-  availableRegions?: any[]
+  availableUnits?: any[]
   filtersLoading?: boolean
-  source?: 'all' | 'ministry' | 'region'
 }
 
 export function AttendanceHistory({
-  source = 'all',
-  availableMinistries = [],
-  availableRegions = [],
+  availableUnits = [],
   filtersLoading = false,
 }: AttendanceHistoryProps) {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [viewingRecord, setViewingRecord] = useState<any | null>(null)
   const [eventType, setEventType] = useState('all')
   const [search, setSearch] = useState('')
-  const [ministryFilter, setMinistryFilter] = useState('all')
-  const [regionFilter, setRegionFilter] = useState('all')
+  const [unitFilter, setUnitFilter] = useState('all')
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
 
   // Convex Query
@@ -71,27 +66,11 @@ export function AttendanceHistory({
     setViewDialogOpen(true)
   }
 
-  const filteredRecords = attendanceData.filter((record) => {
-    // Event type filter
-    if (eventType !== 'all' && record.event_type_value !== eventType) {
+  const filteredRecords = (attendanceData || []).filter((record: any) => {
+    // Unit filter
+    if (unitFilter !== 'all' && record.unit_name !== unitFilter) {
       return false
     }
-
-    // Search filter
-    if (search.trim() !== '') {
-      const s = search.trim().toLowerCase()
-      if (
-        !(
-          record.event_type_label?.toLowerCase().includes(s) ||
-          record.event_type_value?.toLowerCase().includes(s) ||
-          record.notes?.toLowerCase().includes(s) ||
-          record.date?.toLowerCase().includes(s)
-        )
-      ) {
-        return false
-      }
-    }
-
     return true
   })
 
@@ -133,29 +112,15 @@ export function AttendanceHistory({
                 </SelectContent>
               </Select>
 
-              <Select value={ministryFilter} onValueChange={setMinistryFilter}>
-                <SelectTrigger className="w-[140px]" disabled={filtersLoading}>
-                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Ministry"} />
+              <Select value={unitFilter} onValueChange={setUnitFilter}>
+                <SelectTrigger className="w-[160px]" disabled={filtersLoading}>
+                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Unit"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Ministries</SelectItem>
-                  {availableMinistries.map((ministry: any) => (
-                    <SelectItem key={ministry.id || ministry._id} value={ministry.name}>
-                      {ministry.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={regionFilter} onValueChange={setRegionFilter}>
-                <SelectTrigger className="w-[120px]" disabled={filtersLoading}>
-                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Region"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  {availableRegions.map((region: any) => (
-                    <SelectItem key={region.id || region._id} value={region.name}>
-                      {region.name}
+                  <SelectItem value="all">All Units</SelectItem>
+                  {availableUnits.map((unit: any) => (
+                    <SelectItem key={unit.id} value={unit.name}>
+                      {unit.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -184,8 +149,6 @@ export function AttendanceHistory({
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      {source === 'ministry' && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
-                      {source === 'region' && <TableCell><Skeleton className="h-4 w-20" /></TableCell>}
                       <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                       <TableCell>
                         <div className="flex gap-2 items-center">
@@ -239,9 +202,6 @@ export function AttendanceHistory({
         open={viewDialogOpen}
         onOpenChange={setViewDialogOpen}
         record={viewingRecord}
-        ministryId={source === 'ministry' ? viewingRecord?.ministry_id : undefined}
-        regions={source === 'region' ? availableRegions.map(r => r.id || r._id) : undefined}
-        source={source}
       />
     </Card>
   )

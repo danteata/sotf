@@ -14,7 +14,7 @@ import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 
 export function DashboardContent() {
-  const { isAdmin, isMinistryLeader, isRegionLeader } = useUserRole()
+  const { isAdmin, isUnitLeader } = useUserRole()
   const data = useQuery(api.dashboard.getDashboardData);
 
   if (data === undefined) {
@@ -122,11 +122,9 @@ export function DashboardContent() {
           <CardTitle className="text-sm font-semibold text-muted-foreground">
             {isAdmin
               ? "Active Groups"
-              : isRegionLeader
-                ? "My Region"
-                : isMinistryLeader
-                  ? "My Ministry"
-                  : "Members"
+              : isUnitLeader
+                ? "My Units"
+                : "Members"
             }
           </CardTitle>
           <div className="p-2.5 bg-gradient-accent rounded-xl shadow-soft group-hover:scale-110 transition-transform">
@@ -136,13 +134,13 @@ export function DashboardContent() {
         <CardContent className="space-y-3 pb-6">
           <div className="text-4xl font-bold text-foreground">
             {isAdmin
-              ? stats.activeMinistriesCount
+              ? stats.activeUnitsCount
               : stats.scopedMembersCount
             }
           </div>
           <p className="text-xs font-medium text-muted-foreground">
             {isAdmin
-              ? "Ministry Groups"
+              ? "Organization Units"
               : `${stats.totalMembers > 0 ? Math.round((stats.scopedMembersCount / stats.totalMembers) * 100) : 0}% of Total`
             }
           </p>
@@ -164,7 +162,7 @@ export function DashboardContent() {
           </p>
         </CardContent>
       </Card>
-    </div>
+    </div >
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7 mt-6">
       <Card className="col-span-4 shadow-soft-lg overflow-hidden border-0">
         <CardHeader className="border-b border-border/50 bg-muted/20">
@@ -191,7 +189,6 @@ export function DashboardContent() {
 
     <div className="mt-6">
       <FinancialWidget
-        transactions={financialTransactions as any}
         onAddTransaction={() => {
           window.location.href = '/financial'
         }}
