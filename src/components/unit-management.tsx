@@ -42,7 +42,7 @@ export function UnitManagement() {
   // State
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [filterType, setFilterType] = useState<'all' | 'administrative' | 'functional'>('all')
+  const [filterType, setFilterType] = useState<'all' | 'administrative' | 'functional' | 'geographic'>('all')
   const [filterInheritance, setFilterInheritance] = useState<'all' | 'direct' | 'inherited' | 'template'>('all')
 
   // Dialog states

@@ -18,7 +18,6 @@ const navigationItems = [
   { href: "/", label: "Dashboard", icon: Home, public: true },
   { href: "/members", label: "Members", icon: Users, public: false },
   { href: "/organization", label: "Organization", icon: Building2, public: false },
-  { href: "/sub-units", label: "Units", icon: Layers, public: false },
   { href: "/attendance", label: "Attendance", icon: Calendar, public: false },
   { href: "/events", label: "Events", icon: Calendar, public: false },
   { href: "/financial", label: "Financial", icon: DollarSign, public: false },

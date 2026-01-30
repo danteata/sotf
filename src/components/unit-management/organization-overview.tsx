@@ -15,8 +15,8 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
 
   const totalUnits = organization.units?.length || 0;
   const totalMembers = organization.totalMembers || 0;
-  // Standardize on functional vs administrative units
-  const functionalUnits = organization.units?.filter(u => u.type === 'functional')?.length || 0;
+  // Combine functional and ministry units (ministry is a subset of functional)
+  const functionalUnits = organization.units?.filter(u => u.type === 'functional' || u.type === 'ministry')?.length || 0;
   const adminUnits = organization.units?.filter(u => u.type === 'administrative' || u.type === 'geographic')?.length || 0;
 
   return (
@@ -55,7 +55,7 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
         <div className="h-1 bg-emerald-500"></div>
         <CardContent className="pt-6 p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-lg">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg">
               <Target className="h-6 w-6" />
             </div>
             <div>
@@ -70,7 +70,7 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
         <div className="h-1 bg-amber-500"></div>
         <CardContent className="pt-6 p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-500/10 text-amber-600 rounded-lg">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
               <Briefcase className="h-6 w-6" />
             </div>
             <div>

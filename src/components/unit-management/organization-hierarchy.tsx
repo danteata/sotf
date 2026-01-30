@@ -60,7 +60,7 @@ export function OrganizationHierarchy({
             </div>
           </div>
 
-          <div className="grid gap-6">
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "flex flex-col gap-4"}>
             {rootUnits.map((unit) => {
               const childUnitsForParent = unitsByParent[unit._id] || [];
               const memberCount = organization.memberCounts?.find(mc => mc.unit_id === unit._id)?.count || 0;

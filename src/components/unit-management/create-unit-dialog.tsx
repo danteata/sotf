@@ -142,7 +142,7 @@ export function CreateUnitDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="administrative">Admin</SelectItem>
+                  <SelectItem value="administrative">Administrative</SelectItem>
                   <SelectItem value="functional">Functional</SelectItem>
                   <SelectItem value="geographic">Geographic</SelectItem>
                 </SelectContent>

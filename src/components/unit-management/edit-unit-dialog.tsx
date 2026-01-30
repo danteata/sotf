@@ -43,7 +43,7 @@ interface EditUnitDialogProps {
     onUpdateUnit: (id: string, data: {
         name: string
         description: string
-        type: 'administrative' | 'functional'
+        type: 'administrative' | 'functional' | 'geographic'
         category: string
         unit_id: string
     }) => Promise<void>
@@ -60,7 +60,7 @@ export function EditUnitDialog({
 }: EditUnitDialogProps) {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [type, setType] = useState<'administrative' | 'functional'>('administrative')
+    const [type, setType] = useState<'administrative' | 'functional' | 'geographic'>('administrative')
     const [category, setCategory] = useState('')
     const [unitId, setUnitId] = useState('')
     const [isTemplate, setIsTemplate] = useState(false)
@@ -70,7 +70,7 @@ export function EditUnitDialog({
         if (unit) {
             setName(unit.name || '')
             setDescription(unit.description || '')
-            setType((unit.type as 'administrative' | 'functional') || 'administrative')
+            setType((unit.type as 'administrative' | 'functional' | 'geographic') || 'administrative')
             setCategory(unit.category || '')
             setUnitId(unit.parent_unit_id || '')
         }
@@ -149,15 +149,16 @@ export function EditUnitDialog({
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type *</Label>
                             <Select
                                 value={type}
-                                onValueChange={(value: 'administrative' | 'functional') => setType(value)}
+                                onValueChange={(value: 'administrative' | 'functional' | 'geographic') => setType(value)}
                                 disabled={updating}
                             >
                                 <SelectTrigger className="bg-background/50 border-input-border">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="administrative">Admin</SelectItem>
+                                    <SelectItem value="administrative">Administrative</SelectItem>
                                     <SelectItem value="functional">Functional</SelectItem>
+                                    <SelectItem value="geographic">Geographic</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -165,7 +166,7 @@ export function EditUnitDialog({
 
                     {type === 'functional' && (
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Functional Category</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</Label>
                             <Input
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}

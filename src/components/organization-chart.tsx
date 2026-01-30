@@ -65,6 +65,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showDetails, setShowDetails] = useState(true)
   const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null)
+  const [dragOverLine, setDragOverLine] = useState<{ parentId: string; childId: string } | null>(null)
   const [draggedNode, setDraggedNode] = useState<ChartNode | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -279,8 +280,10 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     if (node) {
       if (node.type === 'organization') return // Can't move root
       e.stopPropagation()
+      e.preventDefault() // Prevent text selection
       setDraggedNode(node)
       setIsDragging(true)
+      // Center the drag ghost on the mouse position
       const point = getTransformedPoint(e.clientX, e.clientY, svg)
       setMousePos(point)
     } else {
@@ -298,19 +301,32 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       const point = getTransformedPoint(e.clientX, e.clientY, svg)
       setMousePos(point)
 
-      // Detect potential drop target
+      // Detect potential drop target (node)
       const elements = document.elementsFromPoint(e.clientX, e.clientY)
       const nodeElement = elements.find(el => el.hasAttribute('data-node-id'))
       if (nodeElement) {
         const id = nodeElement.getAttribute('data-node-id')
         if (id && id !== draggedNode.id) {
           setDragOverNodeId(id)
-        } else {
-          setDragOverNodeId(null)
+          setDragOverLine(null)
+          return
         }
-      } else {
-        setDragOverNodeId(null)
       }
+
+      // Detect potential drop target (connection line)
+      const lineElement = elements.find(el => el.hasAttribute('data-connection-line'))
+      if (lineElement) {
+        const parentId = lineElement.getAttribute('data-parent-id')
+        const childId = lineElement.getAttribute('data-child-id')
+        if (parentId && childId && parentId !== draggedNode.id && childId !== draggedNode.id) {
+          setDragOverLine({ parentId, childId })
+          setDragOverNodeId(null)
+          return
+        }
+      }
+
+      setDragOverNodeId(null)
+      setDragOverLine(null)
     } else if (isPanning) {
       const dx = (e.clientX - lastMousePos.x) / zoom
       const dy = (e.clientY - lastMousePos.y) / zoom
@@ -322,7 +338,24 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const handleMouseUp = async (e: React.MouseEvent) => {
     if (isDragging && draggedNode) {
       if (dragOverNodeId && dragOverNodeId !== draggedNode.parentId) {
-        await handleUnitMove(draggedNode.id, dragOverNodeId)
+        // Check if dropping onto the root organization - not allowed
+        const targetNode = nodeMap.get(dragOverNodeId)
+        if (targetNode?.type === 'organization') {
+          toast({
+            title: "Cannot move here",
+            description: "Units cannot be attached directly to the organization. Please drop on a unit or connection line.",
+            variant: "destructive"
+          })
+        } else {
+          // Drop on a unit node - move to be child of that node
+          await handleUnitMove(draggedNode.id, dragOverNodeId)
+        }
+      } else if (dragOverLine) {
+        // Drop on a connection line - insert between parent and child
+        // The dragged node becomes child of the parent, and the original child becomes child of dragged node
+        await handleUnitMove(draggedNode.id, dragOverLine.parentId)
+        // Then move the original child to be under the dragged node
+        await handleUnitMove(dragOverLine.childId, draggedNode.id)
       }
     }
 
@@ -330,6 +363,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     setIsPanning(false)
     setDraggedNode(null)
     setDragOverNodeId(null)
+    setDragOverLine(null)
   }
 
   const renderNode = (node: ChartNode): React.JSX.Element => {
@@ -339,18 +373,33 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     return (
       <g key={node.id}>
         {/* Connection lines to children */}
-        {node.children.map(child => (
-          <React.Fragment key={`line-${node.id}-${child.id}`}>
-            <path
-              d={`M${node.x + node.width / 2},${node.y + node.height} C${node.x + node.width / 2},${node.y + node.height + 20} ${child.x + child.width / 2},${child.y - 40} ${child.x + child.width / 2},${child.y}`}
-              fill="none"
-              stroke="#cbd5e1"
-              strokeWidth={2}
-              style={{ opacity: 0.6 }}
-            />
-            {renderNode(child)}
-          </React.Fragment>
-        ))}
+        {node.children.map(child => {
+          const isLineDraggedOver = dragOverLine?.parentId === node.id && dragOverLine?.childId === child.id
+          return (
+            <React.Fragment key={`line-${node.id}-${child.id}`}>
+              {/* Invisible wider path for easier drop targeting */}
+              <path
+                d={`M${node.x + node.width / 2},${node.y + node.height} C${node.x + node.width / 2},${node.y + node.height + 20} ${child.x + child.width / 2},${child.y - 40} ${child.x + child.width / 2},${child.y}`}
+                fill="none"
+                stroke="transparent"
+                strokeWidth={20}
+                className="cursor-pointer"
+                data-connection-line="true"
+                data-parent-id={node.id}
+                data-child-id={child.id}
+              />
+              {/* Visible connection line */}
+              <path
+                d={`M${node.x + node.width / 2},${node.y + node.height} C${node.x + node.width / 2},${node.y + node.height + 20} ${child.x + child.width / 2},${child.y - 40} ${child.x + child.width / 2},${child.y}`}
+                fill="none"
+                stroke={isLineDraggedOver ? '#3b82f6' : '#cbd5e1'}
+                strokeWidth={isLineDraggedOver ? 4 : 2}
+                style={{ opacity: isLineDraggedOver ? 1 : 0.6, transition: 'all 0.2s' }}
+              />
+              {renderNode(child)}
+            </React.Fragment>
+          )
+        })}
 
         {/* Node rectangle */}
         <rect
@@ -491,11 +540,12 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
         </CardHeader>
 
         <CardContent className="p-0 bg-slate-50/30">
-          <div className="relative overflow-hidden h-[700px]">
+          <div className="relative overflow-hidden h-[700px] select-none">
             <svg
               width="100%"
               height="100%"
-              style={{ cursor: isDragging ? 'grabbing' : isPanning ? 'move' : 'default' }}
+              className="select-none"
+              style={{ cursor: isDragging ? 'grabbing' : isPanning ? 'move' : 'default', userSelect: 'none' }}
               onMouseDown={(e) => handleMouseDown(e)}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -524,9 +574,9 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
               >
                 {rootNode && renderNode(rootNode)}
 
-                {/* Dragging Ghost/Line */}
+                {/* Dragging Ghost/Line - Render in a separate overlay that doesn't scale with zoom */}
                 {isDragging && draggedNode && (
-                  <g>
+                  <g style={{ pointerEvents: 'none' }}>
                     {/* Potential Connection Wire */}
                     {dragOverNodeId && nodeMap.get(dragOverNodeId) && (
                       <path
@@ -538,7 +588,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                       />
                     )}
 
-                    {/* Dragged Node Ghost */}
+                    {/* Dragged Node Ghost - Position at mouse coordinates directly */}
                     <rect
                       x={mousePos.x - draggedNode.width / 2}
                       y={mousePos.y - draggedNode.height / 2}
@@ -546,16 +596,15 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                       height={draggedNode.height}
                       fill={getNodeColor(draggedNode)}
                       rx={16}
-                      opacity={0.8}
+                      opacity={0.9}
                       filter="url(#shadow)"
-                      style={{ pointerEvents: 'none' }}
                     />
                     <text
                       x={mousePos.x}
                       y={mousePos.y}
                       textAnchor="middle"
                       className="text-sm font-bold fill-white"
-                      style={{ fontSize: '14px', pointerEvents: 'none', dominantBaseline: 'middle' }}
+                      style={{ fontSize: '14px', dominantBaseline: 'middle' }}
                     >
                       {draggedNode.name}
                     </text>

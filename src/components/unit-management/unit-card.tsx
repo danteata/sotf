@@ -45,12 +45,12 @@ export function UnitCard({ unit, viewMode, onEdit }: UnitCardProps) {
   }
 
   const getUnitIcon = (type: string) => {
-    if (type === 'functional') return <Target className="h-4 w-4 text-emerald-600" />
+    if (type === 'functional' || type === 'ministry') return <Target className="h-4 w-4 text-emerald-600" />
     return <Briefcase className="h-4 w-4 text-amber-600" />
   }
 
   const getIconBackground = (type: string) => {
-    if (type === 'functional') return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600";
+    if (type === 'functional' || type === 'ministry') return "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600";
     return "bg-amber-100 dark:bg-amber-900/30 text-amber-600";
   }
 
@@ -64,8 +64,8 @@ export function UnitCard({ unit, viewMode, onEdit }: UnitCardProps) {
           <div>
             <h4 className="font-semibold text-sm tracking-tight text-foreground">{unit.name}</h4>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground">
-                {unit.type || 'Admin'}
+              <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground capitalize">
+                {unit.type || 'Administrative'}
               </Badge>
             </div>
           </div>

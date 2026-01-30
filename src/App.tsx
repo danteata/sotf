@@ -17,7 +17,7 @@ import FinancialPage from "@/pages/financial/Financial";
 import AdminDashboardPage from "@/pages/admin/AdminDashboard";
 import UserManagementPage from "@/pages/admin/UserManagement";
 import LabelManagementPage from "@/pages/admin/LabelManagement";
-import UnitsPage from "@/pages/units/Units";
+
 import OrganizationPage from "@/pages/organization/Organization";
 import SettingsPage from "@/pages/settings/Settings";
 import ProfilePage from "@/pages/profile/Profile";
@@ -113,14 +113,7 @@ export default function App() {
                         </Protected>
                     }
                 />
-                <Route
-                    path="/units"
-                    element={
-                        <Protected>
-                            <UnitsPage />
-                        </Protected>
-                    }
-                />
+
                 <Route
                     path="/organization"
                     element={
