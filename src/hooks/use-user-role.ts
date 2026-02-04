@@ -1,6 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { User, UserRole, Unit } from '@/types/database';
+import { useOrganization } from "./use-organization";
 
 interface UserRoleData {
   user: User | null;
@@ -105,12 +106,13 @@ export function useManagedMembers() {
 // Hook to get units that the current user can access
 export function useAccessibleUnits() {
   const { role, isLoading } = useUserRole();
+  const { organization } = useOrganization();
 
   // Scoped queries based on role to prevent data leakage
   const allUnits = useQuery(
-    api.units.list,
-    ['admin', 'super_admin', 'organization_admin', 'division_admin', 'unit_admin'].includes(role)
-      ? {}
+    api.units.listByOrg,
+    ['admin', 'super_admin', 'organization_admin', 'division_admin', 'unit_admin'].includes(role) && organization?._id
+      ? { organization_id: organization._id }
       : "skip"
   );
 

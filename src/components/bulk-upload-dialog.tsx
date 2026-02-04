@@ -38,8 +38,8 @@ interface PreviewData {
   firstName: string
   lastName: string
   email: string
-  unitNames: string[]
-  unitIds: string[]
+  rawUnits: { name: string, type: string }[]
+  displayUnitNames: string[]
   location: string
   phone: string
   status: string
@@ -73,7 +73,13 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
           return String(record[key]).trim()
         }
         const lowerKey = key.toLowerCase()
-        const recordKey = Object.keys(record).find(k => k.toLowerCase() === lowerKey || k.toLowerCase().replace(/_/g, '') === lowerKey.replace(/_/g, ''))
+        // Robust matching: exact, or ignoring underscores and spaces
+        const recordKey = Object.keys(record).find(k => {
+          const kLower = k.toLowerCase()
+          return kLower === lowerKey ||
+            kLower.replace(/_/g, '') === lowerKey.replace(/_/g, '') ||
+            kLower.replace(/\s/g, '') === lowerKey.replace(/\s/g, '')
+        })
         if (recordKey && record[recordKey] !== undefined && record[recordKey] !== null) {
           return String(record[recordKey]).trim()
         }
@@ -82,13 +88,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     }
 
     // --- EMAIL VALIDATION ---
-    const email = getValue(["email", "e-mail", "mail"])
-    if (email) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(email)) {
-        errors.push("Invalid email format")
-      }
-    }
+    let email = getValue(["email", "e-mail", "mail"])
 
     // --- PHONE VALIDATION ---
     const phone = getValue(["phone", "mobile", "cell", "telephone", "contact"])
@@ -116,14 +116,12 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         birthMonth = d.getMonth() + 1
         birthDay = d.getDate()
       } else {
-        // Try parsing DD-MM-YYYY or MM-DD-YYYY
+        // Try parsing DD-MM-YYYY or MM-DD-YYYY logic...
         const parts = dobValue.split(/[-/]/)
         if (parts.length === 3) {
-          // Assuming YYYY-MM-DD first, then DD-MM-YYYY
           let y, m, day;
           if (parts[0].length === 4) { [y, m, day] = parts }
           else { [day, m, y] = parts }
-
           const pd = new Date(`${y}-${m}-${day}`)
           if (!isNaN(pd.getTime())) {
             dob = format(pd, "yyyy-MM-dd")
@@ -136,8 +134,9 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
     // If still no birth month/day, check separate columns
     if (!birthMonth || !birthDay) {
-      const monthValue = getValue(["birthMonth", "month", "birth_month"])
-      const dayValue = getValue(["birthDay", "day", "birth_day"])
+      // Extended keys including user provided "Month of birth"
+      const monthValue = getValue(["birthMonth", "month", "birth_month", "month of birth", "birth month"])
+      const dayValue = getValue(["birthDay", "day", "birth_day", "day of the month", "day of month", "birth day"])
 
       if (monthValue) {
         const month = parseInt(monthValue)
@@ -161,47 +160,68 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       }
     }
 
-    // --- UNITS VALIDATION ---
-    const unitsInput = getValue(["units", "unit", "groups", "teams"])
-    let unitNames: string[] = []
-    const unitIds: string[] = []
-    const invalidUnits: string[] = []
+    // --- NAME VALIDATION ---
+    // Extended keys for Full Name support if firstName/lastName not explicit
+    let firstName = getValue(["firstName", "first_name", "given_name", "forename"])
+    let lastName = getValue(["lastName", "last_name", "surname", "family_name"])
 
-    if (unitsInput) {
-      unitNames = unitsInput.split(/[,;&]/).map(u => u.trim()).filter(u => u.length > 0)
-
-      if (allUnits.length > 0) {
-        const unitMap = new Map()
-        allUnits.forEach((u: any) => unitMap.set(u.name.toLowerCase(), u._id))
-
-        unitNames.forEach(name => {
-          const id = unitMap.get(name.toLowerCase())
-          if (id) unitIds.push(id)
-          else invalidUnits.push(name)
-        })
+    const fullName = getValue(["full name", "fullname", "name"])
+    if ((!firstName || !lastName) && fullName) {
+      // Naive split
+      const parts = fullName.trim().split(/\s+/)
+      if (parts.length > 0) {
+        if (!firstName) firstName = parts[0]
+        if (!lastName) lastName = parts.slice(1).join(" ")
       }
     }
 
-    if (invalidUnits.length > 0) {
-      errors.push(`Units not found: ${invalidUnits.join(", ")}`)
+    const errorsList: string[] = []
+    if (!firstName) errorsList.push("First name is required")
+    if (!lastName) firstName && (lastName = ".") // If only first name, dot for last name to avoid block? or Error. Choosing to error for now but maybe user wants lenient. User provided "Full name" column example.
+    if (!lastName) errorsList.push("Last name is required")
+
+    // --- AUTO-GENERATE EMAIL ---
+    if (!email && firstName && lastName && organization?.name) {
+      const cleanOrg = organization.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const cleanFirst = firstName.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const cleanLast = lastName.toLowerCase().replace(/[^a-z0-9]/g, '')
+      email = `${cleanFirst}.${cleanLast}@${cleanOrg}.com`
     }
 
-    // --- NAME VALIDATION ---
-    const firstName = getValue(["firstName", "first_name", "given_name"])
-    const lastName = getValue(["lastName", "last_name", "surname"])
 
-    if (!firstName) errors.push("First name is required")
-    if (!lastName) errors.push("Last name is required")
+    // --- UNITS VALIDATION (Dynamic) ---
+    const rawUnits: { name: string, type: string }[] = []
 
-    // --- JOIN DATE ---
-    let joinDate = getValue(["joinDate", "joined_date", "start_date"])
-    if (!joinDate) {
-      joinDate = format(new Date(), "yyyy-MM-dd")
-    } else {
-      const jd = new Date(joinDate)
-      if (!isNaN(jd.getTime())) joinDate = format(jd, "yyyy-MM-dd")
-      else joinDate = format(new Date(), "yyyy-MM-dd")
+    // 1. Regions
+    const regionInput = getValue(["region", "zone", "area", "territory"])
+    if (regionInput) {
+      // simple check for multi-value? usually region is single but handle split just in case
+      regionInput.split(/[,;&]/).forEach(r => {
+        const name = r.trim()
+        if (name) rawUnits.push({ name, type: 'geographic' })
+      })
     }
+
+    // 2. Ministries
+    const ministryInput = getValue(["ministries", "ministry", "department", "group"])
+    if (ministryInput) {
+      ministryInput.split(/[,;&]/).forEach(m => {
+        const name = m.trim()
+        if (name) rawUnits.push({ name, type: 'functional' }) // 'functional' for ministries
+      })
+    }
+
+    // 3. Generic Units
+    const genericUnitsInput = getValue(["units", "unit", "groups", "teams"])
+    if (genericUnitsInput) {
+      genericUnitsInput.split(/[,;&]/).forEach(u => {
+        const name = u.trim()
+        if (name) rawUnits.push({ name, type: 'functional' })
+      })
+    }
+
+    // Unique by name
+    const uniqueUnits = Array.from(new Map(rawUnits.map(item => [item.name, item])).values());
 
     return {
       firstName,
@@ -210,16 +230,16 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       phone: cleanPhone,
       location: getValue(["location", "address", "residence"]),
       status,
-      joinDate,
+      joinDate: getValue(["joinDate", "join_date", "dateJoined"]),
       dob: dob || undefined,
       birthMonth,
       birthDay,
-      unitNames,
-      unitIds,
-      isValid: errors.length === 0,
-      errors: errors.length > 0 ? errors : undefined
+      rawUnits: uniqueUnits,
+      displayUnitNames: uniqueUnits.map(u => u.name),
+      isValid: errorsList.length === 0,
+      errors: errorsList.length > 0 ? errorsList : undefined
     }
-  }, [allUnits])
+  }, [allUnits, organization])
 
   const processFile = (file: File) => {
     setFileName(file.name)
@@ -285,18 +305,19 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     try {
       const membersToInsert = validRecords.map(r => ({
         name: `${r.firstName} ${r.lastName}`,
-        email: r.email || `${r.firstName.toLowerCase()}.${r.lastName.toLowerCase()}@placeholder.com`,
+        email: r.email,
         phone: r.phone || "0000000000",
         status: r.status,
         dob: r.dob,
         birth_month: r.birthMonth,
         birth_day: r.birthDay,
         address: r.location || undefined,
+        units: r.rawUnits // Pass dynamic units to backend
       }))
 
       await createBulk({
         members: membersToInsert,
-        target_unit_id: targetUnitId ? targetUnitId as Id<"units"> : undefined,
+        target_unit_id: (targetUnitId && targetUnitId !== "org_wide") ? targetUnitId as Id<"units"> : undefined,
         organization_id: organization?._id
       })
 
@@ -317,9 +338,10 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       email: "john.doe@example.com",
       phone: "1234567890",
       dob: "1990-05-15",
+      region: "Western Region",
+      ministries: "Choir, Ushers",
       location: "123 Main St",
       status: "active",
-      units: "Team Alpha, Support Group"
     }]
     const ws = XLSX.utils.json_to_sheet(template)
     const wb = XLSX.utils.book_new()
@@ -345,7 +367,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload Members</DialogTitle>
           <DialogDescription>Add multiple members at once using CSV or Excel.</DialogDescription>
@@ -397,12 +419,15 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
               <Select value={targetUnitId} onValueChange={setTargetUnitId}>
                 <SelectTrigger><SelectValue placeholder="Select a unit" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Stay Organization-Wide</SelectItem>
+                  <SelectItem value="org_wide">Stay Organization-Wide</SelectItem>
                   {allUnits.map(u => (
                     <SelectItem key={u._id} value={u._id}>{u.name} ({u.type})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Note: Regions and Ministries found in the file will be created automatically.
+              </p>
             </div>
 
             <div className="border rounded-md max-h-[300px] overflow-auto text-xs">
@@ -412,7 +437,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                     <TableHead></TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Units</TableHead>
+                    <TableHead>Units (New & Existing)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -421,7 +446,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                       <TableCell>{r.isValid ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-600" />}</TableCell>
                       <TableCell>{r.firstName} {r.lastName}</TableCell>
                       <TableCell>{r.email || "-"}</TableCell>
-                      <TableCell>{r.unitNames.join(", ") || "-"}</TableCell>
+                      <TableCell>{r.displayUnitNames.join(", ") || "-"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -226,8 +226,13 @@ export const createBulk = mutation({
             avatar_url: v.optional(v.string()),
             organization_id: v.optional(v.id("organizations")),
             user_id: v.optional(v.id("users")),
+            // Dynamic units to assign/create
+            units: v.optional(v.array(v.object({
+                name: v.string(),
+                type: v.string() // 'geographic', 'functional', etc.
+            })))
         })),
-        target_unit_id: v.optional(v.id("units")),
+        target_unit_id: v.optional(v.id("units")), // Optional: assign all to this existing unit
         organization_id: v.optional(v.id("organizations"))
     },
     handler: async (ctx, args) => {
@@ -235,20 +240,84 @@ export const createBulk = mutation({
         await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
 
+        if (!orgId) {
+            throw new Error("Organization ID is required for bulk upload");
+        }
+
+        // 1. Analyze all units in the batch to find unique ones
+        const unitsToResolve = new Map<string, string>(); // name -> type
+        for (const m of args.members) {
+            if (m.units) {
+                for (const u of m.units) {
+                    // normalize name key
+                    unitsToResolve.set(u.name.trim(), u.type);
+                }
+            }
+        }
+
+        // 2. Resolve existing units
+        const unitNameMap = new Map<string, Id<"units">>();
+        const existingUnits = await ctx.db
+            .query("units")
+            .withIndex("by_org", q => q.eq("organization_id", orgId))
+            .collect();
+
+        for (const u of existingUnits) {
+            unitNameMap.set(u.name.toLowerCase().trim(), u._id);
+        }
+
+        // 3. Create missing units
+        for (const [name, type] of unitsToResolve.entries()) {
+            const lowerName = name.toLowerCase();
+            if (!unitNameMap.has(lowerName)) {
+                // Create new unit
+                const newUnitId = await ctx.db.insert("units", {
+                    name: name,
+                    type: type,
+                    organization_id: orgId,
+                    active: true,
+                    description: "Auto-created via bulk upload"
+                });
+                unitNameMap.set(lowerName, newUnitId);
+            }
+        }
+
+        // 4. Create members and link units
         for (const memberData of args.members) {
+            const { units, ...coreMemberData } = memberData;
+
             const memberId = await ctx.db.insert("members", {
-                ...memberData,
+                ...coreMemberData,
                 organization_id: orgId ?? memberData.organization_id,
             });
             results.push(memberId);
 
+            // Collect unit IDs to link
+            const unitIdsToLink = new Set<Id<"units">>();
+
+            // Add implicit target unit if provided
             if (args.target_unit_id) {
-                await ctx.db.insert("member_units", {
-                    member_id: memberId,
-                    unit_id: args.target_unit_id,
-                    joined_date: new Date().toISOString(),
-                    is_active: true,
-                });
+                unitIdsToLink.add(args.target_unit_id);
+            }
+
+            // Add dynamic units
+            if (units) {
+                for (const u of units) {
+                    const id = unitNameMap.get(u.name.toLowerCase().trim());
+                    if (id) unitIdsToLink.add(id);
+                }
+            }
+
+            // Insert member_units
+            if (unitIdsToLink.size > 0) {
+                await Promise.all(Array.from(unitIdsToLink).map(uid =>
+                    ctx.db.insert("member_units", {
+                        member_id: memberId,
+                        unit_id: uid,
+                        joined_date: new Date().toISOString(),
+                        is_active: true
+                    })
+                ));
             }
         }
         return results;

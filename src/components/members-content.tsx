@@ -14,8 +14,7 @@ import { BulkUploadDialog } from "@/components/bulk-upload-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Member } from "@/types/database"
 import { cn } from "@/lib/utils"
-import { useOrganization } from "@clerk/clerk-react"
-import { Id } from "../../convex/_generated/dataModel"
+import { useOrganization } from "@/hooks/use-organization"
 
 interface MembersContentProps {
   initialMembers: Member[]
@@ -28,7 +27,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
   const { organization } = useOrganization()
-  const unitsData = useQuery(api.units.list, organization?.id ? {} : "skip");
+  const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
 
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]

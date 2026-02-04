@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useOrganization } from "@/hooks/use-organization"
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -70,10 +71,11 @@ interface PotentialLeader {
 export function LeaderInvitationSystem() {
   const { terminology } = useTerminology()
   const { toast } = useToast()
+  const { organization } = useOrganization()
 
   // Convex Queries
   const members = useQuery(api.members.getAll, {}) || []
-  const unitsData = useQuery(api.units.list, {});
+  const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
   const allUnits = unitsData || [];
   const users = useQuery(api.users.list) || []
   const invitations = useQuery(api.invitations.list, {}) || []

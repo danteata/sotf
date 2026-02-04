@@ -14,9 +14,11 @@ import { SettingsDialog } from "@/components/settings-dialog"
 import { EventTypesManagement } from "@/components/event-types-management"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
+import { useOrganization } from "@/hooks/use-organization"
 
 export function AdminContent() {
-  const allUnits = useQuery(api.units.list, {}) || []
+  const { organization } = useOrganization()
+  const allUnits = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip") || []
   const units = allUnits
 
   const isLoading = allUnits === undefined

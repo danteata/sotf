@@ -105,6 +105,8 @@ export const listByType = query({
     },
 });
 
+
+
 export const getRootUnits = query({
     args: { organization_id: v.id("organizations") },
     handler: async (ctx, args) => {

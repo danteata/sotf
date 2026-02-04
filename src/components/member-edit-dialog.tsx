@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { convertPlusCodeToLatLng } from "@/lib/google-maps-utils"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { useOrganization } from "@/hooks/use-organization"
 
 import {
   Dialog,
@@ -125,8 +126,11 @@ export function MemberEditDialog({
     },
   });
 
+  const { organization } = useOrganization()
   // Load all units using Convex
-  const unitsData = useQuery(api.units.list, open ? {} : "skip");
+  const unitsData = useQuery(api.units.listByOrg, open && organization?._id ? {
+    organization_id: organization._id
+  } : "skip");
   const updateMember = useMutation(api.members.update);
 
   useEffect(() => {
