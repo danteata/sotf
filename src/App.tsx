@@ -22,6 +22,7 @@ import OrganizationPage from "@/pages/organization/Organization";
 import SettingsPage from "@/pages/settings/Settings";
 import ProfilePage from "@/pages/profile/Profile";
 import AttendancePage from "@/pages/attendance/Attendance";
+import MapPage from "@/pages/map/Map";
 import ReportsPage from "@/pages/reports/Reports";
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -143,6 +144,14 @@ export default function App() {
                     element={
                         <Protected>
                             <AttendancePage />
+                        </Protected>
+                    }
+                />
+                <Route
+                    path="/map"
+                    element={
+                        <Protected>
+                            <MapPage />
                         </Protected>
                     }
                 />
