@@ -176,6 +176,7 @@ export const create = mutation({
         longitude: v.optional(v.number()),
         plus_code: v.optional(v.string()),
         avatar_url: v.optional(v.string()),
+        user_id: v.optional(v.id("users")),
     },
     handler: async (ctx, args) => {
         await requireOrgAdmin(ctx);
@@ -224,6 +225,7 @@ export const createBulk = mutation({
             country: v.optional(v.string()),
             avatar_url: v.optional(v.string()),
             organization_id: v.optional(v.id("organizations")),
+            user_id: v.optional(v.id("users")),
         })),
         target_unit_id: v.optional(v.id("units")),
         organization_id: v.optional(v.id("organizations"))
@@ -277,6 +279,7 @@ export const update = mutation({
             longitude: v.optional(v.number()),
             plus_code: v.optional(v.string()),
             avatar_url: v.optional(v.string()),
+            user_id: v.optional(v.id("users")),
         }),
         unit_ids: v.optional(v.array(v.id("units"))), // All unit assignments
     },

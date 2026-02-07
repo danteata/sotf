@@ -73,10 +73,10 @@ export function LeaderInvitationSystem() {
 
   // Convex Queries
   const members = useQuery(api.members.getAll, {}) || []
-  const unitsData = useQuery(api.units.listByOrg, { organization_id: 'current_org' as any });
+  const unitsData = useQuery(api.units.list, {});
   const allUnits = unitsData || [];
   const users = useQuery(api.users.list) || []
-  const invitations = useQuery(api.invitations.list) || []
+  const invitations = useQuery(api.invitations.list, {}) || []
 
   // Convex Mutations
   const createInvitation = useMutation(api.invitations.create)

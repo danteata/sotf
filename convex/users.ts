@@ -26,13 +26,25 @@ export const store = mutation({
         const anyUser = await ctx.db.query("users").first();
         const role = anyUser ? "member" : "super_admin";
 
-        return await ctx.db.insert("users", {
+        const userId = await ctx.db.insert("users", {
             clerk_user_id: identity.subject,
             name: identity.name,
             email: identity.email!,
             role: role,
             active: true,
         });
+
+        // Try to link existing member by email
+        const member = await ctx.db
+            .query("members")
+            .withIndex("by_email", (q) => q.eq("email", identity.email!))
+            .first();
+
+        if (member && !member.user_id) {
+            await ctx.db.patch(member._id, { user_id: userId });
+        }
+
+        return userId;
     },
 });
 
@@ -64,11 +76,18 @@ export const current = query({
 
         if (!user) return null;
 
-        // Find linked member by email
-        const member = await ctx.db
+        // Find linked member by user_id first, then fallback to email (for transition)
+        let member = await ctx.db
             .query("members")
-            .withIndex("by_email", (q) => q.eq("email", user.email))
+            .withIndex("by_user_id", (q) => q.eq("user_id", user._id))
             .first();
+
+        if (!member) {
+            member = await ctx.db
+                .query("members")
+                .withIndex("by_email", (q) => q.eq("email", user.email))
+                .first();
+        }
 
         // Get leadership roles
         let unitLeaderships: any[] = [];
@@ -189,4 +208,27 @@ export const switchOrganization = mutation({
             organization_id: orgId,
         });
     },
+});
+
+export const migrateMemberLinks = mutation({
+    args: {},
+    handler: async (ctx) => {
+        await requireSuperAdmin(ctx);
+        const users = await ctx.db.query("users").collect();
+        let migratedCount = 0;
+
+        for (const user of users) {
+            const member = await ctx.db
+                .query("members")
+                .withIndex("by_email", q => q.eq("email", user.email))
+                .first();
+
+            if (member && !member.user_id) {
+                await ctx.db.patch(member._id, { user_id: user._id });
+                migratedCount++;
+            }
+        }
+
+        return { migratedCount };
+    }
 });

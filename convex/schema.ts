@@ -130,10 +130,12 @@ export default defineSchema({
         longitude: v.optional(v.number()),
         plus_code: v.optional(v.string()),
         avatar_url: v.optional(v.string()),
+        user_id: v.optional(v.id("users")),
     })
         .index("by_org", ["organization_id"])
         .index("by_email", ["email"])
-        .index("by_org_status", ["organization_id", "status"]),
+        .index("by_org_status", ["organization_id", "status"])
+        .index("by_user_id", ["user_id"]),
 
     // Many-to-many relationship between members and units
     member_units: defineTable({
@@ -208,7 +210,8 @@ export default defineSchema({
         invitation_token: v.string(),
         status: v.string(), // 'pending', 'accepted', 'revoked'
         expires_at: v.optional(v.number()),
-    }).index("by_token", ["invitation_token"]).index("by_email", ["email"]),
+        organization_id: v.id("organizations"),
+    }).index("by_token", ["invitation_token"]).index("by_email", ["email"]).index("by_org", ["organization_id"]),
 
     financial_transactions: defineTable({
         type: v.string(), // 'income' | 'expense'
