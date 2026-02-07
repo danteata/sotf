@@ -38,30 +38,36 @@ export function AttendanceContent() {
   }
 
   return (
-    <div className="flex flex-col gap-4 m-x-auto">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Attendance</h1>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-8 max-w-7xl mx-auto p-4 md:p-10">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">Attendance & Engagement</h1>
+          <p className="font-medium text-slate-500">
+            Monitor community participation and service dynamics
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            size="sm"
+            size="lg"
             onClick={refreshStats}
             disabled={isRefreshing}
+            className="rounded-xl border-slate-200 font-bold text-slate-600 bg-white shadow-sm hover:bg-slate-50 h-12"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+            {isRefreshing ? 'Syncing...' : 'Refresh Stats'}
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="lg" className="rounded-xl border-slate-200 font-bold text-slate-600 bg-white shadow-sm hover:bg-slate-50 h-12">
             <Download className="mr-2 h-4 w-4" />
-            Export Data
+            Export
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {[...Array(6)].map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="border-border/50 shadow-soft rounded-2xl overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <Skeleton className="h-4 w-24" />
                 <Skeleton className="h-4 w-4" />
@@ -74,121 +80,124 @@ export function AttendanceContent() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {/* Total Active Members */}
-          <Card>
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Registry</CardTitle>
+              <Users className="h-4 w-4 text-slate-300" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalActiveMembers || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Active church members
+              <div className="text-3xl font-black text-slate-900">{stats?.totalActiveMembers || 0}</div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                Verified Members
               </p>
             </CardContent>
           </Card>
 
           {/* This Week's Attendance */}
-          <Card>
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">This Week</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Week Engagement</CardTitle>
+              <Calendar className="h-4 w-4 text-slate-300" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.thisWeekTotal || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Total attendance this week
+              <div className="text-3xl font-black text-slate-900">{stats?.thisWeekTotal || 0}</div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                Current Attendance
               </p>
             </CardContent>
           </Card>
 
           {/* Weekly Growth Rate */}
-          <Card>
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Growth Index</CardTitle>
+              <TrendingUp className="h-4 w-4 text-slate-300" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${(stats?.weeklyGrowthRate || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={cn(
+                "text-3xl font-black",
+                (stats?.weeklyGrowthRate || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'
+              )}>
                 {(stats?.weeklyGrowthRate || 0) > 0 ? "+" : ""}
                 {(stats?.weeklyGrowthRate || 0).toFixed(1)}%
               </div>
-              <p className="text-xs text-muted-foreground">
-                Week-over-week change
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                Week over Week
               </p>
             </CardContent>
           </Card>
 
           {/* Attendance Rate */}
-          <Card>
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Participation</CardTitle>
+              <Target className="h-4 w-4 text-slate-300" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{(stats?.attendanceRate || 0).toFixed(1)}%</div>
-              <p className="text-xs text-muted-foreground">
-                Of total members
+              <div className="text-3xl font-black text-slate-900">{(stats?.attendanceRate || 0).toFixed(1)}%</div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                Resource Utilization
               </p>
             </CardContent>
           </Card>
 
           {/* Recent Activity */}
-          <Card>
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Operational Days</CardTitle>
+              <Activity className="h-4 w-4 text-slate-300" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.recentActivityDays || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Active days (30 days)
+              <div className="text-3xl font-black text-slate-900">{stats?.recentActivityDays || 0}</div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                Last 30 Days
               </p>
             </CardContent>
           </Card>
 
           {/* Total Records */}
-          <Card>
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">Total Records</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Data Points</CardTitle>
+              <BarChart3 className="h-4 w-4 text-slate-300" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalRecords || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Attendance records
+              <div className="text-3xl font-black text-slate-900">{stats?.totalRecords || 0}</div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+                Total Logs
               </p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <Tabs defaultValue="record" className="w-full">
-        <TabsList className="grid grid-cols-4 w-full bg-muted p-1 rounded-md">
+      <Tabs defaultValue="record" className="w-full space-y-8">
+        <TabsList className="bg-slate-100/50 p-1.5 rounded-2xl w-full md:w-auto inline-flex shadow-sm border border-slate-100">
           {[
             {
               value: "record",
-              icon: <PlusCircle className="h-5 w-5 sm:h-4 sm:w-4" />,
+              icon: <PlusCircle className="h-4 w-4" />,
               label: "Attendance",
               prefix: "Record"
             },
             {
               value: "history",
-              icon: <History className="h-5 w-5 sm:h-4 sm:w-4" />,
-              label: "History",
-              prefix: "Attendance"
+              icon: <History className="h-4 w-4" />,
+              label: "Logs",
+              prefix: "Full"
             },
             {
               value: "absent",
-              icon: <UserMinus className="h-5 w-5 sm:h-4 sm:w-4" />,
-              label: "Members",
-              prefix: "Absent"
+              icon: <UserMinus className="h-4 w-4" />,
+              label: "Analytics",
+              prefix: "Absence"
             },
             {
               value: "metadata",
-              icon: <BarChart3 className="h-5 w-5 sm:h-4 sm:w-4" />,
-              label: "Metadata",
+              icon: <BarChart3 className="h-4 w-4" />,
+              label: "Summaries",
               prefix: "Service"
             }
           ].map((tab) => (
@@ -196,65 +205,73 @@ export function AttendanceContent() {
               key={tab.value}
               value={tab.value}
               className={cn(
-                "h-16 sm:h-10",
-                "rounded-sm",
-                "text-xs sm:text-sm",
-                "data-[state=active]:bg-primary",
-                "data-[state=active]:text-primary-foreground",
-                "transition-colors duration-200",
-                "hover:bg-muted-foreground/10",
-                "w-full"
+                "h-11 rounded-xl px-6",
+                "text-sm font-bold",
+                "data-[state=active]:bg-white",
+                "data-[state=active]:text-slate-900",
+                "data-[state=active]:shadow-soft",
+                "transition-all duration-200",
+                "text-slate-500",
+                "hover:text-slate-700"
               )}
             >
-              {tab.icon}
-              <span className="mt-1 sm:mt-0 sm:ml-2">
-                <span className="hidden sm:inline">{tab.prefix} </span>
-                {tab.label}
+              <span className="flex items-center gap-2">
+                {tab.icon}
+                <span>{tab.prefix} {tab.label}</span>
               </span>
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="record" className="space-y-4 pt-4">
-          <AttendanceForm
-            availableMembers={members}
-            availableUnits={ministries}
-          />
-        </TabsContent>
 
-        <TabsContent value="history" className="space-y-4 pt-4">
-          <AttendanceHistory
-            availableUnits={ministries}
-            filtersLoading={filtersLoading}
-          />
-        </TabsContent>
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <TabsContent value="record" className="space-y-4 outline-none">
+            <AttendanceForm
+              availableMembers={members}
+              availableUnits={ministries}
+            />
+          </TabsContent>
 
-        <TabsContent value="absent" className="space-y-4 pt-4">
-          <AbsentMembers />
-        </TabsContent>
+          <TabsContent value="history" className="space-y-4 outline-none">
+            <AttendanceHistory
+              availableUnits={ministries}
+              filtersLoading={filtersLoading}
+            />
+          </TabsContent>
 
-        <TabsContent value="metadata" className="space-y-4 pt-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">Service Summary</h2>
-              <p className="text-muted-foreground">
-                Record attendance and service information for church services
-              </p>
+          <TabsContent value="absent" className="space-y-4 outline-none">
+            <AbsentMembers />
+          </TabsContent>
+
+          <TabsContent value="metadata" className="space-y-6 outline-none">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-8 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+              <div className="space-y-1 text-center sm:text-left">
+                <h2 className="text-xl font-black tracking-tight text-slate-900">Service Metadata Repository</h2>
+                <p className="text-slate-500 font-medium text-sm">
+                  Document service specifics, speaker metrics, and qualitative outcomes
+                </p>
+              </div>
+              <Button
+                onClick={() => setShowMetadataDialog(true)}
+                className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold h-11 px-8 shadow-soft"
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Initialize Summary
+              </Button>
             </div>
-            <Button onClick={() => setShowMetadataDialog(true)}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Service Summary
-            </Button>
-          </div>
 
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-muted-foreground">
-                Service summary includes attendance numbers, speaker information, message details, and conversion metrics.
-                This information helps track the impact and effectiveness of church services.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
+              <CardContent className="p-10 text-center space-y-4">
+                <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                  <BarChart3 className="h-8 w-8" />
+                </div>
+                <h3 className="text-lg font-black tracking-tight text-slate-900">Data Rich Summaries</h3>
+                <p className="text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
+                  Integrate conversion metrics, message themes, and speaker effectiveness data into your attendance records for a complete picture of church vitality.
+                </p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </div>
       </Tabs>
 
       <ServiceMetadataSummaryDialog
@@ -265,11 +282,10 @@ export function AttendanceContent() {
         }}
         summary={editingMetadata}
         onSave={async (summaryData: any) => {
-          // This will need more logic once service_metadata is in Convex
           console.log("Saving service metadata", summaryData);
           setShowMetadataDialog(false);
         }}
-        events={[]} // Fetch events from Convex if needed
+        events={[]}
         members={members.map(m => ({ id: m.id, name: m.name, units: m.unit_names || [] }))}
       />
     </div>

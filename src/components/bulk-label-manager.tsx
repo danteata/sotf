@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tag, Plus, Users, Check, X, AlertTriangle, Search, Trash2, Info } from "lucide-react"
+import { Tag, Plus, Users, Check, X, AlertTriangle, Search, Trash2, Info, RefreshCw } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -91,107 +91,107 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
     return (
         <div className="space-y-8 flex flex-col h-full">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-muted/20 border-3 border-black rounded-2xl shadow-brutal-sm">
-                <div className="h-16 w-16 bg-black text-white flex items-center justify-center rounded-xl shrink-0 shadow-brutal-sm">
+            <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-slate-50/50 border border-slate-100 rounded-[32px]">
+                <div className="h-16 w-16 bg-slate-900 text-white flex items-center justify-center rounded-2xl shrink-0 shadow-soft">
                     <Users className="h-8 w-8" />
                 </div>
                 <div className="space-y-1 text-center md:text-left">
-                    <h3 className="text-2xl font-black uppercase tracking-tight">Mass Categorization</h3>
-                    <p className="text-muted-foreground font-bold uppercase text-[10px] flex items-center gap-2 justify-center md:justify-start">
-                        <Tag className="h-3 w-3" /> Targeted update for {selectedMembers.length} entities
+                    <h3 className="text-2xl font-black tracking-tight text-slate-900">Mass Classification</h3>
+                    <p className="text-slate-500 font-medium text-sm flex items-center gap-2 justify-center md:justify-start">
+                        <Tag className="h-3.5 w-3.5 text-slate-400" /> Targeted update for {selectedMembers.length} members
                     </p>
                 </div>
 
-                <div className="flex flex-wrap gap-1 justify-center md:justify-end flex-1 max-w-md">
+                <div className="flex flex-wrap gap-1.5 justify-center md:justify-end flex-1 max-w-md">
                     {selectedMembers.slice(0, 8).map((member) => (
-                        <Badge key={member._id} variant="outline" className="border-2 border-black font-black uppercase text-[8px] bg-white">
+                        <Badge key={member._id} variant="secondary" className="bg-white border border-slate-200 text-slate-600 font-bold text-[10px] px-2 py-0.5 rounded-lg shadow-sm">
                             {member.name}
                         </Badge>
                     ))}
                     {selectedMembers.length > 8 && (
-                        <Badge className="bg-black text-white font-black uppercase text-[8px] border-2 border-black">
-                            +{selectedMembers.length - 8} MORE
+                        <Badge className="bg-slate-100 text-slate-500 font-bold text-[10px] border-0 rounded-lg">
+                            +{selectedMembers.length - 8} More
                         </Badge>
                     )}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 flex-1 overflow-hidden">
                 {/* Left Column: Configuration */}
-                <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
                     <div className="space-y-4">
-                        <UILabel className="font-black uppercase text-xs tracking-widest pl-1">Operation Strategy</UILabel>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Configuration Strategy</Label>
                         <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
-                            <SelectTrigger className="h-14 border-4 border-black font-black uppercase shadow-brutal-sm bg-white">
+                            <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold bg-white focus:ring-slate-900">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="border-4 border-black rounded-xl shadow-brutal">
-                                <SelectItem value="add" className="font-bold uppercase text-xs py-3">
+                            <SelectContent className="border border-border/50 rounded-xl shadow-soft-2xl">
+                                <SelectItem value="add" className="font-bold text-sm py-3 rounded-lg focus:bg-slate-50">
                                     <div className="flex items-center gap-3">
-                                        <Plus className="h-4 w-4 text-green-600" /> Append New Labels
+                                        <Plus className="h-4 w-4 text-emerald-500" /> Append New Labels
                                     </div>
                                 </SelectItem>
-                                <SelectItem value="remove" className="font-bold uppercase text-xs py-3">
+                                <SelectItem value="remove" className="font-bold text-sm py-3 rounded-lg focus:bg-slate-50">
                                     <div className="flex items-center gap-3">
-                                        <Trash2 className="h-4 w-4 text-red-600" /> Prune Specific Labels
+                                        <Trash2 className="h-4 w-4 text-rose-500" /> Remove Specific Labels
                                     </div>
                                 </SelectItem>
-                                <SelectItem value="replace" className="font-bold uppercase text-xs py-3">
+                                <SelectItem value="replace" className="font-bold text-sm py-3 rounded-lg focus:bg-slate-50">
                                     <div className="flex items-center gap-3">
-                                        <Tag className="h-4 w-4 text-primary" /> Wipe and Re-Categorize
+                                        <Tag className="h-4 w-4 text-slate-400" /> Override All Labels
                                     </div>
                                 </SelectItem>
                             </SelectContent>
                         </Select>
 
                         <div className={cn(
-                            "p-4 border-3 border-black rounded-xl font-bold uppercase text-[10px] flex items-start gap-3",
-                            operation === 'add' ? "bg-green-50 text-green-900" :
-                                operation === 'remove' ? "bg-red-50 text-red-900" : "bg-primary/10 text-primary-900"
+                            "p-4 border rounded-2xl font-medium text-xs flex items-start gap-3 leading-relaxed",
+                            operation === 'add' ? "bg-emerald-50/50 border-emerald-100 text-emerald-800" :
+                                operation === 'remove' ? "bg-rose-50/50 border-rose-100 text-rose-800" : "bg-slate-50 border-slate-100 text-slate-600"
                         )}>
                             <AlertTriangle className="h-5 w-5 shrink-0" />
                             <span>
-                                {operation === 'add' && 'Labels will be merged with existing categorization. duplicates prevented.'}
-                                {operation === 'remove' && 'Specified labels will be stripped from all target members.'}
-                                {operation === 'replace' && 'DESTRUCTIVE: all existing member labels will be purged before applying new selection.'}
+                                {operation === 'add' && 'Labels will be integrated with existing data. System avoids duplicates automatically.'}
+                                {operation === 'remove' && 'Selected labels will be detached from all members in the current selection.'}
+                                {operation === 'replace' && 'Caution: This will purge existing member labels before applying the new selection.'}
                             </span>
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <UILabel className="font-black uppercase text-xs tracking-widest pl-1">Execution Notes</UILabel>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Documentation Notes</Label>
                         <Textarea
-                            placeholder="Reason for mass update..."
+                            placeholder="Provide rationale for this mass update..."
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={4}
-                            className="border-3 border-black font-bold text-sm resize-none shadow-brutal-sm bg-white"
+                            className="rounded-xl border-slate-200 font-medium text-sm resize-none bg-white focus:ring-slate-900"
                         />
                     </div>
                 </div>
 
                 {/* Right Column: Inventory Selection */}
-                <div className="flex flex-col border-4 border-black rounded-3xl overflow-hidden bg-muted/10 h-full max-h-[500px]">
-                    <div className="p-4 border-b-4 border-black bg-white flex items-center gap-3">
-                        <Search className="h-5 w-5 text-muted-foreground" />
+                <div className="flex flex-col border border-border/50 rounded-[32px] overflow-hidden bg-slate-50/30 h-full max-h-[500px] shadow-soft">
+                    <div className="p-4 border-b border-border/50 bg-white/50 backdrop-blur-sm flex items-center gap-3">
+                        <Search className="h-5 w-5 text-slate-400" />
                         <Input
-                            placeholder="FILTER TAXONOMY..."
+                            placeholder="Filter Taxonomy..."
                             value={searchValue}
                             onChange={(e) => setSearchValue(e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 font-black uppercase text-xs p-0 bg-transparent h-auto"
+                            className="border-0 shadow-none focus-visible:ring-0 font-bold text-sm p-0 bg-transparent h-auto"
                         />
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
                         {Object.keys(groupedLabels).length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center opacity-30 text-center space-y-2">
-                                <Info className="h-10 w-10" />
-                                <p className="font-black uppercase text-xs italic">No matching protocols</p>
+                            <div className="h-full flex flex-col items-center justify-center opacity-40 text-center space-y-2 py-12">
+                                <Info className="h-10 w-10 text-slate-300" />
+                                <p className="font-bold text-sm text-slate-400">No matching labels found</p>
                             </div>
                         ) : (
                             Object.entries(groupedLabels).map(([category, labels]) => (
-                                <div key={category} className="space-y-3">
-                                    <h4 className="font-black uppercase text-[10px] tracking-widest pl-1 text-muted-foreground">
+                                <div key={category} className="space-y-4">
+                                    <h4 className="font-black uppercase text-[10px] tracking-widest pl-1 text-slate-400">
                                         {category}
                                     </h4>
                                     <div className="grid grid-cols-1 gap-2">
@@ -201,25 +201,25 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                                                 <div
                                                     key={label._id}
                                                     className={cn(
-                                                        "flex items-center gap-4 p-4 rounded-xl border-3 transition-all cursor-pointer group",
+                                                        "flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer group",
                                                         isSelected
-                                                            ? "border-black bg-black text-white shadow-brutal-sm translate-x-1"
-                                                            : "border-black/5 bg-white hover:border-black/40"
+                                                            ? "border-slate-900 bg-slate-900 text-white shadow-soft"
+                                                            : "border-border/10 bg-white hover:border-slate-200 hover:shadow-sm"
                                                     )}
                                                     onClick={() => handleLabelToggle(label)}
                                                 >
                                                     <div className={cn(
-                                                        "w-6 h-6 border-2 border-black flex items-center justify-center rounded-md transition-colors",
-                                                        isSelected ? "bg-primary text-black" : "bg-white"
+                                                        "w-6 h-6 border flex items-center justify-center rounded-lg transition-colors",
+                                                        isSelected ? "bg-white text-slate-900 border-white" : "bg-slate-50 border-slate-200"
                                                     )}>
                                                         {isSelected && <Check className="h-3.5 w-3.5 stroke-[4px]" />}
                                                     </div>
                                                     <div
-                                                        className="w-4 h-4 rounded-full shrink-0 border-2 border-black/10"
+                                                        className="w-4 h-4 rounded-full shrink-0 border border-black/5"
                                                         style={{ backgroundColor: label.color }}
                                                     />
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="font-black text-xs uppercase truncate">{label.name}</div>
+                                                        <div className="font-bold text-sm truncate">{label.name}</div>
                                                     </div>
                                                 </div>
                                             )
@@ -231,20 +231,22 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                     </div>
 
                     {selectedLabels.length > 0 && (
-                        <div className="p-4 border-t-4 border-black bg-black text-white">
-                            <div className="font-black uppercase text-[10px] tracking-widest mb-3 flex justify-between items-center">
-                                <span>ACTIVE PAYLOAD ({selectedLabels.length})</span>
-                                <button onClick={() => setSelectedLabels([])} className="hover:text-primary underline">CLEAR ALL</button>
+                        <div className="p-5 bg-slate-900 text-white animate-in slide-in-from-bottom duration-300">
+                            <div className="text-[10px] font-black uppercase tracking-wider mb-4 flex justify-between items-center text-slate-400">
+                                <span className="flex items-center gap-2">
+                                    <Tag className="h-3 w-3 text-slate-500" /> Active Payload ({selectedLabels.length})
+                                </span>
+                                <button onClick={() => setSelectedLabels([])} className="hover:text-white underline underline-offset-4 transition-colors">Clear All</button>
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {selectedLabels.map((label) => (
                                     <Badge
                                         key={label._id}
-                                        className="bg-white text-black font-black uppercase text-[8px] border-2 border-white hover:bg-primary transition-colors cursor-default"
+                                        className="bg-slate-800 text-white font-bold text-[10px] border border-slate-700 hover:bg-slate-700 transition-colors cursor-default py-1 px-2.5 rounded-lg flex items-center gap-2"
                                     >
-                                        <Tag className="w-2.5 h-2.5 mr-1" style={{ color: label.color }} />
+                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
                                         {label.name}
-                                        <X className="w-2.5 h-2.5 ml-1 cursor-pointer" onClick={(e) => {
+                                        <X className="w-3 h-3 ml-1 hover:text-slate-300 cursor-pointer" onClick={(e) => {
                                             e.stopPropagation();
                                             handleLabelToggle(label);
                                         }} />
@@ -257,24 +259,24 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
             </div>
 
             {/* Global Actions */}
-            <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t-4 border-black">
-                <Button variant="outline" onClick={onCancel} disabled={saving} className="h-14 px-8 border-4 border-black font-black uppercase text-sm rounded-2xl">
-                    Abort Mission
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
+                <Button variant="ghost" onClick={onCancel} disabled={saving} className="h-12 px-8 font-bold text-slate-500 rounded-xl">
+                    Cancel Operation
                 </Button>
                 <Button
                     onClick={handleBulkOperation}
                     disabled={saving || selectedLabels.length === 0}
-                    className="h-14 px-12 border-4 border-black bg-primary text-black hover:bg-primary shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all rounded-2xl font-black uppercase min-w-[300px]"
+                    className="h-12 px-10 bg-slate-900 text-white hover:bg-slate-800 shadow-soft-xl rounded-xl font-bold transition-all min-w-[240px]"
                 >
                     {saving ? (
                         <div className="flex items-center gap-3">
-                            <div className="animate-spin rounded-full h-5 w-5 border-4 border-black border-b-transparent"></div>
-                            EXECUTING...
+                            <RefreshCw className="h-4 w-4 animate-spin" />
+                            Applying Changes...
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
-                            <Check className="h-6 w-6 stroke-[3px]" />
-                            DEPLOY TO {selectedMembers.length} MEMBERS
+                            <Check className="h-5 w-5 stroke-[3px]" />
+                            Update {selectedMembers.length} Members
                         </div>
                     )}
                 </Button>
@@ -298,18 +300,24 @@ export function BulkLabelDialog({ selectedMembers, trigger }: {
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
-            <DialogContent className="max-w-5xl h-[95vh] p-0 border-6 border-black shadow-brutal rounded-[40px] overflow-hidden">
-                <div className="flex flex-col h-full">
-                    <DialogHeader className="p-8 bg-black text-white shrink-0">
-                        <DialogTitle className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-                            <Tag className="h-8 w-8 text-primary fill-primary" />
-                            COMMAND CENTER: BULK TAXONOMY
-                        </DialogTitle>
-                        <DialogDescription className="text-white/40 font-bold uppercase text-xs">
-                            High-level member classification interface
-                        </DialogDescription>
+            <DialogContent className="max-w-5xl h-[90vh] p-0 border border-border/50 shadow-soft-2xl rounded-[40px] overflow-hidden">
+                <div className="flex flex-col h-full bg-white">
+                    <DialogHeader className="p-10 pb-6 shrink-0 space-y-2">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-slate-900 rounded-2xl shadow-soft">
+                                <Tag className="h-7 w-7 text-white" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-3xl font-black tracking-tight text-slate-900">
+                                    Bulk Classification
+                                </DialogTitle>
+                                <DialogDescription className="font-medium text-slate-500 text-sm">
+                                    Apply taxonomy updates across multiple member profiles simultaneously
+                                </DialogDescription>
+                            </div>
+                        </div>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-10 bg-white">
+                    <div className="flex-1 overflow-y-auto p-10 pt-4 px-12">
                         <BulkLabelManager
                             selectedMembers={selectedMembers}
                             onComplete={() => setOpen(false)}

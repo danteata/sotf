@@ -54,78 +54,97 @@ export function AttendanceTrends() {
   const hasComparisonData = Array.isArray(eventComparisonData) && eventComparisonData.length > 0
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-foreground">Engagement Analytics</h2>
-        <p className="text-muted-foreground flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-primary" /> Quantifying the growth of your community
+        <h2 className="text-3xl font-black tracking-tight text-slate-900">Engagement Analytics</h2>
+        <p className="text-slate-500 font-medium flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-emerald-500" /> Quantifying community growth and service dynamics
         </p>
       </div>
 
-      <Tabs defaultValue="weekly" className="w-full space-y-6">
-        <TabsList className="bg-muted/50 p-1 rounded-xl w-full md:w-auto inline-flex">
-          <TabsTrigger value="weekly" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">Weekly Dynamics</TabsTrigger>
-          <TabsTrigger value="monthly" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">Monthly Trajectory</TabsTrigger>
-          <TabsTrigger value="comparison" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">Comparisons</TabsTrigger>
+      <Tabs defaultValue="weekly" className="w-full space-y-10">
+        <TabsList className="bg-slate-100/50 p-1.5 rounded-2xl w-full md:w-auto inline-flex shadow-sm border border-slate-100">
+          <TabsTrigger value="weekly" className="rounded-xl px-6 py-2.5 font-bold text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-soft transition-all">Weekly Dynamics</TabsTrigger>
+          <TabsTrigger value="monthly" className="rounded-xl px-6 py-2.5 font-bold text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-soft transition-all">Monthly Trajectory</TabsTrigger>
+          <TabsTrigger value="comparison" className="rounded-xl px-6 py-2.5 font-bold text-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-soft transition-all">Comparisons</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="weekly" className="space-y-6 animate-in fade-in duration-500">
-          <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
-            <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
-              <CardTitle className="text-xl font-semibold flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                  <Calendar className="h-5 w-5" />
+        <TabsContent value="weekly" className="space-y-10 animate-in fade-in duration-500 outline-none">
+          <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-white hover:shadow-soft-2xl transition-all duration-300">
+            <CardHeader className="p-8 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-soft">
+                  <Calendar className="h-6 w-6" />
                 </div>
-                Sunday Service Trends
-              </CardTitle>
-              <CardDescription>Pulse of the community over the last 11 weeks</CardDescription>
+                <div>
+                  <CardTitle className="text-xl font-black tracking-tight text-slate-900">Weekly Engagement Profile</CardTitle>
+                  <CardDescription className="font-medium text-slate-500 text-sm">Quantifying participation levels over the last 11 weeks</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-10 pt-4">
               {hasWeeklyData ? (
-                <div className="h-[400px]">
+                <div className="h-[450px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
-                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                        dy={10}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.95)",
-                          border: "1px solid rgba(0,0,0,0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          backgroundColor: '#fff',
+                          borderRadius: '16px',
+                          border: '1px solid #f1f5f9',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                          fontWeight: 700,
+                          fontSize: '12px'
                         }}
                       />
-                      <Legend />
+                      <Legend
+                        verticalAlign="top"
+                        align="right"
+                        iconType="circle"
+                        formatter={(value) => <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">{value}</span>}
+                      />
                       <Line
                         type="monotone"
                         dataKey="count"
                         name="Attendees"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "#fff" }}
-                        activeDot={{ r: 8, strokeWidth: 0 }}
+                        stroke="#0f172a"
+                        strokeWidth={4}
+                        dot={{ r: 6, fill: "#0f172a", strokeWidth: 3, stroke: "#fff" }}
+                        activeDot={{ r: 8, strokeWidth: 4, stroke: "#fff" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
-                  No weekly attendance data available yet.
+                <div className="h-[400px] flex items-center justify-center text-sm text-slate-400 font-bold uppercase tracking-widest bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  Insufficient Weekly Data
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
-              <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
-                <CardTitle className="text-lg font-semibold">Growth Momentum</CardTitle>
-                <CardDescription>Percentage variance week-over-week</CardDescription>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-white">
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-lg font-black tracking-tight text-slate-900">Growth Velocity</CardTitle>
+                <CardDescription className="font-medium text-slate-500 text-sm">Iterative percentage variance week-over-week</CardDescription>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-8 pt-4">
                 {hasWeeklyData ? (
-                  <div className="h-[300px]">
+                  <div className="h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={weeklyData.slice(1).map((week, index) => ({
@@ -134,83 +153,118 @@ export function AttendanceTrends() {
                             parseFloat((((week.count - weeklyData[index].count) / weeklyData[index].count) * 100).toFixed(1)) : 0
                         }))}
                       >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="#888888" />
-                        <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                          dy={5}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                        />
                         <Tooltip
-                          cursor={{ fill: 'transparent' }}
+                          cursor={{ fill: '#f8fafc' }}
                           contentStyle={{
-                            backgroundColor: "rgba(255, 255, 255, 0.95)",
-                            border: "1px solid rgba(0,0,0,0.1)",
-                            borderRadius: "8px",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            backgroundColor: '#fff',
+                            borderRadius: '16px',
+                            border: '1px solid #f1f5f9',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            fontWeight: 700
                           }}
                         />
-                        <Bar dataKey="growth" name="Growth %" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.8} />
+                        <Bar
+                          dataKey="growth"
+                          name="Growth %"
+                          fill="#0f172a"
+                          radius={[8, 8, 0, 0]}
+                          barSize={32}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-                    Not enough data to calculate growth yet.
+                  <div className="h-[300px] flex items-center justify-center text-sm text-slate-300 font-bold uppercase tracking-widest">
+                    Awaiting Growth Metrics
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
-              <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
-                <CardTitle className="text-lg font-semibold">Community Composition</CardTitle>
-                <CardDescription>Demographic distribution (Coming soon)</CardDescription>
+            <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-white border-dashed">
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-lg font-black tracking-tight text-slate-900">Demographic Intel</CardTitle>
+                <CardDescription className="font-medium text-slate-500 text-sm">Compositional breakdown (In development)</CardDescription>
               </CardHeader>
-              <CardContent className="p-6">
-                <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-                  Demographic breakdown will appear once member profiles include age groups.
+              <CardContent className="p-8 pt-4">
+                <div className="h-[300px] flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="h-16 w-16 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center">
+                    <PieChartIcon className="h-8 w-8" />
+                  </div>
+                  <p className="text-sm font-medium text-slate-400 max-w-[240px]">
+                    Detailed demographic analytics will be activated upon enrichment of member profile data.
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="monthly" className="space-y-6 animate-in fade-in duration-500">
-          <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
-            <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
-              <CardTitle className="text-xl font-semibold flex items-center gap-3">
-                <div className="p-2 bg-secondary/10 rounded-lg text-secondary">
-                  <BarChart3 className="h-5 w-5" />
+        <TabsContent value="monthly" className="space-y-10 animate-in fade-in duration-500 outline-none">
+          <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-white">
+            <CardHeader className="p-8 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-slate-100 text-slate-900 rounded-2xl flex items-center justify-center shadow-soft">
+                  <BarChart3 className="h-6 w-6" />
                 </div>
-                Monthly Aggregate
-              </CardTitle>
-              <CardDescription>Strategic vision over the past 12 months</CardDescription>
+                <div>
+                  <CardTitle className="text-xl font-black tracking-tight text-slate-900">Monthly Yield Trajectory</CardTitle>
+                  <CardDescription className="font-medium text-slate-500 text-sm">Strategic engagement benchmarks over the last 12-month cycle</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-10 pt-4">
               {hasMonthlyData ? (
-                <div className="h-[400px]">
+                <div className="h-[450px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                       <defs>
                         <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#0f172a" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="#0f172a" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
-                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                        dy={10}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.95)",
-                          border: "1px solid rgba(0,0,0,0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          backgroundColor: '#fff',
+                          borderRadius: '16px',
+                          border: '1px solid #f1f5f9',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                          fontWeight: 700
                         }}
                       />
                       <Area
                         type="monotone"
                         dataKey="count"
-                        name="Attendance"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={3}
+                        name="Aggregate Attendance"
+                        stroke="#0f172a"
+                        strokeWidth={4}
                         fillOpacity={1}
                         fill="url(#colorCount)"
                       />
@@ -218,48 +272,66 @@ export function AttendanceTrends() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
-                  No monthly attendance data available yet.
+                <div className="h-[400px] flex items-center justify-center text-sm text-slate-400 font-bold uppercase tracking-widest bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  Historical Log Deficit
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="comparison" className="space-y-6 animate-in fade-in duration-500">
-          <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
-            <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
-              <CardTitle className="text-xl font-semibold flex items-center gap-3">
-                <div className="p-2 bg-accent/10 rounded-lg text-accent-foreground">
-                  <PieChartIcon className="h-5 w-5" />
+        <TabsContent value="comparison" className="space-y-10 animate-in fade-in duration-500 outline-none">
+          <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-white">
+            <CardHeader className="p-8 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-soft">
+                  <PieChartIcon className="h-6 w-6" />
                 </div>
-                Comparative Analysis
-              </CardTitle>
-              <CardDescription>Relative performance of all active event protocols</CardDescription>
+                <div>
+                  <CardTitle className="text-xl font-black tracking-tight text-slate-900">Comparative Engagement</CardTitle>
+                  <CardDescription className="font-medium text-slate-500 text-sm">Cross-protocol performance and utilization metrics</CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-10 pt-4">
               {hasComparisonData ? (
-                <div className="h-[400px]">
+                <div className="h-[450px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={eventComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#888888" />
-                      <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                        dy={10}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
+                      />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "rgba(255, 255, 255, 0.95)",
-                          border: "1px solid rgba(0,0,0,0.1)",
-                          borderRadius: "8px",
-                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                          backgroundColor: '#fff',
+                          borderRadius: '16px',
+                          border: '1px solid #f1f5f9',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                          fontWeight: 700
                         }}
                       />
-                      <Legend iconType="circle" />
+                      <Legend
+                        verticalAlign="top"
+                        align="right"
+                        iconType="circle"
+                        formatter={(value) => <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">{value}</span>}
+                      />
                       {activeEventTypes.map((eventType, index) => (
                         <Bar
                           key={eventType.id}
                           dataKey={eventType.label}
-                          fill={eventType.color || `hsl(${index * 45 + 200}, 70%, 50%)`}
-                          radius={[4, 4, 0, 0]}
+                          fill={eventType.color || `hsl(${index * 45 + 210}, 30%, 40%)`}
+                          radius={[6, 6, 0, 0]}
                           stackId="a"
                         />
                       ))}
@@ -267,30 +339,31 @@ export function AttendanceTrends() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground">
-                  No event comparison data available yet.
+                <div className="h-[400px] flex items-center justify-center text-sm text-slate-400 font-bold uppercase tracking-widest bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  Insufficient Comparative Logs
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden hover:shadow-lg transition-all">
-              <CardHeader className="p-6 border-b border-border/50 bg-muted/20">
-                <CardTitle className="text-lg font-semibold">Event Impact Distribution</CardTitle>
-                <CardDescription>Percentage of total engagement by protocol</CardDescription>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-white">
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-lg font-black tracking-tight text-slate-900">Event Protocol Weight</CardTitle>
+                <CardDescription className="font-medium text-slate-500 text-sm">Engagement distribution by protocol category</CardDescription>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-8 pt-4">
                 {hasComparisonData ? (
-                  <div className="h-[300px]">
+                  <div className="h-[350px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: "rgba(255, 255, 255, 0.95)",
-                            border: "1px solid rgba(0,0,0,0.1)",
-                            borderRadius: "8px",
-                            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                            backgroundColor: '#fff',
+                            borderRadius: '16px',
+                            border: '1px solid #f1f5f9',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                            fontWeight: 700
                           }}
                         />
                         <Pie
@@ -300,36 +373,46 @@ export function AttendanceTrends() {
                           }))}
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={5}
+                          innerRadius={80}
+                          outerRadius={110}
+                          paddingAngle={8}
                           dataKey="value"
                         >
                           {activeEventTypes.map((et, index) => (
-                            <Cell key={index} fill={et.color || `hsl(${index * 45 + 200}, 70%, 50%)`} />
+                            <Cell key={index} fill={et.color || `hsl(${index * 45 + 210}, 30%, 40%)`} />
                           ))}
                         </Pie>
-                        <Legend verticalAlign="bottom" height={36} />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          iconType="circle"
+                          formatter={(value) => <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider ml-1">{value}</span>}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
-                    Event impact data will appear once services are recorded.
+                  <div className="h-[300px] flex items-center justify-center text-sm text-slate-300 font-bold uppercase tracking-widest">
+                    Awaiting Yield Data
                   </div>
                 )}
               </CardContent>
             </Card>
 
-            <div className="flex flex-col justify-center p-8 border border-dashed border-border rounded-3xl bg-muted/5">
-              <div className="space-y-4 text-center">
-                <div className="mx-auto h-12 w-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-                  <Info className="h-6 w-6" />
+            <div className="flex flex-col justify-center p-12 bg-slate-50/50 border border-dashed border-slate-200 rounded-[32px] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                <TrendingUp className="h-32 w-32 text-slate-900" />
+              </div>
+              <div className="space-y-6 text-left relative z-10">
+                <div className="h-14 w-14 bg-white shadow-soft rounded-2xl flex items-center justify-center text-slate-900 transform -rotate-3 border border-slate-100">
+                  <Info className="h-7 w-7" />
                 </div>
-                <h4 className="text-lg font-semibold">Analytics Insight</h4>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
-                  Data is aggregated in real-time. Seasonal variations and protocol changes are normalized for clear strategic review.
-                </p>
+                <div className="space-y-2">
+                  <h4 className="text-xl font-black tracking-tight text-slate-900">Analytics Foundation</h4>
+                  <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-sm">
+                    All engagement data is processed through rigorous validation protocols. Seasonal variations are normalized to ensure strategic accuracy for leadership review.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

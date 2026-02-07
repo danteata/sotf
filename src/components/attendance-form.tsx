@@ -156,35 +156,36 @@ export function AttendanceForm({
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Record Attendance</CardTitle>
-              <CardDescription>Select an event, date, and mark members who attended</CardDescription>
+    <div className="space-y-6">
+      <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
+        <CardHeader className="p-8 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-black tracking-tight text-slate-900">Record Participation</CardTitle>
+              <CardDescription className="font-medium text-slate-500">Log attendance by selecting an event protocol and verified members</CardDescription>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.location.reload()} // Simplified refresh
+              onClick={() => window.location.reload()}
+              className="rounded-xl border-slate-200 font-bold text-slate-500 h-9"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              Reset View
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-8 p-8 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2">
-              <Label htmlFor="event-type">Event Type</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Event Type</Label>
               <Select value={attendanceType || undefined} onValueChange={setAttendanceType}>
-                <SelectTrigger id="event-type">
-                  <SelectValue placeholder={eventTypesLoading ? "Loading..." : "Select event type"} />
+                <SelectTrigger className="h-12 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900">
+                  <SelectValue placeholder={eventTypesLoading ? "Loading Protocols..." : "Select Event Protocol"} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
                   {eventTypes.map((eventType) => (
-                    <SelectItem key={eventType.value} value={eventType.value}>
+                    <SelectItem key={eventType.value} value={eventType.value} className="font-medium py-3 rounded-lg focus:bg-slate-50">
                       {eventType.label}
                     </SelectItem>
                   ))}
@@ -192,19 +193,21 @@ export function AttendanceForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Occurrence Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    id="date"
                     variant="outline"
-                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                    className={cn(
+                      "w-full h-12 border-slate-200 rounded-xl font-medium justify-start text-slate-600 bg-white hover:bg-white hover:border-slate-300 transition-colors",
+                      !date && "text-slate-400"
+                    )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    <CalendarIcon className="mr-3 h-4 w-4 text-slate-400" />
+                    {date ? format(date, "PPP") : <span>Select Date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0 border-border/50 shadow-soft-2xl rounded-2xl" align="start">
                   <Calendar
                     mode="single"
                     selected={date}
@@ -219,96 +222,101 @@ export function AttendanceForm({
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="space-y-2 flex-1">
-              <Label>Filter by Unit</Label>
-              <Select value={unitFilter} onValueChange={setUnitFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Units</SelectItem>
-                  {availableUnits.map((unit: any) => (
-                    <SelectItem key={unit.id} value={unit.name}>
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="pt-4 space-y-4">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Member Registry</Label>
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="flex-1">
+                <Select value={unitFilter} onValueChange={setUnitFilter}>
+                  <SelectTrigger className="h-11 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900">
+                    <SelectValue placeholder="All Organizational Units" />
+                  </SelectTrigger>
+                  <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
+                    <SelectItem value="all" className="font-medium py-2.5 rounded-lg">All Organizational Units</SelectItem>
+                    {availableUnits.map((unit: any) => (
+                      <SelectItem key={unit.id} value={unit.name} className="font-medium py-2.5 rounded-lg">
+                        {unit.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="relative flex-[2]">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   type="search"
-                  placeholder="Search members..."
+                  placeholder="Filter by name or identifier..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
+                  className="pl-11 h-11 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900"
                 />
               </div>
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleSelectAll}
-                className="shrink-0"
+                className="h-11 rounded-xl border-slate-200 font-bold text-slate-600 px-6 shrink-0"
               >
                 {selectedMembers.length === filteredMembers.length
-                  ? "Deselect All"
-                  : "Select All"}
+                  ? "Clear Selections"
+                  : `Select All (${filteredMembers.length})`}
               </Button>
             </div>
 
-            <div className="rounded-md border">
+            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]">
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow className="hover:bg-transparent border-slate-100">
+                    <TableHead className="w-[60px] pl-6">
                       <Checkbox
                         checked={selectedMembers.length === filteredMembers.length && filteredMembers.length > 0}
                         onCheckedChange={handleSelectAll}
+                        className="rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
                       />
                     </TableHead>
-                    <TableHead className="min-w-[180px]">Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Phone</TableHead>
-                    <TableHead className="hidden md:table-cell">Units</TableHead>
+                    <TableHead className="min-w-[200px] font-black uppercase text-[10px] text-slate-400 tracking-wider">Member Profile</TableHead>
+                    <TableHead className="hidden md:table-cell font-black uppercase text-[10px] text-slate-400 tracking-wider text-center">Contact</TableHead>
+                    <TableHead className="hidden md:table-cell font-black uppercase text-[10px] text-slate-400 tracking-wider pl-4">Allocations</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredMembers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        No members found
+                      <TableCell colSpan={4} className="h-32 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2 opacity-50">
+                          <Search className="h-6 w-6 text-slate-300" />
+                          <p className="font-medium text-slate-400 text-sm">No members match your criteria</p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredMembers.map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell>
+                      <TableRow key={member.id} className="hover:bg-slate-50/50 transition-colors border-slate-100 last:border-0">
+                        <TableCell className="pl-6 py-4">
                           <Checkbox
                             checked={selectedMembers.includes(member.id)}
                             onCheckedChange={() => handleSelectMember(member.id)}
+                            className="rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
+                            <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-sm">
                               <AvatarImage src={member.avatar_url} alt={member.name} />
-                              <AvatarFallback>{member.name.substring(0, 2)}</AvatarFallback>
+                              <AvatarFallback className="bg-slate-100 text-slate-500 font-bold text-xs">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{member.name}</span>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-900">{member.name}</span>
+                              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tight">{member.id.substring(0, 8)}</span>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          {member.phone}
+                        <TableCell className="hidden md:table-cell py-4 text-center">
+                          <span className="text-sm font-medium text-slate-600">{member.phone || '–'}</span>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
-                          <div className="flex flex-wrap gap-1">
+                        <TableCell className="hidden md:table-cell py-4 pl-4">
+                          <div className="flex flex-wrap gap-1.5">
                             {(member.unit_names || member.units || []).map((m: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-[10px]">
+                              <Badge key={i} variant="secondary" className="bg-slate-50 text-slate-500 border border-slate-100 font-bold text-[10px] px-2 py-0.5 rounded-lg">
                                 {m}
                               </Badge>
                             ))}
@@ -322,23 +330,32 @@ export function AttendanceForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (Optional)</Label>
+          <div className="space-y-2 pt-4">
+            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Strategic Notes</Label>
             <Input
-              id="notes"
-              placeholder="Add any notes..."
+              placeholder="Internal observations or event specifics..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              className="h-12 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900"
             />
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="p-8 bt border-t border-slate-50 justify-end">
           <Button
             onClick={handleSaveAttendance}
             disabled={isSaving}
-            className="w-full"
+            className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold h-12 px-12 shadow-soft transition-all min-w-[240px]"
           >
-            {isSaving ? "Saving..." : "Save Attendance"}
+            {isSaving ? (
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Syncing Logs...
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                Commit {selectedMembers.length} Logs
+              </div>
+            )}
           </Button>
         </CardFooter>
       </Card>

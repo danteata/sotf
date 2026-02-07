@@ -140,29 +140,28 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
     }, [handleFileSelect]);
 
     return (
-        <div className="w-full space-y-6">
-            {/* Tactical Header */}
-            <div className="flex items-center justify-between px-2">
+        <div className="w-full space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <span className="font-black uppercase text-xs tracking-widest">SECURE_MEDIA_UPLINK</span>
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <span className="font-semibold text-xs tracking-tight text-slate-700">Secure File Upload</span>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Zap className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                    <span className="font-bold text-[10px] text-muted-foreground uppercase">CONVEX_NATIVE_ENCRYPTION</span>
+                    <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                    <span className="font-medium text-[10px] text-muted-foreground uppercase">Cloud Secured</span>
                 </div>
             </div>
 
             {/* Upload Area */}
             <div
                 className={`
-                    relative border-4 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all duration-300
+                    relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300
                     ${isDragOver
-                        ? 'border-primary bg-primary/5 shadow-brutal-sm translate-x-1 translate-y-1'
-                        : 'border-black hover:border-primary hover:bg-muted/30'
+                        ? 'border-primary bg-primary/5 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                     }
                     ${isUploading ? 'opacity-50 pointer-events-none' : ''}
-                    shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
                 `}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -180,55 +179,49 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                 <div className="flex flex-col items-center space-y-4">
                     {isUploading ? (
                         <>
-                            <Loader2 className="h-12 w-12 animate-spin text-primary stroke-[3px]" />
+                            <Loader2 className="h-10 w-10 animate-spin text-primary stroke-[2px]" />
                             <div className="space-y-1">
-                                <p className="text-lg font-black uppercase tracking-tighter">DATA_TRANSMISSION_IN_PROGRESS</p>
-                                <p className="text-xs font-bold text-muted-foreground uppercase italic">Syncing with encrypted storage nodes...</p>
+                                <p className="text-base font-bold text-slate-900">Uploading File...</p>
+                                <p className="text-xs text-muted-foreground">Connecting to secure storage...</p>
                             </div>
                         </>
                     ) : (
                         <>
-                            <div className="p-4 bg-muted rounded-full border-2 border-black group-hover:bg-primary transition-colors">
-                                <Upload className={`h-10 w-10 ${isDragOver ? 'text-black' : 'text-black/60'} stroke-[2.5px]`} />
+                            <div className="p-3 bg-slate-100 rounded-full group-hover:bg-primary/10 transition-colors">
+                                <Upload className={`h-8 w-8 ${isDragOver ? 'text-primary' : 'text-slate-500'} stroke-[2px]`} />
                             </div>
-                            <div className="space-y-2">
-                                <p className="text-xl font-black uppercase tracking-tight">
-                                    {isDragOver ? 'DROP_PAYLOAD' : 'INITIATE_UPLINK'}
+                            <div className="space-y-1">
+                                <p className="text-lg font-bold text-slate-900 tracking-tight">
+                                    {isDragOver ? 'Drop file here' : 'Click to upload'}
                                 </p>
-                                <p className="text-xs font-bold text-muted-foreground uppercase max-w-[200px] mx-auto leading-tight">
-                                    Drag and drop media or click to browse local directory
+                                <p className="text-sm text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
+                                    or drag and drop a JPG or PNG (max 4MB)
                                 </p>
-                                <div className="pt-2 flex items-center justify-center gap-3">
-                                    <span className="px-2 py-1 bg-black text-white text-[9px] font-black rounded-md">JPG</span>
-                                    <span className="px-2 py-1 bg-black text-white text-[9px] font-black rounded-md">PNG</span>
-                                    <span className="px-2 py-1 bg-black text-white text-[9px] font-black rounded-md">4MB_MAX</span>
-                                </div>
                             </div>
                         </>
                     )}
                 </div>
             </div>
 
-            {/* Preview Area (Simplified for now since storageId isn't a direct URL) */}
-            {/* In a real implementation, we'd use a ResolvingImage component */}
+            {/* Preview Area */}
             {imageUrl && (
-                <div className="p-6 border-4 border-black bg-muted rounded-2xl relative shadow-brutal-sm animate-in zoom-in duration-300">
-                    <div className="flex items-center gap-3 mb-4">
-                        <ImageIcon className="h-5 w-5" />
-                        <span className="font-black uppercase text-sm">PAYLOAD_PREVIEW_READY</span>
+                <div className="p-4 border border-border/50 bg-slate-50/50 rounded-xl relative shadow-sm animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center gap-2 mb-3">
+                        <ImageIcon className="h-4 w-4 text-slate-500" />
+                        <span className="font-semibold text-xs text-slate-700">File Preview</span>
                     </div>
-                    <div className="relative inline-block border-2 border-dashed border-black rounded-xl overflow-hidden bg-white/50">
-                        {/* Placeholder for preview until we resolve the storageId */}
-                        <div className="w-full h-40 flex flex-col items-center justify-center p-8 text-center gap-2">
-                            <ShieldCheck className="h-10 w-10 text-primary" />
-                            <p className="text-[10px] font-black uppercase max-w-[150px]">Media secured at Storage ID: {imageUrl.substring(0, 12)}...</p>
+                    <div className="relative inline-block border border-dashed border-border rounded-lg overflow-hidden bg-white/50">
+                        <div className="w-full h-32 flex flex-col items-center justify-center p-6 text-center gap-2">
+                            <ShieldCheck className="h-8 w-8 text-emerald-500" />
+                            <p className="text-[10px] font-medium text-slate-500">File secured successfully</p>
+                            <p className="text-[9px] font-mono text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-100">ID: {imageUrl.substring(0, 16)}...</p>
                         </div>
 
                         <Button
                             type="button"
-                            variant="destructive"
-                            size="sm"
-                            className="absolute top-2 right-2 border-2 border-black shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all rounded-lg h-8 w-8 p-0 bg-red-500"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-1 right-1 rounded-full h-7 w-7 p-0 hover:bg-red-50 hover:text-red-500 transition-colors"
                             onClick={() => {
                                 setImageUrl(null);
                                 if (onUploadComplete) {

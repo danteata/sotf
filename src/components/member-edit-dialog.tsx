@@ -42,7 +42,8 @@ import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileUploader } from "@/components/file-uploader"
-import { Upload, X } from "lucide-react"
+import { Upload, X, Shield } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -229,418 +230,423 @@ export function MemberEditDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[calc(100%-2rem)] sm:w-[700px] max-h-[90vh] overflow-y-auto p-4 sm:p-6"
+        className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[calc(100%-2rem)] sm:w-[700px] max-h-[90vh] overflow-y-auto p-0 border border-border/50 shadow-soft-xl overflow-hidden"
       >
-        <DialogHeader>
-          <DialogTitle>Edit Member</DialogTitle>
-          <DialogDescription>
-            Update member information. Click save when done.
+        <DialogHeader className="px-6 pt-6 pb-2">
+          <DialogTitle className="text-xl font-black tracking-tight">Edit Member Profile</DialogTitle>
+          <DialogDescription className="text-slate-500 font-medium">
+            Update personal information, unit assignments, and classification labels.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="basic" className="text-xs sm:text-sm">Basic Info</TabsTrigger>
-                <TabsTrigger value="contact" className="text-xs sm:text-sm">Contact</TabsTrigger>
-                <TabsTrigger value="photo" className="text-xs sm:text-sm">Photo</TabsTrigger>
-                <TabsTrigger value="unit" className="text-xs sm:text-sm">{unitLabels.single}</TabsTrigger>
-                <TabsTrigger value="labels" className="text-xs sm:text-sm">Labels</TabsTrigger>
-              </TabsList>
+          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-0">
+            <div className="px-6 pb-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-5 h-12 bg-slate-100/50 p-1 rounded-xl mb-6">
+                  <TabsTrigger value="basic" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white font-bold text-xs">General</TabsTrigger>
+                  <TabsTrigger value="contact" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white font-bold text-xs">Contact</TabsTrigger>
+                  <TabsTrigger value="photo" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white font-bold text-xs">Media</TabsTrigger>
+                  <TabsTrigger value="unit" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white font-bold text-xs">{unitLabels.single}</TabsTrigger>
+                  <TabsTrigger value="labels" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white font-bold text-xs">Tags</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="basic" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <FormField
-                    control={form.control as any}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-1">
-                        <FormLabel>Title</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <TabsContent value="basic" className="space-y-4 mt-0">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <FormField
+                      control={form.control as any}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-1">
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Title</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl border-border/50 shadow-soft">
+                              <SelectItem value="Mr">Mr</SelectItem>
+                              <SelectItem value="Mrs">Mrs</SelectItem>
+                              <SelectItem value="Ms">Ms</SelectItem>
+                              <SelectItem value="Dr">Dr</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control as any}
+                      name="first_name"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-3">
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">First Name</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select title" />
-                            </SelectTrigger>
+                            <Input {...field} className="rounded-xl border-slate-200 focus:ring-slate-400" />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Mr">Mr</SelectItem>
-                            <SelectItem value="Mrs">Mrs</SelectItem>
-                            <SelectItem value="Ms">Ms</SelectItem>
-                            <SelectItem value="Dr">Dr</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control as any}
-                    name="first_name"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-3">
-                        <FormLabel>First Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control as any}
-                    name="last_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control as any}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control as any}
+                      name="last_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Last Name</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
+                            <Input {...field} className="rounded-xl border-slate-200 focus:ring-slate-400" />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control as any}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Gender</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl border-border/50 shadow-soft">
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control as any}
+                    name="dob"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Date of Birth</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="rounded-xl border-slate-200" />
+                        </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-                <FormField
-                  control={form.control as any}
-                  name="dob"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of Birth</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control as any}
+                      name="birth_month"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Birth Month</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select month" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl border-border/50 shadow-soft">
+                              <SelectItem value="1">January</SelectItem>
+                              <SelectItem value="2">February</SelectItem>
+                              <SelectItem value="3">March</SelectItem>
+                              <SelectItem value="4">April</SelectItem>
+                              <SelectItem value="5">May</SelectItem>
+                              <SelectItem value="6">June</SelectItem>
+                              <SelectItem value="7">July</SelectItem>
+                              <SelectItem value="8">August</SelectItem>
+                              <SelectItem value="9">September</SelectItem>
+                              <SelectItem value="10">October</SelectItem>
+                              <SelectItem value="11">November</SelectItem>
+                              <SelectItem value="12">December</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control as any}
+                      name="birth_day"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Birth Day</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                            <FormControl>
+                              <SelectTrigger className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select day" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="rounded-xl border-border/50 shadow-soft">
+                              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                                <SelectItem key={day} value={day.toString()}>
+                                  {day}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                </TabsContent>
+
+                <TabsContent value="contact" className="space-y-4 mt-0">
                   <FormField
                     control={form.control as any}
-                    name="birth_month"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Birth Month</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Email Address</FormLabel>
+                        <FormControl>
+                          <Input type="email" {...field} className="rounded-xl border-slate-200" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control as any}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Contact Number</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="rounded-xl border-slate-200" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control as any}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Physical Address</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="rounded-xl border-slate-200" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control as any}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">City</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select month" />
-                            </SelectTrigger>
+                            <Input {...field} className="rounded-xl border-slate-200" />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="1">January</SelectItem>
-                            <SelectItem value="2">February</SelectItem>
-                            <SelectItem value="3">March</SelectItem>
-                            <SelectItem value="4">April</SelectItem>
-                            <SelectItem value="5">May</SelectItem>
-                            <SelectItem value="6">June</SelectItem>
-                            <SelectItem value="7">July</SelectItem>
-                            <SelectItem value="8">August</SelectItem>
-                            <SelectItem value="9">September</SelectItem>
-                            <SelectItem value="10">October</SelectItem>
-                            <SelectItem value="11">November</SelectItem>
-                            <SelectItem value="12">December</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control as any}
-                    name="birth_day"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Birth Day</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control as any}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">State / Region</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
+                            <Input {...field} className="rounded-xl border-slate-200" />
                           </FormControl>
-                          <SelectContent>
-                            {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                              <SelectItem key={day} value={day.toString()}>
-                                {day}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              </TabsContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control as any}
+                      name="zip"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Postal Code</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="rounded-xl border-slate-200" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control as any}
+                      name="country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Country</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="rounded-xl border-slate-200" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-              <TabsContent value="contact" className="space-y-4">
-                <FormField
-                  control={form.control as any}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control as any}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control as any}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control as any}
-                    name="city"
+                    name="plus_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City</FormLabel>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Dispatch Coordinates (Plus Code)</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} className="rounded-xl border-slate-200 font-mono text-xs" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control as any}
-                    name="state"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>State</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                </TabsContent>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control as any}
-                    name="zip"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>ZIP Code</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control as any}
-                    name="country"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Country</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control as any}
-                  name="plus_code"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Google Plus Code</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-
-              <TabsContent value="photo" className="space-y-4 pt-4">
-                <div className="space-y-4">
-                  <Label>Member Photo</Label>
-                  <div className="flex flex-col items-center space-y-4">
-                    {uploadedImageUrl ? (
-                      <div className="relative">
-                        <Avatar className="w-32 h-32">
-                          <AvatarImage src={uploadedImageUrl} alt="Member photo" />
-                          <AvatarFallback>
-                            {form.watch("first_name") && form.watch("last_name")
-                              ? `${form.watch("first_name")[0]}${form.watch("last_name")[0]}`.toUpperCase()
-                              : "MP"}
-                          </AvatarFallback>
-                        </Avatar>
+                <TabsContent value="photo" className="space-y-4 mt-0">
+                  <div className="space-y-6 flex flex-col items-center pt-2">
+                    <div className="relative group">
+                      <Avatar className="w-40 h-40 border-8 border-slate-50 shadow-soft ring-1 ring-slate-100">
+                        <AvatarImage src={uploadedImageUrl || ""} alt="Member photo" />
+                        <AvatarFallback className="bg-slate-50 text-slate-400 font-bold text-3xl">
+                          {form.watch("first_name") && form.watch("last_name")
+                            ? `${form.watch("first_name")[0]}${form.watch("last_name")[0]}`.toUpperCase()
+                            : "MP"}
+                        </AvatarFallback>
+                      </Avatar>
+                      {uploadedImageUrl && (
                         <Button
                           type="button"
                           variant="destructive"
-                          size="sm"
-                          className="absolute -top-2 -right-2 rounded-full w-6 h-6 p-0"
+                          size="icon"
+                          className="absolute bottom-2 right-2 rounded-full w-8 h-8 p-0 shadow-lg border-2 border-white scale-0 group-hover:scale-100 transition-transform"
                           onClick={removePhoto}
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </Button>
-                      </div>
-                    ) : (
-                      <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center">
-                        <Upload className="w-8 h-8 text-gray-400" />
-                      </div>
-                    )}
+                      )}
+                    </div>
 
-                    <div className="w-full max-w-md">
+                    <div className="w-full">
                       <FileUploader onUploadComplete={handlePhotoUpload} />
                     </div>
 
-                    <p className="text-sm text-muted-foreground text-center">
-                      Upload a photo for this member. Max size: 4MB.
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">
+                      SECURE_IMAGE_REPOSITORY_SYNC
                     </p>
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
 
-              <TabsContent value="unit" className="space-y-4">
-                <FormField
-                  control={form.control as any}
-                  name="joined_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Join Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  name="unit_ids"
-                  control={form.control as any}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{unitLabels.plural}</FormLabel>
-                      <div className="space-y-2 border rounded-md p-4 max-h-[200px] overflow-y-auto bg-background/50">
-                        {availableUnits.map(unit => (
-                          <div key={unit.id} className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id={`unit-${unit.id}`}
-                              checked={field.value?.includes(unit.id) || false}
-                              onChange={(e) => {
+                <TabsContent value="unit" className="space-y-6 mt-0">
+                  <FormField
+                    control={form.control as any}
+                    name="joined_date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Onboarding Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="rounded-xl border-slate-200" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    name="unit_ids"
+                    control={form.control as any}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">{unitLabels.plural}</FormLabel>
+                        <div className="space-y-2 border border-slate-100 rounded-2xl p-4 max-h-[250px] overflow-y-auto bg-slate-50/50">
+                          {availableUnits.map(unit => (
+                            <div key={unit.id}
+                              className={cn(
+                                "flex items-center space-x-3 p-3 rounded-xl transition-all border border-transparent hover:bg-white hover:border-slate-100 hover:shadow-sm cursor-pointer",
+                                field.value?.includes(unit.id) ? "bg-white border-slate-200 shadow-sm" : ""
+                              )}
+                              onClick={() => {
                                 const current = field.value || [];
-                                if (e.target.checked) {
-                                  field.onChange([...current, unit.id]);
-                                } else {
+                                if (current.includes(unit.id)) {
                                   field.onChange(current.filter((m: string) => m !== unit.id));
+                                } else {
+                                  field.onChange([...current, unit.id]);
                                 }
                               }}
-                              className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                            />
-                            <label
-                              htmlFor={`unit-${unit.id}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
-                              {unit.name} <span className="text-xs text-muted-foreground ml-1">({unit.type})</span>
-                            </label>
-                          </div>
-                        ))}
-                        {availableUnits.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">No units available.</p>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {field.value?.map((unitId: string) => {
-                          const unit = availableUnits.find(u => u.id === unitId);
-                          return unit ? (
-                            <Badge key={unitId} variant="secondary" className="font-normal">
-                              {unit.name}
-                            </Badge>
-                          ) : null;
-                        })}
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-
-              <TabsContent value="labels" className="space-y-4">
-                <div className="text-sm text-muted-foreground mb-4">
-                  Assign labels to categorize this member. Labels help you organize and filter your members.
-                </div>
-                <div className="border rounded-lg p-4 bg-muted/20">
-                  <h4 className="font-medium mb-3">Member Labels</h4>
-                  <LabelSelector
-                    memberId={(member as any)._id || (member as any).id || ''}
-                    variant="full"
+                              <div className={cn(
+                                "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
+                                field.value?.includes(unit.id) ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200"
+                              )}>
+                                {field.value?.includes(unit.id) && <div className="h-1.5 w-1.5 bg-white rounded-full" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-slate-900 truncate">{unit.name}</p>
+                                <p className="text-[10px] font-medium text-slate-400 uppercase">{unit.type}</p>
+                              </div>
+                            </div>
+                          ))}
+                          {availableUnits.length === 0 && (
+                            <p className="text-sm text-slate-400 text-center py-6 font-medium italic">All units deployed.</p>
+                          )}
+                        </div>
+                      </FormItem>
+                    )}
                   />
-                </div>
-              </TabsContent>
-            </Tabs>
+                </TabsContent>
 
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
-                Cancel
+                <TabsContent value="labels" className="space-y-6 mt-0">
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-amber-900 text-[11px] font-bold flex items-start gap-3">
+                    <Shield className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                    <div>
+                      <p className="uppercase tracking-wider mb-1 text-amber-700">TAGGING_SYSTEM_OVERRIDE</p>
+                      <p className="font-medium text-amber-800/80 leading-relaxed font-sans">
+                        Labels categorize entities for rapid retrieval. Changes are committed to the encrypted registry in real-time.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/30 shadow-none ring-1 ring-slate-100/50">
+                    <h4 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Registry Controls</h4>
+                    <LabelSelector
+                      memberId={(member as any)._id || (member as any).id || ''}
+                      variant="full"
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <div className="bg-slate-50/80 px-6 py-4 flex items-center justify-between border-t border-slate-100">
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-xl"
+              >
+                DISCARD CHANGES
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save changes"}
-              </Button>
-            </DialogFooter>
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl px-6 font-bold shadow-soft"
+                >
+                  {isLoading ? "SAVING..." : "COMMIT UPDATE"}
+                </Button>
+              </div>
+            </div>
           </form>
         </Form>
       </DialogContent>

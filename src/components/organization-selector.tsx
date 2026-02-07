@@ -56,48 +56,48 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className={`flex items-center gap-3 h-11 px-4 border-3 border-black bg-white hover:bg-white hover:shadow-brutal transition-all shadow-brutal-sm rounded-xl ${className}`}
+          className={`flex items-center gap-3 h-11 px-4 border border-border/50 bg-white hover:bg-slate-50 transition-all shadow-sm rounded-xl ${className}`}
         >
-          <div className="p-1.5 bg-black text-white rounded-md">
+          <div className="p-1.5 bg-slate-100 text-slate-900 rounded-md">
             <Building2 className="h-4 w-4" />
           </div>
           <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
-            <span className="text-sm font-black uppercase tracking-tight truncate w-full">
-              {currentOrganization?.name || "SELECT CHURCH"}
+            <span className="text-sm font-semibold truncate w-full">
+              {currentOrganization?.name || "Select Organization"}
             </span>
           </div>
-          <ChevronDown className={cn("h-4 w-4 text-black transition-transform duration-200", isOpen && "rotate-180")} />
+          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-[320px] p-2 border-4 border-black shadow-brutal rounded-2xl bg-white overflow-hidden">
-        <div className="p-3 mb-2 bg-muted/20 rounded-xl border-2 border-dashed border-black/20">
-          <DropdownMenuLabel className="p-0 text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2 flex items-center gap-2">
+      <DropdownMenuContent align="start" className="w-[320px] p-2 border border-border/50 shadow-soft-lg rounded-2xl bg-white overflow-hidden">
+        <div className="p-3 mb-2 bg-muted/30 rounded-xl border border-dashed border-border">
+          <DropdownMenuLabel className="p-0 text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 flex items-center gap-2">
             <Globe className="h-3 w-3" /> CURRENT CONTEXT
           </DropdownMenuLabel>
 
           {currentOrganization ? (
-            <div className="flex items-center gap-3 p-3 bg-black text-white rounded-lg shadow-brutal-sm border-2 border-black">
+            <div className="flex items-center gap-3 p-3 bg-slate-900 text-white rounded-lg shadow-sm">
               <Building2 className="h-5 w-5" />
               <div className="min-w-0">
-                <div className="font-black text-sm uppercase truncate">{currentOrganization.name}</div>
-                <div className="text-[10px] font-bold text-white/60 uppercase">Active Organization</div>
+                <div className="font-bold text-sm truncate">{currentOrganization.name}</div>
+                <div className="text-[10px] font-medium text-white/60 uppercase">Active Organization</div>
               </div>
             </div>
           ) : (
-            <div className="p-3 text-center border-2 border-black rounded-lg">
-              <span className="font-black uppercase text-xs">NO ORGANIZATION SELECTED</span>
+            <div className="p-3 text-center border border-border border-dashed rounded-lg">
+              <span className="font-bold uppercase text-xs text-muted-foreground">NO SELECTION</span>
             </div>
           )}
         </div>
 
-        <DropdownMenuSeparator className="h-1 bg-black/10 mx-2 mb-2" />
+        <DropdownMenuSeparator className="mx-2 mb-2" />
 
-        <DropdownMenuLabel className="px-3 pb-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+        <DropdownMenuLabel className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
           SWITCH ORGANIZATION
         </DropdownMenuLabel>
 
-        <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
           {accessibleOrganizations.length > 0 ? (
             accessibleOrganizations.map((org: any) => {
               const isSelected = currentOrganization?._id === org._id
@@ -106,13 +106,13 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
                   key={org._id}
                   onClick={() => handleOrganizationSelect(org)}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border-2 border-transparent transition-all cursor-pointer font-bold uppercase text-xs mb-1",
+                    "flex items-center gap-3 p-3 rounded-lg border border-transparent transition-all cursor-pointer font-medium text-sm mb-1",
                     isSelected
-                      ? "bg-accent text-black border-black shadow-brutal-sm"
-                      : "hover:bg-muted/50 hover:border-black/10"
+                      ? "bg-primary/5 text-primary border-primary/20 shadow-sm"
+                      : "hover:bg-muted/50 hover:border-border/50"
                   )}
                 >
-                  <Building2 className={cn("h-4 w-4", isSelected ? "text-black" : "text-muted-foreground")} />
+                  <Building2 className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate">{org.name}</span>
@@ -123,7 +123,7 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
               )
             })
           ) : (
-            <div className="p-6 text-center text-xs font-bold uppercase text-muted-foreground italic border-2 border-dashed border-black/10 rounded-lg">
+            <div className="p-6 text-center text-xs font-medium text-muted-foreground italic border border-dashed border-border rounded-lg">
               No other organizations found
             </div>
           )}
