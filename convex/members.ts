@@ -24,9 +24,16 @@ async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
         }
     }));
 
+    let avatarUrl = member.avatar_url;
+    if (avatarUrl && !avatarUrl.startsWith("http")) {
+        // Assume it's a storage ID
+        avatarUrl = await ctx.storage.getUrl(avatarUrl) ?? undefined;
+    }
+
     return {
         ...member,
         id: member._id, // Map _id to id for frontend compatibility
+        avatar_url: avatarUrl,
         unit_names: unitNames,
         units: unitNames, // Consistency
         unit_ids: unitIds // Re-mapped

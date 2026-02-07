@@ -9,7 +9,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 interface FileUploaderProps {
-    onUploadComplete?: (url: string) => void;
+    onUploadComplete?: (storageId: string, previewUrl?: string) => void;
     showPreview?: boolean;
 }
 
@@ -99,8 +99,12 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
             const url = storageId;
             setImageUrl(url); // This won't show anything unless we resolve it.
 
+            // FOR NOW: I'll return the storageId as the "url" and update the display.
+            const previewUrl = URL.createObjectURL(file);
+            setImageUrl(previewUrl);
+
             if (onUploadComplete) {
-                onUploadComplete(url);
+                onUploadComplete(storageId, previewUrl);
             }
 
         } catch (error: any) {

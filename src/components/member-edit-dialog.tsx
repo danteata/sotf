@@ -170,9 +170,9 @@ export function MemberEditDialog({
     }
   }, [open, member, form]);
 
-  const handlePhotoUpload = (url: string) => {
-    setUploadedImageUrl(url)
-    form.setValue("avatar", url)
+  const handlePhotoUpload = (storageId: string, previewUrl?: string) => {
+    setUploadedImageUrl(previewUrl || storageId)
+    form.setValue("avatar", storageId)
   }
 
   const removePhoto = () => {
