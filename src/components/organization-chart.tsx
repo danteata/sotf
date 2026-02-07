@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef } from 'react'
 import {
   Card,
   CardContent,
@@ -71,6 +71,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
+  const gRef = useRef<SVGGElement>(null)
 
   // Dialog states
   const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false)
@@ -263,19 +264,19 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     return node.type
   }
 
-  const getTransformedPoint = (clientX: number, clientY: number, svg: SVGSVGElement) => {
-    const point = svg.createSVGPoint()
+  const getTransformedPoint = (clientX: number, clientY: number, container: SVGGraphicsElement) => {
+    const point = (container.ownerSVGElement || (container as unknown as SVGSVGElement)).createSVGPoint()
     point.x = clientX
     point.y = clientY
-    const ctm = svg.getScreenCTM()?.inverse()
+    const ctm = container.getScreenCTM()?.inverse()
     if (!ctm) return { x: clientX, y: clientY }
     const transformed = point.matrixTransform(ctm)
     return { x: transformed.x, y: transformed.y }
   }
 
   const handleMouseDown = (e: React.MouseEvent, node?: ChartNode) => {
-    const svg = e.currentTarget.closest('svg')
-    if (!svg) return
+    const container = gRef.current
+    if (!container) return
 
     if (node) {
       if (node.type === 'organization') return // Can't move root
@@ -284,7 +285,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       setDraggedNode(node)
       setIsDragging(true)
       // Center the drag ghost on the mouse position
-      const point = getTransformedPoint(e.clientX, e.clientY, svg)
+      const point = getTransformedPoint(e.clientX, e.clientY, container)
       setMousePos(point)
     } else {
       // Background click - start panning
@@ -294,11 +295,11 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    const svg = e.currentTarget.closest('svg')
-    if (!svg) return
+    const container = gRef.current
+    if (!container) return
 
     if (isDragging && draggedNode) {
-      const point = getTransformedPoint(e.clientX, e.clientY, svg)
+      const point = getTransformedPoint(e.clientX, e.clientY, container)
       setMousePos(point)
 
       // Detect potential drop target (node)
@@ -338,14 +339,10 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const handleMouseUp = async (e: React.MouseEvent) => {
     if (isDragging && draggedNode) {
       if (dragOverNodeId && dragOverNodeId !== draggedNode.parentId) {
-        // Check if dropping onto the root organization - not allowed
         const targetNode = nodeMap.get(dragOverNodeId)
         if (targetNode?.type === 'organization') {
-          toast({
-            title: "Cannot move here",
-            description: "Units cannot be attached directly to the organization. Please drop on a unit or connection line.",
-            variant: "destructive"
-          })
+          // Drop on organization - move to root (no parent unit)
+          await handleUnitMove(draggedNode.id, undefined)
         } else {
           // Drop on a unit node - move to be child of that node
           await handleUnitMove(draggedNode.id, dragOverNodeId)
@@ -566,6 +563,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
               </defs>
 
               <g
+                ref={gRef}
                 style={{
                   transform: `scale(${zoom}) translate(${panOffset.x}px, ${panOffset.y}px)`,
                   transformOrigin: '0 0',
