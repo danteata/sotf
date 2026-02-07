@@ -144,10 +144,7 @@ export const getDashboardData = query({
         }
         const activeUnits = await unitsQuery.collect();
 
-        // 5. Birthdays
-        const currentMonth = now.getMonth() + 1;
-        const birthdayMembers = activeMembers.filter((m: any) => m.birth_month === currentMonth || (m.dob && new Date(m.dob).getMonth() + 1 === currentMonth));
-
+        // 5. Birthdays - return all active members for frontend filtering
         return {
             stats: {
                 totalMembers: activeMembers.length,
@@ -160,9 +157,11 @@ export const getDashboardData = query({
                 nextEventName: upcomingEvents.length > 0 ? upcomingEvents[0].title : 'No upcoming events',
             },
             upcomingEvents,
-            birthdayMembers: birthdayMembers.map((m: any) => ({
+            birthdayMembers: activeMembers.map((m: any) => ({
                 id: m._id,
                 name: m.name,
+                status: m.status,
+                birth_month: m.birth_month || (m.dob ? new Date(m.dob).getMonth() + 1 : 0),
                 birth_day: m.birth_day || (m.dob ? new Date(m.dob).getDate() : 0),
                 dob: m.dob,
                 avatar_url: m.avatar_url,
