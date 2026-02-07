@@ -223,6 +223,7 @@ export const createBulk = mutation({
             zip: v.optional(v.string()),
             country: v.optional(v.string()),
             avatar_url: v.optional(v.string()),
+            organization_id: v.optional(v.id("organizations")),
         })),
         target_unit_id: v.optional(v.id("units")),
         organization_id: v.optional(v.id("organizations"))

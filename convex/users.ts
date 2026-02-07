@@ -179,7 +179,7 @@ export const switchOrganization = mutation({
         if (!orgId) throw new Error("Invalid organization");
 
         if (user.role !== "super_admin") {
-            const userOrg = ctx.db.normalizeId("organizations", user.organization_id);
+            const userOrg = ctx.db.normalizeId("organizations", user.organization_id as string);
             if (!userOrg || userOrg !== orgId) {
                 throw new Error("Forbidden");
             }

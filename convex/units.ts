@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { requireOrgAccess, requireOrgAdmin, resolveOrgId } from "./auth";
+import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId } from "./auth";
 
 // Utility functions for hierarchical operations
 export const buildPath = (parentPath: string, unitName: string): string => {
@@ -60,6 +60,22 @@ export const getChildren = query({
         return await ctx.db
             .query("units")
             .withIndex("by_parent", (q) => q.eq("parent_unit_id", args.unit_id))
+            .collect();
+    },
+});
+
+export const list = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await requireUser(ctx);
+        if (user.role === "super_admin") {
+            return await ctx.db.query("units").collect();
+        }
+        const orgId = await resolveOrgId(ctx);
+        if (!orgId) return [];
+        return await ctx.db
+            .query("units")
+            .withIndex("by_org", (q) => q.eq("organization_id", orgId))
             .collect();
     },
 });

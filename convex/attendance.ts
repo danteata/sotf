@@ -22,7 +22,7 @@ export const listWithDetails = query({
         const orgId = await resolveOrgId(ctx);
         const attendance = await ctx.db
             .query("attendance")
-            .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+            .withIndex("by_org", (q) => q.eq("organization_id", orgId as any))
             .order("desc")
             .collect();
         return await Promise.all(attendance.map(async (a) => {
@@ -46,7 +46,7 @@ export const listWithMembers = query({
             const orgId = await resolveOrgId(ctx);
             records = await ctx.db
                 .query("attendance")
-                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId as any))
                 .collect();
         }
         // Sort by date descending

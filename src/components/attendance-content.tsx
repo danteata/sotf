@@ -217,13 +217,13 @@ export function AttendanceContent() {
         <TabsContent value="record" className="space-y-4 pt-4">
           <AttendanceForm
             availableMembers={members}
-            availableMinistries={ministries}
+            availableUnits={ministries}
           />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 pt-4">
           <AttendanceHistory
-            availableMinistries={ministries}
+            availableUnits={ministries}
             filtersLoading={filtersLoading}
           />
         </TabsContent>
