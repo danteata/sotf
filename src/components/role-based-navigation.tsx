@@ -142,19 +142,19 @@ export function RoleBasedNavigation() {
               className={cn(
                 "w-full justify-start transition-smooth rounded-xl group",
                 isActive
-                  ? "bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-soft-lg"
+                  ? "bg-[#5b21b6] text-white shadow-soft hover:shadow-soft-lg"
                   : "hover:bg-sidebar-accent/10 hover:text-sidebar-accent"
               )}
             >
               <Icon className={cn(
                 "mr-3 h-4 w-4 transition-transform group-hover:scale-110",
-                isActive ? "text-primary-foreground" : "text-sidebar-foreground/70"
+                isActive ? "text-white" : "text-sidebar-foreground/70"
               )} />
               <span className="font-medium">{item.title}</span>
               {item.badge && (
                 <Badge
                   variant="outline"
-                  className="ml-auto text-xs bg-primary-foreground/10 border-primary-foreground/20"
+                  className="ml-auto text-xs bg-white/10 border-white/20 text-white"
                 >
                   {item.badge}
                 </Badge>

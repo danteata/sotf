@@ -103,7 +103,7 @@ export function AdminContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 border-b border-border/40 pb-8">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+            <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
               <Shield className="h-6 w-6" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">System Console</h1>

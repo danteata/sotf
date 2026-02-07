@@ -293,7 +293,7 @@ export function ServiceFinancialSummaryDialog({
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
                                 <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                                    <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                                    <div className="p-3 bg-[#5b21b6] text-white rounded-xl shadow-md">
                                         <Calculator className="h-6 w-6" />
                                     </div>
                                     {summary ? 'Edit Service Summary' : 'New Service Summary'}

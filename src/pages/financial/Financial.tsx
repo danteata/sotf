@@ -175,7 +175,7 @@ export default function FinancialPage() {
                 <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 pb-6 border-b border-border/50">
                     <div className="space-y-1">
                         <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-gradient-primary text-white rounded-xl shadow-md">
+                            <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
                                 <Wallet className="h-6 w-6" />
                             </div>
                             <h1 className="text-3xl font-bold tracking-tight text-foreground">Treasury</h1>

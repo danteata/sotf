@@ -54,14 +54,14 @@ export function MainNav() {
                 className={cn(
                   "w-full justify-start gap-3 px-3 py-2.5 text-sm font-bold transition-all duration-200 rounded-lg",
                   pathname === item.href
-                    ? "bg-primary text-primary-foreground shadow-md"
+                    ? "bg-[hsl(262,83%,40%)] text-white shadow-md ring-1 ring-primary/20"
                     : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <Link to={item.href}>
                   <item.icon className={cn(
                     "h-4 w-4 transition-colors",
-                    pathname === item.href ? "text-primary-foreground" : "text-primary"
+                    pathname === item.href ? "text-white" : "text-primary"
                   )} />
                   <span>{item.label}</span>
                 </Link>

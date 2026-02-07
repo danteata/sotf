@@ -25,7 +25,7 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
         <div className="h-1 bg-primary"></div>
         <CardContent className="pt-6 p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 text-primary rounded-lg">
+            <div className="p-3 bg-[#5b21b6] text-white rounded-lg shadow-md">
               <Layers className="h-6 w-6" />
             </div>
             <div>
@@ -40,7 +40,7 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
         <div className="h-1 bg-secondary"></div>
         <CardContent className="pt-6 p-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-secondary/10 text-secondary rounded-lg">
+            <div className="p-3 bg-gradient-to-br from-slate-600 to-slate-700 text-white rounded-lg shadow-md">
               <Crown className="h-6 w-6" />
             </div>
             <div>

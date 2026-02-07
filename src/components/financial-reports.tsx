@@ -195,7 +195,7 @@ export function FinancialReports() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <CardTitle className="flex items-center gap-3 text-2xl font-bold tracking-tight">
-                                <div className="p-2.5 bg-primary/10 text-primary rounded-lg">
+                                <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
                                     <FileText className="h-6 w-6" />
                                 </div>
                                 Intelligence Hub
