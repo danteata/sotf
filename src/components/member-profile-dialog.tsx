@@ -1,8 +1,9 @@
 
 import { format } from "date-fns"
-import { Calendar, Mail, Phone, MapPin, Users, Clock, Award, Loader2, Tag, Shield, Hash } from "lucide-react"
+import { Calendar, Mail, Phone, MapPin, Users, Clock, Award, Loader2, Tag, Shield, Hash, Crown } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { Id } from "../../convex/_generated/dataModel"
 
 import {
   Dialog,
@@ -42,6 +43,18 @@ export function MemberProfileDialog({
   const loading = attendanceSummary === undefined || memberLabels === undefined
 
   const memberUnits = allUnits?.filter(u => member?.unit_ids?.includes(u._id)) || []
+
+  // Filter units led by this member - handle both string and Id comparison
+  const ledUnits = allUnits?.filter(u => {
+    if (!u.leader_id) return false;
+    const memberId = (member as any)._id || (member as any).id;
+    if (!memberId) return false;
+    // Handle Id object comparison
+    if (typeof u.leader_id === 'object' && u.leader_id !== null) {
+      return String(u.leader_id) === String(memberId);
+    }
+    return u.leader_id === memberId;
+  }) || []
 
   if (!member) return null
 
@@ -131,9 +144,24 @@ export function MemberProfileDialog({
                     </div>
                   </div>
 
+                  {ledUnits.length > 0 && (
+                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 shadow-sm">
+                      <p className="text-[10px] font-black text-purple-400 mb-2 uppercase tracking-wider flex items-center gap-1">
+                        <Crown className="h-3 w-3" /> Units Led
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ledUnits.map(unit => (
+                          <Badge key={unit._id} className="bg-purple-600 text-white border-purple-600 font-bold hover:bg-purple-700">
+                            {unit.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                     <p className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider">Assigned Labels</p>
-                    <MemberLabels labels={memberLabels as LabelType[]} />
+                    <MemberLabels labels={(memberLabels || []) as any} />
                   </div>
                 </div>
               </section>
@@ -160,11 +188,11 @@ export function MemberProfileDialog({
                     <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Last Activity</div>
                   </div>
                 </div>
-                {attendanceSummary?.consecutive_absences > 0 && (
+                {attendanceSummary?.consecutive_absences && attendanceSummary.consecutive_absences > 0 && (
                   <div className="mt-3 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
                     <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">Absence Streak</span>
                     <Badge variant="outline" className="bg-amber-100 border-amber-200 text-amber-700 font-black">
-                      {attendanceSummary.consecutive_absences} SERVICES
+                      {attendanceSummary?.consecutive_absences} SERVICES
                     </Badge>
                   </div>
                 )}

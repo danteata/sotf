@@ -145,11 +145,11 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-xs tracking-tight text-slate-700">Secure File Upload</span>
+                    <span className="font-semibold text-xs tracking-tight text-slate-700">File Upload</span>
                 </div>
                 <div className="flex items-center gap-1">
                     <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
-                    <span className="font-medium text-[10px] text-muted-foreground uppercase">Cloud Secured</span>
+                    {/* <span className="font-medium text-[10px] text-muted-foreground uppercase">Cloud Secured</span> */}
                 </div>
             </div>
 
@@ -182,7 +182,7 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                             <Loader2 className="h-10 w-10 animate-spin text-primary stroke-[2px]" />
                             <div className="space-y-1">
                                 <p className="text-base font-bold text-slate-900">Uploading File...</p>
-                                <p className="text-xs text-muted-foreground">Connecting to secure storage...</p>
+                                <p className="text-xs text-muted-foreground">Connecting to storage...</p>
                             </div>
                         </>
                     ) : (

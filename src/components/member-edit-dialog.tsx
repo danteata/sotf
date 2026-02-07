@@ -42,7 +42,7 @@ import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileUploader } from "@/components/file-uploader"
-import { Upload, X, Shield } from "lucide-react"
+import { Upload, X, Shield, Crown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const memberSchema = z.object({
@@ -543,10 +543,6 @@ export function MemberEditDialog({
                     <div className="w-full">
                       <FileUploader onUploadComplete={handlePhotoUpload} />
                     </div>
-
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center">
-                      SECURE_IMAGE_REPOSITORY_SYNC
-                    </p>
                   </div>
                 </TabsContent>
 
@@ -605,6 +601,48 @@ export function MemberEditDialog({
                       </FormItem>
                     )}
                   />
+
+                  {/* Units Led Section */}
+                  <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Crown className="h-4 w-4 text-purple-600" />
+                      <h4 className="text-[10px] font-black uppercase text-purple-600 tracking-wider">Units Led</h4>
+                    </div>
+                    <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                      {availableUnits.filter(u => {
+                        const memberId = (member as any)._id || (member as any).id;
+                        if (!u.leader_id) return false;
+                        if (typeof u.leader_id === 'object' && u.leader_id !== null) {
+                          return u.leader_id.toString() === memberId?.toString();
+                        }
+                        return u.leader_id === memberId;
+                      }).length > 0 ? (
+                        availableUnits
+                          .filter(u => {
+                            const memberId = (member as any)._id || (member as any).id;
+                            if (!u.leader_id) return false;
+                            if (typeof u.leader_id === 'object' && u.leader_id !== null) {
+                              return u.leader_id.toString() === memberId?.toString();
+                            }
+                            return u.leader_id === memberId;
+                          })
+                          .map(unit => (
+                            <div key={unit.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-purple-100">
+                              <div className="flex-1">
+                                <p className="text-sm font-bold text-slate-900">{unit.name}</p>
+                                <p className="text-[10px] font-medium text-slate-400 uppercase">{unit.type}</p>
+                              </div>
+                              <Badge className="bg-purple-600 text-white font-bold text-[10px]">Leader</Badge>
+                            </div>
+                          ))
+                      ) : (
+                        <p className="text-sm text-purple-400 italic py-2">This member is not leading any units.</p>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-purple-400 mt-3 italic">
+                      To assign this member as leader of a unit, go to Unit Management.
+                    </p>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="labels" className="space-y-6 mt-0">
@@ -635,7 +673,7 @@ export function MemberEditDialog({
                 onClick={() => onOpenChange(false)}
                 className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-xl"
               >
-                DISCARD CHANGES
+                Cancel
               </Button>
               <div className="flex gap-3">
                 <Button
@@ -643,7 +681,7 @@ export function MemberEditDialog({
                   disabled={isLoading}
                   className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl px-6 font-bold shadow-soft"
                 >
-                  {isLoading ? "SAVING..." : "COMMIT UPDATE"}
+                  {isLoading ? "Saving..." : "Submit"}
                 </Button>
               </div>
             </div>

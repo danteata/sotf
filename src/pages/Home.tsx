@@ -62,7 +62,7 @@ export default function HomePage() {
                     <h1 className="text-5xl md:text-7xl font-black leading-tight mb-6 text-[#2a2a2a]">
                         IGNITE YOUR<br />
                         <span className="bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] bg-clip-text text-transparent">
-                            CHURCH'S MINISTRY
+                            MINISTRY
                         </span>
                     </h1>
                     <p className="text-xl text-[#666] max-w-3xl mx-auto mb-10 leading-relaxed">

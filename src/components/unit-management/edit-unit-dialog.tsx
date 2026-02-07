@@ -19,7 +19,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { MemberCombobox } from '@/components/ui/member-combobox'
 import { Loader2, Save, Layers } from 'lucide-react'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 
 interface Unit {
     _id: string
@@ -33,6 +36,7 @@ interface TargetUnit {
     type?: string
     category?: string
     parent_unit_id?: string
+    leader_id?: string
 }
 
 interface EditUnitDialogProps {
@@ -46,6 +50,7 @@ interface EditUnitDialogProps {
         type: 'administrative' | 'functional' | 'geographic'
         category: string
         unit_id: string
+        leader_id?: string
     }) => Promise<void>
     updating: boolean
 }
@@ -63,7 +68,17 @@ export function EditUnitDialog({
     const [type, setType] = useState<'administrative' | 'functional' | 'geographic'>('administrative')
     const [category, setCategory] = useState('')
     const [unitId, setUnitId] = useState('')
-    const [isTemplate, setIsTemplate] = useState(false)
+    const [leaderId, setLeaderId] = useState<string | undefined>()
+
+    // Fetch members for leader selection
+    const membersData = useQuery(api.members.getAll, open ? {} : "skip")
+    const availableMembers = membersData?.map((m: any) => ({
+        id: m._id,
+        name: m.name,
+        email: m.email,
+        avatar: m.avatar_url,
+        initials: m.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+    })) || []
 
     // Populate form when unit changes
     useEffect(() => {
@@ -73,6 +88,7 @@ export function EditUnitDialog({
             setType((unit.type as 'administrative' | 'functional' | 'geographic') || 'administrative')
             setCategory(unit.category || '')
             setUnitId(unit.parent_unit_id || '')
+            setLeaderId(unit.leader_id || undefined)
         }
     }, [unit])
 
@@ -85,6 +101,7 @@ export function EditUnitDialog({
                 type,
                 category: type === 'functional' ? category : '',
                 unit_id: unitId,
+                leader_id: leaderId,
             })
             onOpenChange(false)
         } catch (error) { }
@@ -176,6 +193,17 @@ export function EditUnitDialog({
                             />
                         </div>
                     )}
+
+                    <div className="space-y-2">
+                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Leader</Label>
+                        <MemberCombobox
+                            members={availableMembers}
+                            value={leaderId}
+                            onValueChange={(value) => setLeaderId(value === "none" ? undefined : value)}
+                            placeholder="Select unit leader..."
+                            disabled={updating}
+                        />
+                    </div>
 
                     {/* Removed isTemplate checkbox as it's not in the new schema */}
                 </div>

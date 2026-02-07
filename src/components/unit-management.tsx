@@ -64,10 +64,11 @@ export function UnitManagement() {
         name: data.name,
         description: data.description,
         organization_id: chartData.organization._id,
-        parent_unit_id: data.unitId,
+        parent_unit_id: data.unitId || undefined,
         active: true,
         type: data.type,
         category: data.category,
+        leader_id: data.leaderId,
       });
       toast({ title: "Success", description: "Unit created successfully" });
       setCreateUnitDialogOpen(false);
@@ -86,6 +87,7 @@ export function UnitManagement() {
           parent_unit_id: data.unit_id,
           type: data.type,
           category: data.category,
+          leader_id: data.leaderId,
         }
       });
       toast({ title: "Success", description: "Unit updated successfully" });

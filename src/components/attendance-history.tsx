@@ -7,6 +7,8 @@ import {
   Download,
   Filter,
   Eye,
+  Search,
+  FileText,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -35,7 +37,8 @@ import {
 import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { useEventTypes } from '@/hooks/use-event-types'
-import { Input } from './ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { AttendeesDialog } from './attendees-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from 'convex/react'
@@ -164,7 +167,7 @@ export function AttendanceHistory({
                       className="h-32 text-center"
                     >
                       <div className="flex flex-col items-center justify-center gap-2 opacity-50">
-                        <History className="h-6 w-6 text-slate-300" />
+                        <FileText className="h-6 w-6 text-slate-300" />
                         <p className="font-medium text-slate-400 text-sm">No historical logs found</p>
                       </div>
                     </TableCell>

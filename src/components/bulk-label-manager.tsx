@@ -120,7 +120,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                 {/* Left Column: Configuration */}
                 <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
                     <div className="space-y-4">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Configuration Strategy</Label>
+                        <UILabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Configuration Strategy</UILabel>
                         <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
                             <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold bg-white focus:ring-slate-900">
                                 <SelectValue />
@@ -159,7 +159,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Documentation Notes</Label>
+                        <UILabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Documentation Notes</UILabel>
                         <Textarea
                             placeholder="Provide rationale for this mass update..."
                             value={notes}

@@ -19,7 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { MemberCombobox } from '@/components/ui/member-combobox'
 import { Loader2, Plus, Layers } from 'lucide-react'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 
 interface Unit {
   _id: string
@@ -35,7 +38,8 @@ interface CreateUnitDialogProps {
     description: string
     type: 'administrative' | 'functional' | 'geographic'
     category: string
-    unitId: string
+    unitId?: string
+    leader_id?: string
   }) => Promise<void>
   creating: boolean
 }
@@ -52,16 +56,28 @@ export function CreateUnitDialog({
   const [type, setType] = useState<'administrative' | 'functional' | 'geographic'>('administrative')
   const [category, setCategory] = useState('')
   const [unitId, setUnitId] = useState('')
+  const [leaderId, setLeaderId] = useState<string | undefined>()
+
+  // Fetch members for leader selection
+  const membersData = useQuery(api.members.getAll, open ? {} : "skip")
+  const availableMembers = membersData?.map((m: any) => ({
+    id: m._id,
+    name: m.name,
+    email: m.email,
+    avatar: m.avatar_url,
+    initials: m.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+  })) || []
 
   const handleSubmit = async () => {
-    if (!name.trim() || !unitId) return;
+    if (!name.trim()) return;
     try {
       await onCreateUnit({
         name: name.trim(),
         description: description.trim(),
         type,
         category: category,
-        unitId,
+        unitId: unitId || undefined,
+        leader_id: leaderId,
       })
       resetForm()
       onOpenChange(false)
@@ -74,6 +90,7 @@ export function CreateUnitDialog({
     setType('administrative')
     setCategory('')
     setUnitId('')
+    setLeaderId(undefined)
   }
 
   return (
@@ -116,12 +133,13 @@ export function CreateUnitDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parent Unit *</Label>
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parent Unit</Label>
               <Select value={unitId} onValueChange={setUnitId} disabled={creating}>
                 <SelectTrigger className="bg-background/50 border-input-border">
-                  <SelectValue placeholder="Select unit" />
+                  <SelectValue placeholder="Select unit (optional)" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">None (Root Level)</SelectItem>
                   {availableUnits.map((unit) => (
                     <SelectItem key={unit._id} value={unit._id}>
                       {unit.name}
@@ -157,6 +175,17 @@ export function CreateUnitDialog({
               onChange={(e) => setCategory(e.target.value)}
               placeholder="e.g. Outreach, Internal, Regional..."
               className="bg-background/50 border-input-border focus:ring-primary/20"
+              disabled={creating}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Leader</Label>
+            <MemberCombobox
+              members={availableMembers}
+              value={leaderId}
+              onValueChange={(value) => setLeaderId(value === "none" ? undefined : value)}
+              placeholder="Select unit leader..."
               disabled={creating}
             />
           </div>
