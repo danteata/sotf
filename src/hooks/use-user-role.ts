@@ -108,9 +108,9 @@ export function useAccessibleUnits() {
 
   // Scoped queries based on role to prevent data leakage
   const allUnits = useQuery(
-    api.units.listByOrg,
+    api.units.list,
     ['admin', 'super_admin', 'organization_admin', 'division_admin', 'unit_admin'].includes(role)
-      ? { organization_id: 'current_org' as any } // Cast to any since current_org is a placeholder Id
+      ? {}
       : "skip"
   );
 

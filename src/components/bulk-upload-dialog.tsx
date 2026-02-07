@@ -54,7 +54,7 @@ interface PreviewData {
 export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDialogProps) {
   const { organization } = useOrganization()
   const createBulk = useMutation(api.members.createBulk)
-  const allUnitsQuery = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip")
+  const allUnitsQuery = useQuery(api.units.list, organization?._id ? {} : "skip")
   const allUnits = allUnitsQuery || []
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")

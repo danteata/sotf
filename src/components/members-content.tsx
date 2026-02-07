@@ -28,9 +28,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
   const { organization } = useOrganization()
-  const unitsData = useQuery(api.units.listByOrg, organization?.id ? {
-    organization_id: organization.id as Id<"organizations">
-  } : "skip");
+  const unitsData = useQuery(api.units.list, organization?.id ? {} : "skip");
 
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]

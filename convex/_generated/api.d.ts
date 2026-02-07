@@ -10,6 +10,7 @@
 
 import type * as app_config from "../app_config.js";
 import type * as attendance from "../attendance.js";
+import type * as auth from "../auth.js";
 import type * as dashboard from "../dashboard.js";
 import type * as event_types from "../event_types.js";
 import type * as events from "../events.js";
@@ -18,9 +19,7 @@ import type * as financial from "../financial.js";
 import type * as invitations from "../invitations.js";
 import type * as labels from "../labels.js";
 import type * as members from "../members.js";
-import type * as ministries from "../ministries.js";
 import type * as organizations from "../organizations.js";
-import type * as regions from "../regions.js";
 import type * as units from "../units.js";
 import type * as users from "../users.js";
 
@@ -33,6 +32,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   app_config: typeof app_config;
   attendance: typeof attendance;
+  auth: typeof auth;
   dashboard: typeof dashboard;
   event_types: typeof event_types;
   events: typeof events;
@@ -41,9 +41,7 @@ declare const fullApi: ApiFromModules<{
   invitations: typeof invitations;
   labels: typeof labels;
   members: typeof members;
-  ministries: typeof ministries;
   organizations: typeof organizations;
-  regions: typeof regions;
   units: typeof units;
   users: typeof users;
 }>;

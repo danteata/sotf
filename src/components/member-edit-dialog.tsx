@@ -125,9 +125,7 @@ export function MemberEditDialog({
   });
 
   // Load all units using Convex
-  const unitsData = useQuery(api.units.listByOrg, open ? {
-    organization_id: 'current_org' as any
-  } : "skip");
+  const unitsData = useQuery(api.units.list, open ? {} : "skip");
   const updateMember = useMutation(api.members.update);
 
   useEffect(() => {

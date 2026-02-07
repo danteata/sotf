@@ -16,7 +16,7 @@ import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
 import { toast } from "sonner"
 
 export function AdminContent() {
-  const allUnits = useQuery(api.units.listByOrg, { organization_id: 'current_org' as any }) || []
+  const allUnits = useQuery(api.units.list, {}) || []
   const units = allUnits
 
   const isLoading = allUnits === undefined

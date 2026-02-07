@@ -90,7 +90,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
   // Load units when dialog opens
   const { organization } = useOrganization()
-  const unitsData = useQuery(api.units.listByOrg, open && organization ? { organization_id: organization._id } : "skip");
+  const unitsData = useQuery(api.units.list, open && organization ? {} : "skip");
 
   const createMember = useMutation(api.members.create);
 

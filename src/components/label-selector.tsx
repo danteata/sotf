@@ -40,9 +40,9 @@ export function LabelSelector({
     const [searchValue, setSearchValue] = useState("")
 
     // Convex Queries & Mutations
-    const availableLabels = useQuery((api as any).labels.list, {}) as LabelType[] || []
-    const selectedLabels = useQuery((api as any).labels.getForMember, { member_id: memberId as Id<"members"> }) as LabelType[] || []
-    const toggleLabel = useMutation((api as any).labels.toggleForMember)
+    const availableLabels = useQuery(api.labels.list, {}) || []
+    const selectedLabels = useQuery(api.labels.getByMember, { member_id: memberId as Id<"members"> }) || []
+    const toggleLabel = useMutation(api.labels.toggleMemberLabel)
 
     const handleLabelToggle = async (label: LabelType) => {
         try {
