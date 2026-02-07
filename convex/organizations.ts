@@ -2,10 +2,19 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { requireOrgAccess, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
 
 export const list = query({
     handler: async (ctx) => {
-        return await ctx.db.query("organizations").collect();
+        const user = await requireUser(ctx);
+        if (isSuperAdmin(user)) {
+            return await ctx.db.query("organizations").collect();
+        }
+        if (!user.organization_id) return [];
+        const orgId = await resolveOrgId(ctx);
+        if (!orgId) return [];
+        const org = await ctx.db.get(orgId);
+        return org ? [org] : [];
     },
 });
 
@@ -21,6 +30,9 @@ export const create = mutation({
             .unique();
 
         if (!user) throw new Error("User not found");
+        if (user.organization_id && user.role !== "super_admin") {
+            throw new Error("Organization already assigned");
+        }
 
         const orgId = await ctx.db.insert("organizations", {
             name: args.name,
@@ -49,19 +61,15 @@ export const create = mutation({
 export const getById = query({
     args: { id: v.id("organizations") },
     handler: async (ctx, args) => {
+        await requireOrgAccess(ctx, args.id);
         return await ctx.db.get(args.id);
     },
 });
 
 export const current = query({
     handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return null;
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", q => q.eq("clerk_user_id", identity.subject))
-            .unique();
-        if (!user || !user.organization_id) return null;
+        const user = await requireUser(ctx);
+        if (!user.organization_id) return null;
         return await ctx.db.get(user.organization_id as Id<"organizations">);
     },
 });
@@ -69,18 +77,8 @@ export const current = query({
 export const getChartData = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        let orgId = args.organization_id;
-
-        if (!orgId) {
-            const identity = await ctx.auth.getUserIdentity();
-            if (!identity) return null;
-            const user = await ctx.db
-                .query("users")
-                .withIndex("by_clerk_id", q => q.eq("clerk_user_id", identity.subject))
-                .unique();
-            if (!user || !user.organization_id) return null;
-            orgId = user.organization_id as Id<"organizations">;
-        }
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        if (!orgId) return null;
 
         const organization = await ctx.db.get(orgId);
         if (!organization) return null;
@@ -146,6 +144,8 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        await requireOrgAccess(ctx, args.id);
         await ctx.db.patch(args.id, args.updates);
         return true;
     },
@@ -158,6 +158,7 @@ export const getTerminology = query({
         unit_id: v.optional(v.id("units")),
     },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
         // 1. Get global defaults from app_config
         const configs = await ctx.db.query("app_config").collect();
         const global: any = {};
@@ -171,6 +172,7 @@ export const getTerminology = query({
         const overrides: any[] = [];
 
         if (args.organization_id) {
+            await requireOrgAccess(ctx, args.organization_id);
             const orgTerm = await ctx.db
                 .query("terminologies")
                 .withIndex("by_org", q => q.eq("organization_id", args.organization_id!))
@@ -191,6 +193,7 @@ export const getTerminology = query({
         }
 
         if (args.division_id) {
+            await requireSuperAdmin(ctx);
             const divTerm = await ctx.db
                 .query("terminologies")
                 .withIndex("by_division", q => q.eq("division_id", args.division_id!))
@@ -199,6 +202,10 @@ export const getTerminology = query({
         }
 
         if (args.unit_id) {
+            const unit = await ctx.db.get(args.unit_id);
+            if (unit?.organization_id) {
+                await requireOrgAccess(ctx, unit.organization_id);
+            }
             const unitTerm = await ctx.db
                 .query("terminologies")
                 .withIndex("by_unit", q => q.eq("unit_id", args.unit_id!))

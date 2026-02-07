@@ -2,10 +2,29 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId } from "./auth";
 
 export const listWithDetails = query({
     handler: async (ctx) => {
-        const attendance = await ctx.db.query("attendance").order("desc").collect();
+        const user = await requireUser(ctx);
+        if (isSuperAdmin(user)) {
+            const attendance = await ctx.db.query("attendance").order("desc").collect();
+            return await Promise.all(attendance.map(async (a) => {
+                const eventType = a.event_type_id ? await ctx.db.get(a.event_type_id) : null;
+                return {
+                    ...a,
+                    event_type_label: eventType?.label,
+                    event_type_value: eventType?.value,
+                };
+            }));
+        }
+
+        const orgId = await resolveOrgId(ctx);
+        const attendance = await ctx.db
+            .query("attendance")
+            .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+            .order("desc")
+            .collect();
         return await Promise.all(attendance.map(async (a) => {
             const eventType = a.event_type_id ? await ctx.db.get(a.event_type_id) : null;
             return {
@@ -19,7 +38,17 @@ export const listWithDetails = query({
 
 export const listWithMembers = query({
     handler: async (ctx) => {
-        const records = await ctx.db.query("attendance").collect();
+        const user = await requireUser(ctx);
+        let records;
+        if (isSuperAdmin(user)) {
+            records = await ctx.db.query("attendance").collect();
+        } else {
+            const orgId = await resolveOrgId(ctx);
+            records = await ctx.db
+                .query("attendance")
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                .collect();
+        }
         // Sort by date descending
         records.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -45,6 +74,10 @@ export const listWithMembers = query({
 export const getAttendeesWithDetails = query({
     args: { attendanceId: v.id("attendance") },
     handler: async (ctx, args) => {
+        const attendance = await ctx.db.get(args.attendanceId);
+        if (attendance?.organization_id) {
+            await requireOrgAccess(ctx, attendance.organization_id);
+        }
         const memberAttendance = await ctx.db
             .query("member_attendance")
             .withIndex("by_attendance", q => q.eq("attendance_id", args.attendanceId))
@@ -81,7 +114,11 @@ export const getAttendeesWithDetails = query({
 export const getById = query({
     args: { id: v.id("attendance") },
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.id);
+        const attendance = await ctx.db.get(args.id);
+        if (attendance?.organization_id) {
+            await requireOrgAccess(ctx, attendance.organization_id);
+        }
+        return attendance;
     },
 });
 
@@ -91,11 +128,16 @@ export const getByDateAndType = query({
         event_type_id: v.id("event_types"),
     },
     handler: async (ctx, args) => {
-        return await ctx.db
+        const user = await requireUser(ctx);
+        const query = ctx.db
             .query("attendance")
             .withIndex("by_date", q => q.eq("date", args.date))
-            .filter(q => q.eq(q.field("event_type_id"), args.event_type_id))
-            .first();
+            .filter(q => q.eq(q.field("event_type_id"), args.event_type_id));
+        if (!isSuperAdmin(user)) {
+            const orgId = await resolveOrgId(ctx);
+            return await query.filter(q => q.eq(q.field("organization_id"), orgId)).first();
+        }
+        return await query.first();
     }
 });
 
@@ -103,6 +145,10 @@ export const getByDateAndType = query({
 export const getAttendanceWithMembers = query({
     args: { attendanceId: v.id("attendance") },
     handler: async (ctx, args) => {
+        const attendance = await ctx.db.get(args.attendanceId);
+        if (attendance?.organization_id) {
+            await requireOrgAccess(ctx, attendance.organization_id);
+        }
         const memberAttendance = await ctx.db
             .query("member_attendance")
             .withIndex("by_attendance", q => q.eq("attendance_id", args.attendanceId))
@@ -126,6 +172,9 @@ export const recordFullAttendance = mutation({
     },
     handler: async (ctx, args) => {
         const { date, event_type_id, notes, member_ids } = args;
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx);
+        if (!orgId) throw new Error("Organization not set");
 
         // 1. Get Event Type
         const eventType = await ctx.db.get(event_type_id);
@@ -136,6 +185,7 @@ export const recordFullAttendance = mutation({
             .query("events")
             .withIndex("by_date", q => q.eq("date", date))
             .filter(q => q.eq(q.field("event_type_id"), event_type_id))
+            .filter(q => q.eq(q.field("organization_id"), orgId))
             .first();
 
         if (!event) {
@@ -144,6 +194,7 @@ export const recordFullAttendance = mutation({
                 date,
                 description: notes || "Attendance record",
                 event_type_id,
+                organization_id: orgId,
                 active: true,
             });
             event = await ctx.db.get(eventId);
@@ -154,6 +205,7 @@ export const recordFullAttendance = mutation({
             .query("attendance")
             .withIndex("by_date", q => q.eq("date", date))
             .filter(q => q.eq(q.field("event_type_id"), event_type_id))
+            .filter(q => q.eq(q.field("organization_id"), orgId))
             .first();
 
         let attendanceId: Id<"attendance">;
@@ -180,6 +232,7 @@ export const recordFullAttendance = mutation({
                 date,
                 event_type_id,
                 event_id: event?._id,
+                organization_id: orgId,
                 count: member_ids.length,
                 notes,
             });
@@ -187,6 +240,10 @@ export const recordFullAttendance = mutation({
 
         // 4. Record new member attendance
         for (const memberId of member_ids) {
+            const member = await ctx.db.get(memberId);
+            if (member?.organization_id && member.organization_id !== orgId) {
+                throw new Error("Member org mismatch");
+            }
             await ctx.db.insert("member_attendance", {
                 member_id: memberId,
                 attendance_id: attendanceId,
@@ -199,9 +256,15 @@ export const recordFullAttendance = mutation({
 
 export const getStats = query({
     handler: async (ctx) => {
-        const attendance = await ctx.db.query("attendance").collect();
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
+        const attendance = orgId
+            ? await ctx.db.query("attendance").withIndex("by_org", q => q.eq("organization_id", orgId)).collect()
+            : await ctx.db.query("attendance").collect();
         const eventTypes = await ctx.db.query("event_types").collect();
-        const members = await ctx.db.query("members").collect();
+        const members = orgId
+            ? await ctx.db.query("members").withIndex("by_org", q => q.eq("organization_id", orgId)).collect()
+            : await ctx.db.query("members").collect();
 
         const sundayServiceType = eventTypes.find(t => t.value === 'sunday-service');
         const sundayServiceAttendance = sundayServiceType
@@ -268,12 +331,14 @@ export const getStats = query({
 export const getTrends = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        const attendance = await (args.organization_id
-            ? ctx.db
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+        const attendance = orgId
+            ? await ctx.db
                 .query("attendance")
-                .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
                 .collect()
-            : ctx.db.query("attendance").collect());
+            : await ctx.db.query("attendance").collect();
 
         const eventTypes = await ctx.db.query("event_types").collect();
         const activeEventTypes = eventTypes.filter(et => et.is_active);
@@ -352,6 +417,10 @@ export const getTrends = query({
 export const getMemberSummary = query({
     args: { memberId: v.id("members") },
     handler: async (ctx, args) => {
+        const member = await ctx.db.get(args.memberId);
+        if (member?.organization_id) {
+            await requireOrgAccess(ctx, member.organization_id);
+        }
         const memberAttendance = await ctx.db
             .query("member_attendance")
             .withIndex("by_member", (q) => q.eq("member_id", args.memberId))

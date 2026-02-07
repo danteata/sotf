@@ -1,17 +1,19 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId } from "./auth";
 
 // --- Transactions ---
 
 export const listTransactions = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        let q = ctx.db.query("financial_transactions");
-        if (args.organization_id) {
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+        if (orgId) {
             return await ctx.db
                 .query("financial_transactions")
-                .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
                 .order("desc")
                 .collect();
         }
@@ -38,8 +40,13 @@ export const createTransaction = mutation({
         organization_id: v.optional(v.id("organizations")),
     },
     handler: async (ctx, args) => {
+        const user = await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
         return await ctx.db.insert("financial_transactions", {
-            ...args
+            ...args,
+            organization_id: orgId ?? args.organization_id,
+            recorded_by: user.clerk_user_id,
+            recorded_by_name: user.name || args.recorded_by_name,
         });
     },
 });
@@ -61,6 +68,12 @@ export const updateTransaction = mutation({
         receipt_url: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Transaction not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
         const { id, ...data } = args;
         await ctx.db.patch(id, data);
         return id;
@@ -70,6 +83,12 @@ export const updateTransaction = mutation({
 export const removeTransaction = mutation({
     args: { id: v.id("financial_transactions") },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Transaction not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
         await ctx.db.delete(args.id);
     },
 });
@@ -79,10 +98,12 @@ export const removeTransaction = mutation({
 export const listServiceSummaries = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        if (args.organization_id) {
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+        if (orgId) {
             return await ctx.db
                 .query("service_financial_summaries")
-                .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
                 .order("desc")
                 .collect();
         }
@@ -120,7 +141,14 @@ export const createServiceSummary = mutation({
         organization_id: v.optional(v.id("organizations")),
     },
     handler: async (ctx, args) => {
-        return await ctx.db.insert("service_financial_summaries", args);
+        const user = await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        return await ctx.db.insert("service_financial_summaries", {
+            ...args,
+            organization_id: orgId ?? args.organization_id,
+            recorded_by: user.clerk_user_id,
+            recorded_by_name: user.name || args.recorded_by_name,
+        });
     },
 });
 
@@ -152,6 +180,12 @@ export const updateServiceSummary = mutation({
         notes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Summary not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
         const { id, ...data } = args;
         await ctx.db.patch(id, data);
         return id;
@@ -163,10 +197,12 @@ export const updateServiceSummary = mutation({
 export const listMetadataSummaries = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        if (args.organization_id) {
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+        if (orgId) {
             return await ctx.db
                 .query("service_metadata_summaries")
-                .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
                 .order("desc")
                 .collect();
         }
@@ -199,7 +235,14 @@ export const createMetadataSummary = mutation({
         organization_id: v.optional(v.id("organizations")),
     },
     handler: async (ctx, args) => {
-        return await ctx.db.insert("service_metadata_summaries", args);
+        const user = await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        return await ctx.db.insert("service_metadata_summaries", {
+            ...args,
+            organization_id: orgId ?? args.organization_id,
+            recorded_by: user.clerk_user_id,
+            recorded_by_name: user.name || args.recorded_by_name,
+        });
     },
 });
 
@@ -226,6 +269,12 @@ export const updateMetadataSummary = mutation({
         notes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Summary not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
         const { id, ...data } = args;
         await ctx.db.patch(id, data);
         return id;

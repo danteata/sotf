@@ -2,6 +2,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
+import { requireOrgAdmin, requireUser, resolveOrgId } from "./auth";
 
 // Helper to format member with details (typed)
 async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
@@ -34,15 +35,7 @@ async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
 
 // Internal helper to get managed member IDs
 async function resolveManagedMemberIds(ctx: any) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk_id", (q: any) => q.eq("clerk_user_id", identity.subject))
-        .unique();
-
-    if (!user) return null;
+    const user = await requireUser(ctx);
 
     if (user.role === 'super_admin') {
         return "all";
@@ -151,7 +144,10 @@ export const getById = query({
     handler: async (ctx, args) => {
         const member = await ctx.db.get(args.id);
         if (!member) return null;
-        return await formatMember(ctx, member);
+        const managedIds = await resolveManagedMemberIds(ctx);
+        if (managedIds === "all") return await formatMember(ctx, member);
+        if (managedIds && managedIds.has(member._id)) return await formatMember(ctx, member);
+        throw new Error("Forbidden");
     },
 });
 
@@ -182,9 +178,14 @@ export const create = mutation({
         avatar_url: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
         const { unit_ids, ...memberData } = args;
 
-        const memberId = await ctx.db.insert("members", memberData);
+        const memberId = await ctx.db.insert("members", {
+            ...memberData,
+            organization_id: orgId ?? memberData.organization_id,
+        });
 
         // Add unit assignments if provided (many-to-many) - includes all generic units
         if (unit_ids && unit_ids.length > 0) {
@@ -228,22 +229,24 @@ export const createBulk = mutation({
     },
     handler: async (ctx, args) => {
         const results = [];
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+
         for (const memberData of args.members) {
-            // Bulk upload standardizes on direct unit assignment or organization-wide if unspecified
-            const data = memberData;
-
-            // Add unit_id if specified (direct assignment)
-            const memberDataWithUnit = args.target_unit_id
-                ? { ...data, unit_id: args.target_unit_id }
-                : data;
-
-            // Add organization_id if specified
-            const memberDataWithOrg = args.organization_id
-                ? { ...memberDataWithUnit, organization_id: args.organization_id }
-                : memberDataWithUnit;
-
-            const memberId = await ctx.db.insert("members", memberDataWithOrg);
+            const memberId = await ctx.db.insert("members", {
+                ...memberData,
+                organization_id: orgId ?? memberData.organization_id,
+            });
             results.push(memberId);
+
+            if (args.target_unit_id) {
+                await ctx.db.insert("member_units", {
+                    member_id: memberId,
+                    unit_id: args.target_unit_id,
+                    joined_date: new Date().toISOString(),
+                    is_active: true,
+                });
+            }
         }
         return results;
     },
@@ -278,6 +281,11 @@ export const update = mutation({
     },
     handler: async (ctx, args) => {
         const { id, updates, unit_ids } = args;
+
+        const managedIds = await resolveManagedMemberIds(ctx);
+        if (managedIds !== "all" && (!managedIds || !managedIds.has(id))) {
+            throw new Error("Forbidden");
+        }
 
         await ctx.db.patch(id, updates);
 
@@ -355,6 +363,11 @@ export const getRecent = query({
 export const remove = mutation({
     args: { id: v.id("members") },
     handler: async (ctx, args) => {
+        const managedIds = await resolveManagedMemberIds(ctx);
+        if (managedIds !== "all" && (!managedIds || !managedIds.has(args.id))) {
+            throw new Error("Forbidden");
+        }
+
         // Delete member unit assignments
         const existingUnits = await ctx.db
             .query("member_units")

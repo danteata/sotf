@@ -2,21 +2,21 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
+import { isSuperAdmin, requireUser, resolveOrgId } from "./auth";
 
 // Internal helper to get managed member IDs
 async function getScopedMemberIds(ctx: any) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
+    const user = await requireUser(ctx);
+    if (isSuperAdmin(user)) return "all";
 
-    const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerk_id", (q: any) => q.eq("clerk_user_id", identity.subject))
-        .unique();
+    const orgId = await resolveOrgId(ctx);
 
-    if (!user) return null;
-
-    if (user.role === 'admin' || user.role === 'super_admin' || user.role === 'organization_admin') {
-        return "all";
+    if (user.role === 'admin' || user.role === 'organization_admin') {
+        const orgMembers = await ctx.db
+            .query("members")
+            .withIndex("by_org", (q: any) => q.eq("organization_id", orgId))
+            .collect();
+        return new Set(orgMembers.map((m: any) => m._id));
     }
 
     // Find linked member
@@ -49,20 +49,26 @@ async function getScopedMemberIds(ctx: any) {
 
 export const getDashboardData = query({
     handler: async (ctx) => {
+        const user = await requireUser(ctx);
         const scopedIds = await getScopedMemberIds(ctx);
         if (scopedIds === null) return null;
+        const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
 
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
 
         // 1. Members
-        const allMembers = await ctx.db.query("members").collect();
+        const allMembers = orgId
+            ? await ctx.db.query("members").withIndex("by_org", (q) => q.eq("organization_id", orgId)).collect()
+            : await ctx.db.query("members").collect();
         const activeMembers = allMembers.filter((m: any) => m.status === 'active');
 
         let scopedMembers;
         if (scopedIds === "all") {
             const scopedMemberIds = new Set(activeMembers.map((m: any) => m._id));
-            const allAttendance = await ctx.db.query("attendance").collect(); // Assuming allAttendance is meant to be fetched here
+            const allAttendance = orgId
+                ? await ctx.db.query("attendance").withIndex("by_org", q => q.eq("organization_id", orgId)).collect()
+                : await ctx.db.query("attendance").collect();
             const filteredAttendance = allAttendance.filter((a: any) => !a.unit_id || scopedMemberIds.has(a.unit_id));
             scopedMembers = activeMembers; // Re-assign activeMembers to scopedMembers to maintain original logic
         } else {
@@ -78,12 +84,14 @@ export const getDashboardData = query({
         let attendanceChange = 0;
 
         if (sundayType) {
-            const attendanceRecords = await ctx.db
+            let attendanceQuery = ctx.db
                 .query("attendance")
                 .withIndex("by_date")
-                .filter(q => q.eq(q.field("event_type_id"), sundayType._id))
-                .order("desc")
-                .take(2);
+                .filter(q => q.eq(q.field("event_type_id"), sundayType._id));
+            if (orgId) {
+                attendanceQuery = attendanceQuery.filter(q => q.eq(q.field("organization_id"), orgId));
+            }
+            const attendanceRecords = await attendanceQuery.order("desc").take(2);
 
             if (attendanceRecords.length > 0) {
                 if (scopedIds === "all") {
@@ -111,11 +119,13 @@ export const getDashboardData = query({
         }
 
         // 3. Events
-        const upcomingEventsRecords = await ctx.db
+        let eventsQuery = ctx.db
             .query("events")
-            .withIndex("by_date", q => q.gte("date", todayStr))
-            .order("asc")
-            .take(10);
+            .withIndex("by_date", q => q.gte("date", todayStr));
+        if (orgId) {
+            eventsQuery = eventsQuery.filter(q => q.eq(q.field("organization_id"), orgId));
+        }
+        const upcomingEventsRecords = await eventsQuery.order("asc").take(10);
 
         const upcomingEvents = await Promise.all(upcomingEventsRecords.map(async (e) => {
             const type = e.event_type_id ? await ctx.db.get(e.event_type_id) : null;
@@ -128,9 +138,11 @@ export const getDashboardData = query({
         }));
 
         // 4. Active Units
-        const activeUnits = await ctx.db.query("units")
-            .filter(q => q.eq(q.field("active"), true))
-            .collect();
+        let unitsQuery = ctx.db.query("units").filter(q => q.eq(q.field("active"), true));
+        if (orgId) {
+            unitsQuery = unitsQuery.filter(q => q.eq(q.field("organization_id"), orgId));
+        }
+        const activeUnits = await unitsQuery.collect();
 
         // 5. Birthdays
         const currentMonth = now.getMonth() + 1;
@@ -163,19 +175,24 @@ export const getDashboardData = query({
 export const getAttendanceTrends = query({
     args: { weeks: v.optional(v.number()) },
     handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
         const weeks = args.weeks ?? 12;
         const scopedIds = await getScopedMemberIds(ctx);
         if (scopedIds === null) return [];
+        const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
 
         const endDate = new Date();
         const startDate = new Date();
         startDate.setDate(endDate.getDate() - (weeks * 7));
         const startDateStr = startDate.toISOString().split('T')[0];
 
-        const attendanceRecords = await ctx.db
+        let attendanceRecordsQuery = ctx.db
             .query("attendance")
-            .withIndex("by_date", q => q.gte("date", startDateStr))
-            .collect();
+            .withIndex("by_date", q => q.gte("date", startDateStr));
+        if (orgId) {
+            attendanceRecordsQuery = attendanceRecordsQuery.filter(q => q.eq(q.field("organization_id"), orgId));
+        }
+        const attendanceRecords = await attendanceRecordsQuery.collect();
 
         // Group by week
         const weeklyData: { [key: string]: number } = {};

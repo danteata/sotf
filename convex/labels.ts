@@ -2,27 +2,20 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
+import { requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
 
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        // Get user identity for role-based access control
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
-            .unique();
-
-        if (!user) return [];
+        const user = await requireUser(ctx);
 
         let labels;
 
         // Apply organization filtering based on user role
-        if (user.role === 'super_admin') {
+        if (isSuperAdmin(user)) {
             // Super admin can see all labels, optionally filtered by org
             if (args.organization_id) {
+                await requireOrgAccess(ctx, args.organization_id);
                 labels = await ctx.db
                     .query("labels")
                     .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
@@ -69,8 +62,11 @@ export const create = mutation({
         created_by_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
         return await ctx.db.insert("labels", {
             ...args,
+            organization_id: orgId ?? args.organization_id,
             is_active: true,
         });
     },
@@ -88,6 +84,12 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Label not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
         await ctx.db.patch(args.id, args.updates);
     },
 });
@@ -95,6 +97,12 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("labels") },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Label not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
         // Find all member_labels using this label and remove them
         const links = await ctx.db
             .query("member_labels")
@@ -117,6 +125,13 @@ export const toggleMemberLabel = mutation({
         assigned_by_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const member = await ctx.db.get(args.member_id);
+        const label = await ctx.db.get(args.label_id);
+        if (!member || !label) throw new Error("Member or label not found");
+        if (member.organization_id) await requireOrgAccess(ctx, member.organization_id);
+        if (label.organization_id) await requireOrgAccess(ctx, label.organization_id);
+
         const existing = await ctx.db
             .query("member_labels")
             .withIndex("by_member", (q) => q.eq("member_id", args.member_id))
@@ -141,6 +156,11 @@ export const toggleMemberLabel = mutation({
 export const getByMember = query({
     args: { member_id: v.id("members") },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
+        const member = await ctx.db.get(args.member_id);
+        if (member?.organization_id) {
+            await requireOrgAccess(ctx, member.organization_id);
+        }
         const links = await ctx.db
             .query("member_labels")
             .withIndex("by_member", (q) => q.eq("member_id", args.member_id))
@@ -166,6 +186,19 @@ export const bulk = mutation({
         notes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        for (const memberId of args.member_ids) {
+            const member = await ctx.db.get(memberId);
+            if (member?.organization_id) {
+                await requireOrgAccess(ctx, member.organization_id);
+            }
+        }
+        for (const labelId of args.label_ids) {
+            const label = await ctx.db.get(labelId);
+            if (label?.organization_id) {
+                await requireOrgAccess(ctx, label.organization_id);
+            }
+        }
         if (args.operation === "replace") {
             // Remove ALL existing labels for these members first
             for (const memberId of args.member_ids) {

@@ -2,26 +2,20 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
 
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
-        let orgId = args.organization_id;
-        if (!orgId) {
-            const identity = await ctx.auth.getUserIdentity();
-            if (!identity) return [];
-            const user = await ctx.db
-                .query("users")
-                .withIndex("by_clerk_id", q => q.eq("clerk_user_id", identity.subject))
-                .unique();
-            if (!user || !user.organization_id) return [];
-            orgId = user.organization_id as Id<"organizations">;
-        }
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
 
-        const events = await ctx.db
-            .query("events")
-            .filter(q => q.eq(q.field("organization_id"), orgId))
-            .collect();
+        const events = orgId
+            ? await ctx.db
+                .query("events")
+                .filter(q => q.eq(q.field("organization_id"), orgId))
+                .collect()
+            : await ctx.db.query("events").collect();
 
         const eventTypes = await ctx.db.query("event_types").collect();
         const typeMap = new Map(eventTypes.map(t => [t._id, t]));
@@ -38,7 +32,11 @@ export const list = query({
 export const getById = query({
     args: { id: v.id("events") },
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.id);
+        const event = await ctx.db.get(args.id);
+        if (event?.organization_id) {
+            await requireOrgAccess(ctx, event.organization_id);
+        }
+        return event;
     },
 });
 
@@ -54,7 +52,12 @@ export const create = mutation({
         active: v.boolean(),
     },
     handler: async (ctx, args) => {
-        return await ctx.db.insert("events", args);
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        return await ctx.db.insert("events", {
+            ...args,
+            organization_id: orgId ?? args.organization_id,
+        });
     },
 });
 
@@ -72,6 +75,12 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const event = await ctx.db.get(args.id);
+        if (!event) throw new Error("Event not found");
+        if (event.organization_id) {
+            await requireOrgAccess(ctx, event.organization_id);
+        }
         await ctx.db.patch(args.id, args.updates);
     },
 });
@@ -79,6 +88,12 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("events") },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const event = await ctx.db.get(args.id);
+        if (!event) throw new Error("Event not found");
+        if (event.organization_id) {
+            await requireOrgAccess(ctx, event.organization_id);
+        }
         await ctx.db.delete(args.id);
     },
 });

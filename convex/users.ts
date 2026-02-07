@@ -1,6 +1,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
 
 export const store = mutation({
     args: {},
@@ -92,6 +93,14 @@ export const syncUser = mutation({
         clerk_user_id: v.string()
     },
     handler: async (ctx, args) => {
+        const identity = await requireIdentity(ctx);
+        if (identity.subject !== args.clerk_user_id) {
+            throw new Error("Forbidden");
+        }
+        if (identity.email && identity.email !== args.email) {
+            throw new Error("Email mismatch");
+        }
+
         const existing = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", q => q.eq("clerk_user_id", args.clerk_user_id))
@@ -119,21 +128,44 @@ export const syncUser = mutation({
 export const list = query({
     args: {},
     handler: async (ctx) => {
-        // Permission check?
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-        // Real app should enforce admin role check here.
+        const user = await requireOrgAdmin(ctx);
+        if (user.role === "super_admin") {
+            return await ctx.db.query("users").order("desc").collect();
+        }
 
-        return await ctx.db.query("users").order("desc").collect();
+        const orgId = await resolveOrgId(ctx);
+        if (!orgId) return [];
+        return await ctx.db
+            .query("users")
+            .filter((q) => q.eq(q.field("organization_id"), orgId))
+            .order("desc")
+            .collect();
     }
 });
 
 export const updateRole = mutation({
     args: { id: v.id("users"), role: v.string() },
     handler: async (ctx, args) => {
-        // Permission check
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthorized");
+        const user = await requireOrgAdmin(ctx);
+        const target = await ctx.db.get(args.id);
+        if (!target) throw new Error("User not found");
+
+        const allowedRoles = new Set([
+            "super_admin",
+            "organization_admin",
+            "admin",
+            "division_admin",
+            "unit_admin",
+            "sub_unit_admin",
+            "member",
+        ]);
+        if (!allowedRoles.has(args.role)) throw new Error("Invalid role");
+
+        if (user.role !== "super_admin") {
+            const orgId = await resolveOrgId(ctx);
+            if (!orgId || target.organization_id !== orgId) throw new Error("Forbidden");
+            if (args.role === "super_admin") throw new Error("Forbidden");
+        }
 
         await ctx.db.patch(args.id, { role: args.role });
     }
@@ -142,18 +174,19 @@ export const updateRole = mutation({
 export const switchOrganization = mutation({
     args: { organization_id: v.string() },
     handler: async (ctx, args) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Not authenticated");
+        const user = await requireUser(ctx);
+        const orgId = ctx.db.normalizeId("organizations", args.organization_id);
+        if (!orgId) throw new Error("Invalid organization");
 
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
-            .unique();
-
-        if (!user) throw new Error("User not found");
+        if (user.role !== "super_admin") {
+            const userOrg = ctx.db.normalizeId("organizations", user.organization_id);
+            if (!userOrg || userOrg !== orgId) {
+                throw new Error("Forbidden");
+            }
+        }
 
         await ctx.db.patch(user._id, {
-            organization_id: args.organization_id,
+            organization_id: orgId,
         });
     },
 });

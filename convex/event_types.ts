@@ -1,10 +1,12 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireSuperAdmin, requireUser } from "./auth";
 
 export const getAll = query({
     args: {},
     handler: async (ctx) => {
+        await requireUser(ctx);
         const types = await ctx.db
             .query("event_types")
             .collect();
@@ -17,6 +19,7 @@ export const getAll = query({
 export const listAll = query({
     args: {},
     handler: async (ctx) => {
+        await requireUser(ctx);
         return await ctx.db.query("event_types").collect();
     }
 });
@@ -33,6 +36,7 @@ export const create = mutation({
         sort_order: v.number(),
     },
     handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx);
         return await ctx.db.insert("event_types", args);
     },
 });
@@ -51,6 +55,7 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx);
         await ctx.db.patch(args.id, args.updates);
     },
 });
@@ -58,12 +63,14 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("event_types") },
     handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx);
         await ctx.db.delete(args.id);
     },
 });
 
 export const resetToDefaults = mutation({
     handler: async (ctx) => {
+        await requireSuperAdmin(ctx);
         // Delete all
         const all = await ctx.db.query("event_types").collect();
         for (const t of all) {
@@ -92,6 +99,7 @@ export const resetToDefaults = mutation({
 export const loadTemplate = mutation({
     args: { templateName: v.string() },
     handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx);
         const config = await ctx.db
             .query("app_config")
             .withIndex("by_key", (q) => q.eq("key", "event_types_templates"))

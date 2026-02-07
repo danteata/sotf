@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { requireOrgAccess, requireOrgAdmin, resolveOrgId } from "./auth";
 
 // Utility functions for hierarchical operations
 export const buildPath = (parentPath: string, unitName: string): string => {
@@ -17,6 +18,7 @@ export const getDescendants = query({
     handler: async (ctx, args) => {
         const unit = await ctx.db.get(args.unit_id);
         if (!unit) return [];
+        await requireOrgAccess(ctx, unit.organization_id);
 
         const descendants = await ctx.db
             .query("units")
@@ -32,6 +34,7 @@ export const getAncestors = query({
     handler: async (ctx, args) => {
         const unit = await ctx.db.get(args.unit_id);
         if (!unit || !unit.parent_unit_id) return [];
+        await requireOrgAccess(ctx, unit.organization_id);
 
         const ancestors = [];
         let currentParentId: Id<"units"> | undefined = unit.parent_unit_id;
@@ -50,6 +53,10 @@ export const getAncestors = query({
 export const getChildren = query({
     args: { unit_id: v.id("units") },
     handler: async (ctx, args) => {
+        const parent = await ctx.db.get(args.unit_id);
+        if (parent?.organization_id) {
+            await requireOrgAccess(ctx, parent.organization_id);
+        }
         return await ctx.db
             .query("units")
             .withIndex("by_parent", (q) => q.eq("parent_unit_id", args.unit_id))
@@ -60,6 +67,7 @@ export const getChildren = query({
 export const listByOrg = query({
     args: { organization_id: v.id("organizations") },
     handler: async (ctx, args) => {
+        await requireOrgAccess(ctx, args.organization_id);
         return await ctx.db
             .query("units")
             .withIndex("by_org", q => q.eq("organization_id", args.organization_id))
@@ -73,6 +81,7 @@ export const listByType = query({
         type: v.string()
     },
     handler: async (ctx, args) => {
+        await requireOrgAccess(ctx, args.organization_id);
         return await ctx.db
             .query("units")
             .withIndex("by_org_type", q => q.eq("organization_id", args.organization_id).eq("type", args.type))
@@ -83,6 +92,7 @@ export const listByType = query({
 export const getRootUnits = query({
     args: { organization_id: v.id("organizations") },
     handler: async (ctx, args) => {
+        await requireOrgAccess(ctx, args.organization_id);
         const allUnits = await ctx.db
             .query("units")
             .withIndex("by_org", q => q.eq("organization_id", args.organization_id))
@@ -107,6 +117,9 @@ export const create = mutation({
         country: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        if (!orgId) throw new Error("Organization not set");
         // Get parent unit for path and depth calculation
         let parentPath = "";
         let depth = 0;
@@ -114,6 +127,9 @@ export const create = mutation({
         if (args.parent_unit_id) {
             const parent = await ctx.db.get(args.parent_unit_id);
             if (parent && parent.path && parent.depth !== undefined) {
+                if (parent.organization_id !== orgId) {
+                    throw new Error("Parent unit org mismatch");
+                }
                 parentPath = parent.path;
                 depth = getUnitDepth(parent.depth);
             }
@@ -123,6 +139,7 @@ export const create = mutation({
 
         return await ctx.db.insert("units", {
             ...args,
+            organization_id: orgId,
             depth,
             path,
         });
@@ -151,6 +168,16 @@ export const update = mutation({
     },
     handler: async (ctx, args) => {
         const { id, updates } = args;
+        await requireOrgAdmin(ctx);
+        const unit = await ctx.db.get(id);
+        if (!unit) throw new Error("Unit not found");
+        await requireOrgAccess(ctx, unit.organization_id);
+        if (updates.parent_unit_id) {
+            const parent = await ctx.db.get(updates.parent_unit_id);
+            if (!parent || parent.organization_id !== unit.organization_id) {
+                throw new Error("Parent unit org mismatch");
+            }
+        }
         await updateUnitWithPathRecalculation(ctx, id, updates);
         return true;
     },
@@ -159,6 +186,10 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("units") },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const unit = await ctx.db.get(args.id);
+        if (!unit) throw new Error("Unit not found");
+        await requireOrgAccess(ctx, unit.organization_id);
         // Check if unit has children
         const children = await ctx.db
             .query("units")
@@ -254,9 +285,17 @@ export const moveUnit = mutation({
     },
     handler: async (ctx, args) => {
         const { unitId, newParentId } = args;
+        await requireOrgAdmin(ctx);
+        const unit = await ctx.db.get(unitId);
+        if (!unit) throw new Error("Unit not found");
+        await requireOrgAccess(ctx, unit.organization_id);
 
         // Prevent circular references
         if (newParentId) {
+            const parent = await ctx.db.get(newParentId);
+            if (!parent || parent.organization_id !== unit.organization_id) {
+                throw new Error("Parent unit org mismatch");
+            }
             const wouldCreateCycle = await checkForCycle(ctx, unitId, newParentId);
             if (wouldCreateCycle) {
                 throw new Error("Moving this unit would create a circular reference");
@@ -290,6 +329,8 @@ const checkForCycle = async (
 export const migrateExistingUnits = mutation({
     args: { organization_id: v.id("organizations") },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        await requireOrgAccess(ctx, args.organization_id);
         // Get all units for this organization
         const units = await ctx.db
             .query("units")
@@ -327,6 +368,8 @@ export const migrateExistingUnits = mutation({
 export const setUnitTypes = mutation({
     args: { organization_id: v.id("organizations") },
     handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        await requireOrgAccess(ctx, args.organization_id);
         const units = await ctx.db
             .query("units")
             .withIndex("by_org", q => q.eq("organization_id", args.organization_id))

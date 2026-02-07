@@ -1,6 +1,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireOrgAdmin } from "./auth";
 
 export const create = mutation({
     args: {
@@ -11,10 +12,29 @@ export const create = mutation({
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
-        // Check permissions (commented out for now, assuming caller checks)
-        // if (!identity) throw new Error("Unauthorized");
+        if (!identity) throw new Error("Unauthorized");
+        const inviter = await requireOrgAdmin(ctx);
 
-        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const allowedRoles = new Set([
+            "organization_admin",
+            "admin",
+            "division_admin",
+            "unit_admin",
+            "sub_unit_admin",
+            "member",
+        ]);
+        if (!allowedRoles.has(args.intended_role)) throw new Error("Invalid intended role");
+        if (args.intended_role === "organization_admin" && inviter.role !== "super_admin") {
+            throw new Error("Forbidden");
+        }
+
+        const bytes = crypto.getRandomValues(new Uint8Array(32));
+        const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+        if (args.member_id) {
+            const member = await ctx.db.get(args.member_id);
+            if (!member) throw new Error("Member not found");
+        }
 
         const invitationId = await ctx.db.insert("invitations", {
             email: args.email,
@@ -34,10 +54,14 @@ export const create = mutation({
 export const getByToken = query({
     args: { token: v.string() },
     handler: async (ctx, args) => {
-        return await ctx.db
+        const invitation = await ctx.db
             .query("invitations")
             .withIndex("by_token", q => q.eq("invitation_token", args.token))
             .first();
+        if (!invitation) return null;
+        if (invitation.status !== "pending") return null;
+        if (invitation.expires_at && invitation.expires_at < Date.now()) return null;
+        return invitation;
     }
 });
 
@@ -55,6 +79,9 @@ export const accept = mutation({
         if (!invitation) throw new Error("Invalid token");
         if (invitation.status !== "pending") throw new Error("Invitation already used or revoked");
         if (invitation.expires_at && invitation.expires_at < Date.now()) throw new Error("Invitation expired");
+        if (identity.email && invitation.email && identity.email.toLowerCase() !== invitation.email.toLowerCase()) {
+            throw new Error("Invitation email mismatch");
+        }
 
         // Update user role
         const user = await ctx.db
@@ -117,6 +144,7 @@ export const accept = mutation({
 export const list = query({
     args: {},
     handler: async (ctx) => {
+        await requireOrgAdmin(ctx);
         return await ctx.db.query("invitations").order("desc").collect();
     }
 });

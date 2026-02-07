@@ -1,10 +1,12 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { requireSuperAdmin, requireUser } from "./auth";
 
 export const getKey = query({
     args: { key: v.string() },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
         const config = await ctx.db
             .query("app_config")
             .withIndex("by_key", (q) => q.eq("key", args.key))
@@ -17,6 +19,7 @@ export const getKey = query({
 export const getByCategory = query({
     args: { category: v.string() },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
         const configs = await ctx.db
             .query("app_config")
             .filter(q => q.eq("category", args.category)) // Assuming we added category to table, but index is only key
@@ -38,6 +41,7 @@ export const setKey = mutation({
         category: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx);
         const existing = await ctx.db
             .query("app_config")
             .withIndex("by_key", (q) => q.eq("key", args.key))
