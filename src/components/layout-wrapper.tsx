@@ -33,28 +33,30 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden transition-opacity"
+            className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm lg:hidden transition-opacity"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Sidebar */}
         <div className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar-background border-r border-sidebar-border shadow-soft-lg transform transition-all duration-300 ease-out lg:translate-x-0 lg:static lg:inset-0",
+          "fixed inset-y-0 left-0 z-50 w-60 bg-sidebar border-r border-border/50 transform transition-all duration-300 ease-out lg:translate-x-0 lg:static lg:inset-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           {/* Logo */}
-          <div className="flex items-center justify-between h-16 px-6 border-b border-sidebar-border/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-soft transition-transform hover:scale-105">
-                <span className="text-primary-foreground font-bold text-lg">SF</span>
+          <div className="flex items-center justify-between h-14 px-5 border-b border-border/40">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-semibold text-sm">SF</span>
               </div>
-              <span className="font-semibold text-sidebar-foreground">State of the Flock</span>
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm text-foreground">State of the Flock</span>
+              </div>
             </div>
             <Button
               variant="ghost"
-              size="sm"
-              className="lg:hidden text-sidebar-foreground hover:bg-sidebar-accent/10 rounded-lg transition-smooth"
+              size="icon"
+              className="lg:hidden h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-4 w-4" />
@@ -62,9 +64,9 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 px-4 py-6">
-            <div className="text-xs font-semibold text-primary/70 uppercase tracking-wider mb-4 px-3">
-              Navigation
+          <div className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
+            <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 px-3">
+              Menu
             </div>
             <div onClick={() => setSidebarOpen(false)}>
               <RoleBasedNavigation />
@@ -78,16 +80,16 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="h-16 bg-background/80 backdrop-blur-md border-b border-border/50 flex items-center justify-between px-6 shadow-soft sticky top-0 z-30">
+          <header className="h-14 bg-background/95 backdrop-blur-sm border-b border-border/40 flex items-center justify-between px-5 sticky top-0 z-30">
             {/* Left section */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
-                size="sm"
-                className="lg:hidden hover:bg-accent/50 rounded-lg transition-smooth"
+                size="icon"
+                className="lg:hidden h-8 w-8 hover:bg-muted rounded-md"
                 onClick={() => setSidebarOpen(true)}
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-4 w-4" />
               </Button>
 
               {/* Organization Selector */}
@@ -95,14 +97,14 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
             </div>
 
             {/* Right section */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
-                size="sm"
-                className="relative hover:bg-accent/50 rounded-lg transition-smooth"
+                size="icon"
+                className="relative h-8 w-8 hover:bg-muted rounded-md"
               >
-                <Bell className="h-4 w-4 text-foreground/70" />
-                <span className="absolute -top-1 -right-1 h-2 w-2 bg-primary rounded-full animate-pulse"></span>
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-primary rounded-full"></span>
               </Button>
               <ThemeToggle />
               <UserNav />
@@ -110,8 +112,8 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
           </header>
 
           {/* Content */}
-          <main className="flex-1 overflow-auto bg-gradient-to-br from-background via-background to-muted/20">
-            <div className="p-6 w-full max-w-none">
+          <main className="flex-1 overflow-auto">
+            <div className="p-6 w-full max-w-7xl mx-auto">
               {children}
             </div>
           </main>

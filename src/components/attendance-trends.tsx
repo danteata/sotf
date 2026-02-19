@@ -54,59 +54,57 @@ export function AttendanceTrends() {
   const hasComparisonData = Array.isArray(eventComparisonData) && eventComparisonData.length > 0
 
   return (
-    <div className="space-y-12">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-black tracking-tight text-foreground">Engagement Analytics</h2>
-        <p className="text-muted-foreground font-medium flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-emerald-500" /> Quantifying community growth and service dynamics
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-foreground">Analytics</h2>
+        <p className="text-sm text-muted-foreground">
+          Track engagement patterns and growth trends
         </p>
       </div>
 
-      <Tabs defaultValue="weekly" className="w-full space-y-10">
-        <TabsList className="bg-muted/50 p-1.5 rounded-2xl w-full md:w-auto inline-flex shadow-sm border border-border">
-          <TabsTrigger value="weekly" className="rounded-xl px-6 py-2.5 font-bold text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-soft transition-all">Weekly Dynamics</TabsTrigger>
-          <TabsTrigger value="monthly" className="rounded-xl px-6 py-2.5 font-bold text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-soft transition-all">Monthly Trajectory</TabsTrigger>
-          <TabsTrigger value="comparison" className="rounded-xl px-6 py-2.5 font-bold text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-soft transition-all">Comparisons</TabsTrigger>
+      <Tabs defaultValue="weekly" className="w-full space-y-6">
+        <TabsList className="bg-muted/50 p-1 rounded-lg h-auto flex-wrap gap-0.5">
+          <TabsTrigger value="weekly" className="h-8 px-3 rounded-md text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Weekly</TabsTrigger>
+          <TabsTrigger value="monthly" className="h-8 px-3 rounded-md text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Monthly</TabsTrigger>
+          <TabsTrigger value="comparison" className="h-8 px-3 rounded-md text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm">Compare</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="weekly" className="space-y-10 animate-in fade-in duration-500 outline-none">
-          <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-card hover:shadow-soft-2xl transition-all duration-300">
-            <CardHeader className="p-8 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="h-12 w-12 bg-primary text-primary-foreground rounded-2xl flex items-center justify-center shadow-soft">
-                  <Calendar className="h-6 w-6" />
+        <TabsContent value="weekly" className="space-y-6 outline-none">
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+                  <Calendar className="h-4 w-4" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl font-black tracking-tight text-foreground">Weekly Engagement Profile</CardTitle>
-                  <CardDescription className="font-medium text-muted-foreground text-sm">Quantifying participation levels over the last 11 weeks</CardDescription>
+                  <CardTitle className="text-base font-medium">Weekly Engagement</CardTitle>
+                  <CardDescription className="text-sm">Participation over the last 11 weeks</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-10 pt-4">
+            <CardContent className="pb-4">
               {hasWeeklyData ? (
-                <div className="h-[450px]">
+                <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={weeklyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                    <LineChart data={weeklyData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                         dy={10}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
                       />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: 'hsl(var(--popover))',
-                          borderRadius: '16px',
+                          borderRadius: '8px',
                           border: '1px solid hsl(var(--border))',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                          fontWeight: 700,
                           fontSize: '12px',
                           color: 'hsl(var(--popover-foreground))'
                         }}
@@ -115,33 +113,33 @@ export function AttendanceTrends() {
                         verticalAlign="top"
                         align="right"
                         iconType="circle"
-                        formatter={(value) => <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider ml-1">{value}</span>}
+                        formatter={(value) => <span className="text-xs text-muted-foreground ml-1">{value}</span>}
                       />
                       <Line
                         type="monotone"
                         dataKey="count"
                         name="Attendees"
                         stroke="hsl(var(--primary))"
-                        strokeWidth={4}
-                        dot={{ r: 6, fill: "hsl(var(--primary))", strokeWidth: 3, stroke: "hsl(var(--background))" }}
-                        activeDot={{ r: 8, strokeWidth: 4, stroke: "hsl(var(--background))" }}
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                        activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--background))" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground font-bold uppercase tracking-widest bg-muted/50 rounded-2xl border border-dashed border-border">
-                  Insufficient Weekly Data
+                <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground bg-muted/30 rounded-lg border border-dashed border-border">
+                  No weekly data available
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-card">
-              <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-lg font-black tracking-tight text-foreground">Growth Velocity</CardTitle>
-                <CardDescription className="font-medium text-muted-foreground text-sm">Iterative percentage variance week-over-week</CardDescription>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border-border/50 rounded-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+                <CardDescription className="text-xs">Week-over-week change</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-4">
                 {hasWeeklyData ? (

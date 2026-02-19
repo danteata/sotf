@@ -56,48 +56,43 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className={`flex items-center gap-3 h-11 px-4 border border-border/50 bg-background hover:bg-accent transition-all shadow-sm rounded-xl ${className}`}
+          className={`flex items-center gap-2 h-9 px-3 border-border/50 bg-background hover:bg-muted transition-colors rounded-lg ${className}`}
         >
-          <div className="p-1.5 bg-muted text-foreground rounded-md">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
-            <span className="text-sm font-semibold truncate w-full">
-              {currentOrganization?.name || "Select Organization"}
-            </span>
-          </div>
-          <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
+          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium truncate max-w-[150px]">
+            {currentOrganization?.name || "Select Organization"}
+          </span>
+          <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-[320px] p-2 border border-border/50 shadow-soft-lg rounded-2xl bg-popover overflow-hidden">
-        <div className="p-3 mb-2 bg-muted/30 rounded-xl border border-dashed border-border">
-          <DropdownMenuLabel className="p-0 text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 flex items-center gap-2">
-            <Globe className="h-3 w-3" /> CURRENT CONTEXT
+      <DropdownMenuContent align="start" className="w-[280px] p-1.5 border border-border/50 shadow-lg rounded-xl bg-popover overflow-hidden">
+        <div className="p-2 mb-1 bg-muted/50 rounded-lg">
+          <DropdownMenuLabel className="p-0 text-[10px] font-medium uppercase text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
+            <Globe className="h-3 w-3" /> Current
           </DropdownMenuLabel>
 
           {currentOrganization ? (
-            <div className="flex items-center gap-3 p-3 bg-primary text-primary-foreground rounded-lg shadow-sm">
-              <Building2 className="h-5 w-5" />
+            <div className="flex items-center gap-2 p-2 bg-primary/10 text-primary rounded-md">
+              <Building2 className="h-4 w-4" />
               <div className="min-w-0">
-                <div className="font-bold text-sm truncate">{currentOrganization.name}</div>
-                <div className="text-[10px] font-medium text-primary-foreground/60 uppercase">Active Organization</div>
+                <div className="font-medium text-sm truncate">{currentOrganization.name}</div>
               </div>
             </div>
           ) : (
-            <div className="p-3 text-center border border-border border-dashed rounded-lg">
-              <span className="font-bold uppercase text-xs text-muted-foreground">NO SELECTION</span>
+            <div className="p-2 text-center border border-dashed border-border rounded-md">
+              <span className="text-xs text-muted-foreground">No selection</span>
             </div>
           )}
         </div>
 
-        <DropdownMenuSeparator className="mx-2 mb-2" />
+        <DropdownMenuSeparator className="my-1.5" />
 
-        <DropdownMenuLabel className="px-3 pb-2 text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-          SWITCH ORGANIZATION
+        <DropdownMenuLabel className="px-2 pb-1.5 text-[10px] font-medium uppercase text-muted-foreground tracking-wider">
+          Switch Organization
         </DropdownMenuLabel>
 
-        <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
+        <div className="space-y-0.5 max-h-[250px] overflow-y-auto">
           {accessibleOrganizations.length > 0 ? (
             accessibleOrganizations.map((org: any) => {
               const isSelected = currentOrganization?._id === org._id
@@ -106,25 +101,21 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
                   key={org._id}
                   onClick={() => handleOrganizationSelect(org)}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border border-transparent transition-all cursor-pointer font-medium text-sm mb-1",
+                    "flex items-center gap-2 p-2 rounded-md cursor-pointer text-sm",
                     isSelected
-                      ? "bg-primary/5 text-primary border-primary/20 shadow-sm"
-                      : "hover:bg-muted/50 hover:border-border/50"
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted"
                   )}
                 >
                   <Building2 className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate">{org.name}</span>
-                      {isSelected && <Check className="h-4 w-4 shrink-0" />}
-                    </div>
-                  </div>
+                  <span className="truncate flex-1">{org.name}</span>
+                  {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
                 </DropdownMenuItem>
               )
             })
           ) : (
-            <div className="p-6 text-center text-xs font-medium text-muted-foreground italic border border-dashed border-border rounded-lg">
-              No other organizations found
+            <div className="p-4 text-center text-xs text-muted-foreground">
+              No other organizations
             </div>
           )}
         </div>

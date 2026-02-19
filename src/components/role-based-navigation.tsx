@@ -130,7 +130,7 @@ export function RoleBasedNavigation() {
   }
 
   return (
-    <nav className="space-y-1">
+    <nav className="space-y-0.5">
       {visibleItems.map((item) => {
         const Icon = item.icon
         const isActive = pathname === item.href
@@ -138,23 +138,20 @@ export function RoleBasedNavigation() {
         return (
           <Link key={item.href} to={item.href}>
             <Button
-              variant={isActive ? "default" : "ghost"}
+              variant="ghost"
               className={cn(
-                "w-full justify-start transition-smooth rounded-xl group",
+                "w-full justify-start gap-3 h-9 px-3 rounded-lg font-medium text-sm transition-colors",
                 isActive
-                  ? "bg-[#5b21b6] text-white shadow-soft hover:shadow-soft-lg"
-                  : "hover:bg-sidebar-accent/10 hover:text-sidebar-accent"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
               )}
             >
-              <Icon className={cn(
-                "mr-3 h-4 w-4 transition-transform group-hover:scale-110",
-                isActive ? "text-white" : "text-sidebar-foreground/70"
-              )} />
-              <span className="font-medium">{item.title}</span>
+              <Icon className="h-4 w-4" />
+              <span>{item.title}</span>
               {item.badge && (
                 <Badge
-                  variant="outline"
-                  className="ml-auto text-xs bg-white/10 border-white/20 text-white"
+                  variant="secondary"
+                  className="ml-auto text-[10px] px-1.5 py-0 h-5"
                 >
                   {item.badge}
                 </Badge>
@@ -180,7 +177,7 @@ export function RoleIndicator() {
       case 'admin':
         return { label: 'Administrator', color: 'destructive' as const }
       case 'organization_admin':
-        return { label: 'Organization Admin', color: 'destructive' as const }
+        return { label: 'Organization Admin', color: 'default' as const }
       case 'division_admin':
         return { label: 'Division Admin', color: 'default' as const }
       case 'unit_admin':
@@ -196,15 +193,15 @@ export function RoleIndicator() {
   const roleInfo = getRoleDisplay()
 
   return (
-    <div className="p-4 border-t border-sidebar-border/50 bg-gradient-to-t from-sidebar-accent/5 to-transparent">
-      <div className="flex flex-col items-center text-center space-y-2">
-        <div className="flex flex-col items-center space-y-2">
-          <p className="text-sm font-semibold truncate max-w-full text-sidebar-foreground">
+    <div className="p-4 border-t border-border/40">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col">
+          <p className="text-sm font-medium text-foreground truncate">
             {user.name || 'Unknown User'}
           </p>
           <Badge
             variant={roleInfo.color}
-            className="text-xs px-3 py-1 rounded-full shadow-soft"
+            className="text-[10px] px-2 py-0 h-5 w-fit mt-1"
           >
             {roleInfo.label}
           </Badge>

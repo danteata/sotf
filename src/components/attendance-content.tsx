@@ -38,27 +38,27 @@ export function AttendanceContent() {
   }
 
   return (
-    <div className="flex flex-col gap-8 max-w-7xl mx-auto p-4 md:p-10">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-black tracking-tight text-foreground">Attendance & Engagement</h1>
-          <p className="font-medium text-muted-foreground">
-            Monitor community participation and service dynamics
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">Attendance</h1>
+          <p className="text-sm text-muted-foreground">
+            Track and manage participation
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="lg"
+            size="sm"
             onClick={refreshStats}
             disabled={isRefreshing}
-            className="rounded-xl border-border font-bold text-muted-foreground bg-background shadow-sm hover:bg-accent h-12"
+            className="h-8"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Syncing...' : 'Refresh Stats'}
+            <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Syncing...' : 'Refresh'}
           </Button>
-          <Button variant="outline" size="lg" className="rounded-xl border-border font-bold text-muted-foreground bg-background shadow-sm hover:bg-accent h-12">
-            <Download className="mr-2 h-4 w-4" />
+          <Button variant="outline" size="sm" className="h-8">
+            <Download className="mr-2 h-3.5 w-3.5" />
             Export
           </Button>
         </div>
@@ -80,145 +80,118 @@ export function AttendanceContent() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {/* Total Active Members */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Total Registry</CardTitle>
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Total Members</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-foreground">{stats?.totalActiveMembers || 0}</div>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                Verified Members
-              </p>
+            <CardContent className="pb-4 px-4">
+              <div className="text-2xl font-semibold text-foreground">{stats?.totalActiveMembers || 0}</div>
             </CardContent>
           </Card>
 
           {/* This Week's Attendance */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Week Engagement</CardTitle>
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">This Week</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-foreground">{stats?.thisWeekTotal || 0}</div>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                Current Attendance
-              </p>
+            <CardContent className="pb-4 px-4">
+              <div className="text-2xl font-semibold text-foreground">{stats?.thisWeekTotal || 0}</div>
             </CardContent>
           </Card>
 
           {/* Weekly Growth Rate */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Growth Index</CardTitle>
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Growth</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-4 px-4">
               <div className={cn(
-                "text-3xl font-black",
-                (stats?.weeklyGrowthRate || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'
+                "text-2xl font-semibold",
+                (stats?.weeklyGrowthRate || 0) >= 0 ? 'text-success' : 'text-destructive'
               )}>
                 {(stats?.weeklyGrowthRate || 0) > 0 ? "+" : ""}
                 {(stats?.weeklyGrowthRate || 0).toFixed(1)}%
               </div>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                Week over Week
-              </p>
             </CardContent>
           </Card>
 
           {/* Attendance Rate */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Participation</CardTitle>
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Rate</CardTitle>
               <Target className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-foreground">{(stats?.attendanceRate || 0).toFixed(1)}%</div>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                Resource Utilization
-              </p>
+            <CardContent className="pb-4 px-4">
+              <div className="text-2xl font-semibold text-foreground">{(stats?.attendanceRate || 0).toFixed(1)}%</div>
             </CardContent>
           </Card>
 
           {/* Recent Activity */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Operational Days</CardTitle>
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Active Days</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-foreground">{stats?.recentActivityDays || 0}</div>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                Last 30 Days
-              </p>
+            <CardContent className="pb-4 px-4">
+              <div className="text-2xl font-semibold text-foreground">{stats?.recentActivityDays || 0}</div>
             </CardContent>
           </Card>
 
           {/* Total Records */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Data Points</CardTitle>
+          <Card className="border-border/50 rounded-lg">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
+              <CardTitle className="text-xs font-medium text-muted-foreground">Records</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-black text-foreground">{stats?.totalRecords || 0}</div>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
-                Total Logs
-              </p>
+            <CardContent className="pb-4 px-4">
+              <div className="text-2xl font-semibold text-foreground">{stats?.totalRecords || 0}</div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <Tabs defaultValue="record" className="w-full space-y-8">
-        <TabsList className="bg-muted/50 p-1.5 rounded-2xl w-full md:w-auto inline-flex shadow-sm border border-border">
+      <Tabs defaultValue="record" className="w-full space-y-6">
+        <TabsList className="bg-muted/50 p-1 rounded-lg h-auto flex-wrap gap-0.5">
           {[
             {
               value: "record",
-              icon: <PlusCircle className="h-4 w-4" />,
-              label: "Attendance",
-              prefix: "Record"
+              icon: <PlusCircle className="h-3.5 w-3.5" />,
+              label: "Record"
             },
             {
               value: "history",
-              icon: <History className="h-4 w-4" />,
-              label: "Logs",
-              prefix: "Full"
+              icon: <History className="h-3.5 w-3.5" />,
+              label: "History"
             },
             {
               value: "absent",
-              icon: <UserMinus className="h-4 w-4" />,
-              label: "Analytics",
-              prefix: "Absence"
+              icon: <UserMinus className="h-3.5 w-3.5" />,
+              label: "Absent"
             },
             {
               value: "metadata",
-              icon: <BarChart3 className="h-4 w-4" />,
-              label: "Summaries",
-              prefix: "Service"
+              icon: <BarChart3 className="h-3.5 w-3.5" />,
+              label: "Summaries"
             }
           ].map((tab) => (
             <TabsTrigger
               key={tab.value}
               value={tab.value}
               className={cn(
-                "h-11 rounded-xl px-6",
-                "text-sm font-bold",
+                "h-8 px-3 rounded-md text-sm gap-1.5",
                 "data-[state=active]:bg-background",
                 "data-[state=active]:text-foreground",
-                "data-[state=active]:shadow-soft",
-                "transition-all duration-200",
-                "text-muted-foreground",
-                "hover:text-foreground"
+                "data-[state=active]:shadow-sm",
+                "text-muted-foreground"
               )}
             >
-              <span className="flex items-center gap-2">
-                {tab.icon}
-                <span>{tab.prefix} {tab.label}</span>
-              </span>
+              {tab.icon}
+              <span>{tab.label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -242,31 +215,31 @@ export function AttendanceContent() {
             <AbsentMembers />
           </TabsContent>
 
-          <TabsContent value="metadata" className="space-y-6 outline-none">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-8 bg-muted/50 rounded-3xl border border-dashed border-border">
-              <div className="space-y-1 text-center sm:text-left">
-                <h2 className="text-xl font-black tracking-tight text-foreground">Service Metadata Repository</h2>
-                <p className="text-muted-foreground font-medium text-sm">
-                  Document service specifics, speaker metrics, and qualitative outcomes
+          <TabsContent value="metadata" className="space-y-4 outline-none">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 bg-muted/30 rounded-lg border border-border/50">
+              <div className="text-center sm:text-left">
+                <h2 className="text-lg font-semibold text-foreground">Service Metadata</h2>
+                <p className="text-sm text-muted-foreground">
+                  Document service details and outcomes
                 </p>
               </div>
               <Button
                 onClick={() => setShowMetadataDialog(true)}
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-bold h-11 px-8 shadow-soft"
+                className="h-9"
               >
                 <PlusCircle className="h-4 w-4 mr-2" />
-                Initialize Summary
+                New Summary
               </Button>
             </div>
 
-            <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
-              <CardContent className="p-10 text-center space-y-4">
-                <div className="w-16 h-16 bg-muted text-muted-foreground rounded-2xl flex items-center justify-center mx-auto mb-2">
-                  <BarChart3 className="h-8 w-8" />
+            <Card className="border-border/50 rounded-lg">
+              <CardContent className="p-8 text-center">
+                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <BarChart3 className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-black tracking-tight text-foreground">Data Rich Summaries</h3>
-                <p className="text-muted-foreground font-medium max-w-lg mx-auto leading-relaxed">
-                  Integrate conversion metrics, message themes, and speaker effectiveness data into your attendance records for a complete picture of church vitality.
+                <h3 className="text-base font-medium text-foreground mb-1">Service Summaries</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  Add detailed metrics and notes to attendance records for comprehensive insights.
                 </p>
               </CardContent>
             </Card>
