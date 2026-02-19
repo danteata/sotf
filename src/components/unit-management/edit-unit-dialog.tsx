@@ -87,7 +87,7 @@ export function EditUnitDialog({
             setDescription(unit.description || '')
             setType((unit.type as 'administrative' | 'functional' | 'geographic') || 'administrative')
             setCategory(unit.category || '')
-            setUnitId(unit.parent_unit_id || '')
+            setUnitId(unit.parent_unit_id || 'none')
             setLeaderId(unit.leader_id || undefined)
         }
     }, [unit])
@@ -100,7 +100,7 @@ export function EditUnitDialog({
                 description: description.trim(),
                 type,
                 category: type === 'functional' ? category : '',
-                unit_id: unitId,
+                unit_id: unitId === 'none' ? '' : unitId,
                 leader_id: leaderId,
             })
             onOpenChange(false)
@@ -153,6 +153,7 @@ export function EditUnitDialog({
                                     <SelectValue placeholder="Select unit" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="none">None (Root Level)</SelectItem>
                                     {availableUnits.map((unit) => (
                                         <SelectItem key={unit._id} value={unit._id}>
                                             {unit.name}

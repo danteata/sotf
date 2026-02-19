@@ -76,7 +76,7 @@ export function CreateUnitDialog({
         description: description.trim(),
         type,
         category: category,
-        unitId: unitId || undefined,
+        unitId: unitId === 'none' ? undefined : (unitId || undefined),
         leader_id: leaderId,
       })
       resetForm()

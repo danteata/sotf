@@ -253,7 +253,7 @@ const updateUnitWithPathRecalculation = async (
         if (!unit) throw new Error("Unit not found");
 
         let newParentPath = "";
-        let newDepth = 0;
+        let newDepth = unit.depth ?? 0;
         let newPath = unit.path;
 
         if (updates.parent_unit_id !== undefined) {

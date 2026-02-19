@@ -64,7 +64,7 @@ export function UnitManagement() {
         name: data.name,
         description: data.description,
         organization_id: chartData.organization._id,
-        parent_unit_id: data.unitId || undefined,
+        parent_unit_id: data.unitId === "none" ? undefined : data.unitId,
         active: true,
         type: data.type,
         category: data.category,
@@ -84,7 +84,7 @@ export function UnitManagement() {
         updates: {
           name: data.name,
           description: data.description,
-          parent_unit_id: data.unit_id,
+          parent_unit_id: data.unit_id === "" || data.unit_id === "none" ? undefined : data.unit_id,
           type: data.type,
           category: data.category,
           leader_id: data.leaderId,
