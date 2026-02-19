@@ -161,14 +161,14 @@ export function AttendanceForm({
         <CardHeader className="p-8 pb-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <CardTitle className="text-xl font-black tracking-tight text-slate-900">Record Participation</CardTitle>
-              <CardDescription className="font-medium text-slate-500">Log attendance by selecting an event protocol and verified members</CardDescription>
+              <CardTitle className="text-xl font-black tracking-tight text-foreground">Record Participation</CardTitle>
+              <CardDescription className="font-medium text-muted-foreground">Log attendance by selecting an event protocol and verified members</CardDescription>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => window.location.reload()}
-              className="rounded-xl border-slate-200 font-bold text-slate-500 h-9"
+              className="rounded-xl border-border font-bold text-muted-foreground h-9"
             >
               <RefreshCw className="mr-2 h-3.5 w-3.5" />
               Reset View
@@ -178,14 +178,14 @@ export function AttendanceForm({
         <CardContent className="space-y-8 p-8 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Event Type</Label>
+              <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider pl-1">Event Type</Label>
               <Select value={attendanceType || undefined} onValueChange={setAttendanceType}>
-                <SelectTrigger className="h-12 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900">
+                <SelectTrigger className="h-12 border-border rounded-xl font-medium bg-background focus:ring-primary">
                   <SelectValue placeholder={eventTypesLoading ? "Loading Protocols..." : "Select Event Protocol"} />
                 </SelectTrigger>
                 <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
                   {eventTypes.map((eventType) => (
-                    <SelectItem key={eventType.value} value={eventType.value} className="font-medium py-3 rounded-lg focus:bg-slate-50">
+                    <SelectItem key={eventType.value} value={eventType.value} className="font-medium py-3 rounded-lg focus:bg-muted">
                       {eventType.label}
                     </SelectItem>
                   ))}
@@ -193,17 +193,17 @@ export function AttendanceForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Occurrence Date</Label>
+              <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider pl-1">Occurrence Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full h-12 border-slate-200 rounded-xl font-medium justify-start text-slate-600 bg-white hover:bg-white hover:border-slate-300 transition-colors",
-                      !date && "text-slate-400"
+                      "w-full h-12 border-border rounded-xl font-medium justify-start text-foreground bg-background hover:bg-accent hover:border-border transition-colors",
+                      !date && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-3 h-4 w-4 text-slate-400" />
+                    <CalendarIcon className="mr-3 h-4 w-4 text-muted-foreground" />
                     {date ? format(date, "PPP") : <span>Select Date</span>}
                   </Button>
                 </PopoverTrigger>
@@ -223,11 +223,11 @@ export function AttendanceForm({
           </div>
 
           <div className="pt-4 space-y-4">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Member Registry</Label>
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider pl-1">Member Registry</Label>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="flex-1">
                 <Select value={unitFilter} onValueChange={setUnitFilter}>
-                  <SelectTrigger className="h-11 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900">
+                  <SelectTrigger className="h-11 border-border rounded-xl font-medium bg-background focus:ring-primary">
                     <SelectValue placeholder="All Organizational Units" />
                   </SelectTrigger>
                   <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
@@ -241,20 +241,20 @@ export function AttendanceForm({
                 </Select>
               </div>
               <div className="relative flex-[2]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
                   placeholder="Filter by name or identifier..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-11 h-11 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900"
+                  className="pl-11 h-11 border-border rounded-xl font-medium bg-background focus:ring-primary"
                 />
               </div>
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleSelectAll}
-                className="h-11 rounded-xl border-slate-200 font-bold text-slate-600 px-6 shrink-0"
+                className="h-11 rounded-xl border-border font-bold text-muted-foreground px-6 shrink-0"
               >
                 {selectedMembers.length === filteredMembers.length
                   ? "Clear Selections"
@@ -262,20 +262,20 @@ export function AttendanceForm({
               </Button>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
               <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow className="hover:bg-transparent border-slate-100">
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="hover:bg-transparent border-border">
                     <TableHead className="w-[60px] pl-6">
                       <Checkbox
                         checked={selectedMembers.length === filteredMembers.length && filteredMembers.length > 0}
                         onCheckedChange={handleSelectAll}
-                        className="rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
+                        className="rounded-md border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                     </TableHead>
-                    <TableHead className="min-w-[200px] font-black uppercase text-[10px] text-slate-400 tracking-wider">Member Profile</TableHead>
-                    <TableHead className="hidden md:table-cell font-black uppercase text-[10px] text-slate-400 tracking-wider text-center">Contact</TableHead>
-                    <TableHead className="hidden md:table-cell font-black uppercase text-[10px] text-slate-400 tracking-wider pl-4">Allocations</TableHead>
+                    <TableHead className="min-w-[200px] font-black uppercase text-[10px] text-muted-foreground tracking-wider">Member Profile</TableHead>
+                    <TableHead className="hidden md:table-cell font-black uppercase text-[10px] text-muted-foreground tracking-wider text-center">Contact</TableHead>
+                    <TableHead className="hidden md:table-cell font-black uppercase text-[10px] text-muted-foreground tracking-wider pl-4">Allocations</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -283,40 +283,40 @@ export function AttendanceForm({
                     <TableRow>
                       <TableCell colSpan={4} className="h-32 text-center">
                         <div className="flex flex-col items-center justify-center gap-2 opacity-50">
-                          <Search className="h-6 w-6 text-slate-300" />
-                          <p className="font-medium text-slate-400 text-sm">No members match your criteria</p>
+                          <Search className="h-6 w-6 text-muted-foreground/50" />
+                          <p className="font-medium text-muted-foreground text-sm">No members match your criteria</p>
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredMembers.map((member) => (
-                      <TableRow key={member.id} className="hover:bg-slate-50/50 transition-colors border-slate-100 last:border-0">
+                      <TableRow key={member.id} className="hover:bg-muted/50 transition-colors border-border last:border-0">
                         <TableCell className="pl-6 py-4">
                           <Checkbox
                             checked={selectedMembers.includes(member.id)}
                             onCheckedChange={() => handleSelectMember(member.id)}
-                            className="rounded-md border-slate-300 data-[state=checked]:bg-slate-900 data-[state=checked]:border-slate-900"
+                            className="rounded-md border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
                         </TableCell>
                         <TableCell className="py-4">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10 rounded-xl border-2 border-white shadow-sm">
+                            <Avatar className="h-10 w-10 rounded-xl border-2 border-background shadow-sm">
                               <AvatarImage src={member.avatar_url} alt={member.name} />
-                              <AvatarFallback className="bg-slate-100 text-slate-500 font-bold text-xs">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                              <AvatarFallback className="bg-muted text-muted-foreground font-bold text-xs">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-900">{member.name}</span>
-                              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tight">{member.id.substring(0, 8)}</span>
+                              <span className="font-bold text-foreground">{member.name}</span>
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-tight">{member.id.substring(0, 8)}</span>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden md:table-cell py-4 text-center">
-                          <span className="text-sm font-medium text-slate-600">{member.phone || '–'}</span>
+                          <span className="text-sm font-medium text-muted-foreground">{member.phone || '–'}</span>
                         </TableCell>
                         <TableCell className="hidden md:table-cell py-4 pl-4">
                           <div className="flex flex-wrap gap-1.5">
                             {(member.unit_names || member.units || []).map((m: string, i: number) => (
-                              <Badge key={i} variant="secondary" className="bg-slate-50 text-slate-500 border border-slate-100 font-bold text-[10px] px-2 py-0.5 rounded-lg">
+                              <Badge key={i} variant="secondary" className="bg-muted text-muted-foreground border border-border font-bold text-[10px] px-2 py-0.5 rounded-lg">
                                 {m}
                               </Badge>
                             ))}
@@ -331,20 +331,20 @@ export function AttendanceForm({
           </div>
 
           <div className="space-y-2 pt-4">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Strategic Notes</Label>
+            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider pl-1">Strategic Notes</Label>
             <Input
               placeholder="Internal observations or event specifics..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="h-12 border-slate-200 rounded-xl font-medium bg-white focus:ring-slate-900"
+              className="h-12 border-border rounded-xl font-medium bg-background focus:ring-primary"
             />
           </div>
         </CardContent>
-        <CardFooter className="p-8 bt border-t border-slate-50 justify-end">
+        <CardFooter className="p-8 bt border-t border-border justify-end">
           <Button
             onClick={handleSaveAttendance}
             disabled={isSaving}
-            className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold h-12 px-12 shadow-soft transition-all min-w-[240px]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-bold h-12 px-12 shadow-soft transition-all min-w-[240px]"
           >
             {isSaving ? (
               <div className="flex items-center gap-2">

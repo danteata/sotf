@@ -41,8 +41,8 @@ export function AttendanceContent() {
     <div className="flex flex-col gap-8 max-w-7xl mx-auto p-4 md:p-10">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Attendance & Engagement</h1>
-          <p className="font-medium text-slate-500">
+          <h1 className="text-3xl font-black tracking-tight text-foreground">Attendance & Engagement</h1>
+          <p className="font-medium text-muted-foreground">
             Monitor community participation and service dynamics
           </p>
         </div>
@@ -52,12 +52,12 @@ export function AttendanceContent() {
             size="lg"
             onClick={refreshStats}
             disabled={isRefreshing}
-            className="rounded-xl border-slate-200 font-bold text-slate-600 bg-white shadow-sm hover:bg-slate-50 h-12"
+            className="rounded-xl border-border font-bold text-muted-foreground bg-background shadow-sm hover:bg-accent h-12"
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Syncing...' : 'Refresh Stats'}
           </Button>
-          <Button variant="outline" size="lg" className="rounded-xl border-slate-200 font-bold text-slate-600 bg-white shadow-sm hover:bg-slate-50 h-12">
+          <Button variant="outline" size="lg" className="rounded-xl border-border font-bold text-muted-foreground bg-background shadow-sm hover:bg-accent h-12">
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
@@ -82,38 +82,38 @@ export function AttendanceContent() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {/* Total Active Members */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Registry</CardTitle>
-              <Users className="h-4 w-4 text-slate-300" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Total Registry</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-slate-900">{stats?.totalActiveMembers || 0}</div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+              <div className="text-3xl font-black text-foreground">{stats?.totalActiveMembers || 0}</div>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                 Verified Members
               </p>
             </CardContent>
           </Card>
 
           {/* This Week's Attendance */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Week Engagement</CardTitle>
-              <Calendar className="h-4 w-4 text-slate-300" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Week Engagement</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-slate-900">{stats?.thisWeekTotal || 0}</div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+              <div className="text-3xl font-black text-foreground">{stats?.thisWeekTotal || 0}</div>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                 Current Attendance
               </p>
             </CardContent>
           </Card>
 
           {/* Weekly Growth Rate */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Growth Index</CardTitle>
-              <TrendingUp className="h-4 w-4 text-slate-300" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Growth Index</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent>
               <div className={cn(
@@ -123,49 +123,49 @@ export function AttendanceContent() {
                 {(stats?.weeklyGrowthRate || 0) > 0 ? "+" : ""}
                 {(stats?.weeklyGrowthRate || 0).toFixed(1)}%
               </div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                 Week over Week
               </p>
             </CardContent>
           </Card>
 
           {/* Attendance Rate */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Participation</CardTitle>
-              <Target className="h-4 w-4 text-slate-300" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Participation</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-slate-900">{(stats?.attendanceRate || 0).toFixed(1)}%</div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+              <div className="text-3xl font-black text-foreground">{(stats?.attendanceRate || 0).toFixed(1)}%</div>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                 Resource Utilization
               </p>
             </CardContent>
           </Card>
 
           {/* Recent Activity */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Operational Days</CardTitle>
-              <Activity className="h-4 w-4 text-slate-300" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Operational Days</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-slate-900">{stats?.recentActivityDays || 0}</div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+              <div className="text-3xl font-black text-foreground">{stats?.recentActivityDays || 0}</div>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                 Last 30 Days
               </p>
             </CardContent>
           </Card>
 
           {/* Total Records */}
-          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-white hover:shadow-md transition-shadow">
+          <Card className="border-border/50 shadow-soft rounded-2xl overflow-hidden bg-card hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-slate-400">Data Points</CardTitle>
-              <BarChart3 className="h-4 w-4 text-slate-300" />
+              <CardTitle className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Data Points</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-slate-900">{stats?.totalRecords || 0}</div>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">
+              <div className="text-3xl font-black text-foreground">{stats?.totalRecords || 0}</div>
+              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-tight">
                 Total Logs
               </p>
             </CardContent>
@@ -174,7 +174,7 @@ export function AttendanceContent() {
       )}
 
       <Tabs defaultValue="record" className="w-full space-y-8">
-        <TabsList className="bg-slate-100/50 p-1.5 rounded-2xl w-full md:w-auto inline-flex shadow-sm border border-slate-100">
+        <TabsList className="bg-muted/50 p-1.5 rounded-2xl w-full md:w-auto inline-flex shadow-sm border border-border">
           {[
             {
               value: "record",
@@ -207,12 +207,12 @@ export function AttendanceContent() {
               className={cn(
                 "h-11 rounded-xl px-6",
                 "text-sm font-bold",
-                "data-[state=active]:bg-white",
-                "data-[state=active]:text-slate-900",
+                "data-[state=active]:bg-background",
+                "data-[state=active]:text-foreground",
                 "data-[state=active]:shadow-soft",
                 "transition-all duration-200",
-                "text-slate-500",
-                "hover:text-slate-700"
+                "text-muted-foreground",
+                "hover:text-foreground"
               )}
             >
               <span className="flex items-center gap-2">
@@ -243,16 +243,16 @@ export function AttendanceContent() {
           </TabsContent>
 
           <TabsContent value="metadata" className="space-y-6 outline-none">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-8 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-8 bg-muted/50 rounded-3xl border border-dashed border-border">
               <div className="space-y-1 text-center sm:text-left">
-                <h2 className="text-xl font-black tracking-tight text-slate-900">Service Metadata Repository</h2>
-                <p className="text-slate-500 font-medium text-sm">
+                <h2 className="text-xl font-black tracking-tight text-foreground">Service Metadata Repository</h2>
+                <p className="text-muted-foreground font-medium text-sm">
                   Document service specifics, speaker metrics, and qualitative outcomes
                 </p>
               </div>
               <Button
                 onClick={() => setShowMetadataDialog(true)}
-                className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold h-11 px-8 shadow-soft"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl font-bold h-11 px-8 shadow-soft"
               >
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Initialize Summary
@@ -261,11 +261,11 @@ export function AttendanceContent() {
 
             <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
               <CardContent className="p-10 text-center space-y-4">
-                <div className="w-16 h-16 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                <div className="w-16 h-16 bg-muted text-muted-foreground rounded-2xl flex items-center justify-center mx-auto mb-2">
                   <BarChart3 className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-black tracking-tight text-slate-900">Data Rich Summaries</h3>
-                <p className="text-slate-500 font-medium max-w-lg mx-auto leading-relaxed">
+                <h3 className="text-lg font-black tracking-tight text-foreground">Data Rich Summaries</h3>
+                <p className="text-muted-foreground font-medium max-w-lg mx-auto leading-relaxed">
                   Integrate conversion metrics, message themes, and speaker effectiveness data into your attendance records for a complete picture of church vitality.
                 </p>
               </CardContent>

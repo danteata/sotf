@@ -56,9 +56,9 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className={`flex items-center gap-3 h-11 px-4 border border-border/50 bg-white hover:bg-slate-50 transition-all shadow-sm rounded-xl ${className}`}
+          className={`flex items-center gap-3 h-11 px-4 border border-border/50 bg-background hover:bg-accent transition-all shadow-sm rounded-xl ${className}`}
         >
-          <div className="p-1.5 bg-slate-100 text-slate-900 rounded-md">
+          <div className="p-1.5 bg-muted text-foreground rounded-md">
             <Building2 className="h-4 w-4" />
           </div>
           <div className="flex flex-col items-start min-w-0 flex-1 overflow-hidden">
@@ -70,18 +70,18 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="w-[320px] p-2 border border-border/50 shadow-soft-lg rounded-2xl bg-white overflow-hidden">
+      <DropdownMenuContent align="start" className="w-[320px] p-2 border border-border/50 shadow-soft-lg rounded-2xl bg-popover overflow-hidden">
         <div className="p-3 mb-2 bg-muted/30 rounded-xl border border-dashed border-border">
           <DropdownMenuLabel className="p-0 text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 flex items-center gap-2">
             <Globe className="h-3 w-3" /> CURRENT CONTEXT
           </DropdownMenuLabel>
 
           {currentOrganization ? (
-            <div className="flex items-center gap-3 p-3 bg-slate-900 text-white rounded-lg shadow-sm">
+            <div className="flex items-center gap-3 p-3 bg-primary text-primary-foreground rounded-lg shadow-sm">
               <Building2 className="h-5 w-5" />
               <div className="min-w-0">
                 <div className="font-bold text-sm truncate">{currentOrganization.name}</div>
-                <div className="text-[10px] font-medium text-white/60 uppercase">Active Organization</div>
+                <div className="text-[10px] font-medium text-primary-foreground/60 uppercase">Active Organization</div>
               </div>
             </div>
           ) : (
@@ -148,7 +148,7 @@ export function OrganizationSelectorCompact({ className }: OrganizationSelectorP
   }
 
   return (
-    <Badge variant="outline" className={`border-2 border-black font-black uppercase text-[10px] bg-white shadow-brutal-sm ${className}`}>
+    <Badge variant="outline" className={`border-2 border-border font-black uppercase text-[10px] bg-background shadow-brutal-sm ${className}`}>
       {context.organization?.name || "No Org"}
     </Badge>
   )
