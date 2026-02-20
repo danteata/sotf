@@ -58,7 +58,7 @@ export function SetupOrganizationDialog() {
                         Setup Organization
                     </DialogTitle>
                     <DialogDescription className="text-center text-base text-muted-foreground">
-                        Welcome to State of the Flock. To get started, please name your organization.
+                        Welcome to Floc. To get started, please name your organization.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-6 pt-4">

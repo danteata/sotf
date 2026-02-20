@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow-soft transition-smooth hover:shadow-soft-lg",
+      "rounded-xl border border-border/30 bg-card/60 backdrop-blur-sm text-card-foreground transition-all duration-300 hover:border-primary/20 hover:bg-card/80",
       className
     )}
     {...props}
@@ -76,4 +76,36 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+// Neon Card Variant
+const NeonCard = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-xl border border-primary/30 bg-card/40 backdrop-blur-md text-card-foreground transition-all duration-300 hover:border-primary/60 hover:neon-glow",
+      className
+    )}
+    {...props}
+  />
+))
+NeonCard.displayName = "NeonCard"
+
+// Glass Card Variant
+const GlassCard = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-xl glass border border-border/20 text-card-foreground",
+      className
+    )}
+    {...props}
+  />
+))
+GlassCard.displayName = "GlassCard"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent, NeonCard, GlassCard }

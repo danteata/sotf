@@ -130,7 +130,7 @@ export function RoleBasedNavigation() {
   }
 
   return (
-    <nav className="space-y-0.5">
+    <nav className="space-y-1">
       {visibleItems.map((item) => {
         const Icon = item.icon
         const isActive = pathname === item.href
@@ -140,18 +140,18 @@ export function RoleBasedNavigation() {
             <Button
               variant="ghost"
               className={cn(
-                "w-full justify-start gap-3 h-9 px-3 rounded-lg font-medium text-sm transition-colors",
+                "w-full justify-start gap-3 h-10 px-3 rounded-xl font-medium text-sm transition-all duration-300",
                 isActive
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "bg-sidebar-accent/15 text-sidebar-accent-foreground border border-sidebar-accent/30"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 hover:border hover:border-sidebar-foreground/10"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className={cn("h-5 w-5 transition-all duration-300", isActive && "text-sidebar-accent-foreground")} />
               <span>{item.title}</span>
               {item.badge && (
                 <Badge
                   variant="secondary"
-                  className="ml-auto text-[10px] px-1.5 py-0 h-5"
+                  className="ml-auto text-[10px] px-2 py-0.5 h-5 bg-accent/20 text-accent-foreground border-0"
                 >
                   {item.badge}
                 </Badge>
@@ -193,15 +193,15 @@ export function RoleIndicator() {
   const roleInfo = getRoleDisplay()
 
   return (
-    <div className="p-4 border-t border-border/40">
+    <div className="p-4 border-t border-sidebar-border/30">
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
-          <p className="text-sm font-medium text-foreground truncate">
+          <p className="text-sm font-semibold text-sidebar-foreground truncate">
             {user.name || 'Unknown User'}
           </p>
           <Badge
             variant={roleInfo.color}
-            className="text-[10px] px-2 py-0 h-5 w-fit mt-1"
+            className="text-[10px] px-2 py-0 h-5 w-fit mt-1.5 bg-primary/20 text-primary border border-primary/30"
           >
             {roleInfo.label}
           </Badge>

@@ -26,7 +26,7 @@ export function UserNav() {
 
   if (!isClerkConfigured) {
     return (
-      <Button variant="outline" onClick={() => navigate("/sign-in")} className="border-primary/30 hover:bg-primary/10">
+      <Button variant="outline" onClick={() => navigate("/sign-in")} className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 neon-glow">
         Sign In (Demo)
       </Button>
     )
@@ -37,7 +37,7 @@ export function UserNav() {
     return (
       <Button variant="ghost" size="icon" className="relative h-8 w-8 rounded-full animate-pulse">
         <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-gray-200">...</AvatarFallback>
+          <AvatarFallback className="bg-muted">...</AvatarFallback>
         </Avatar>
       </Button>
     )
@@ -45,7 +45,7 @@ export function UserNav() {
 
   if (!isSignedIn) {
     return (
-      <Button variant="outline" onClick={() => navigate("/sign-in")} className="border-primary/30 hover:bg-primary/10">
+      <Button variant="outline" onClick={() => navigate("/sign-in")} className="border-primary/30 hover:bg-primary/10 hover:border-primary/50">
         Sign In
       </Button>
     )
@@ -59,30 +59,30 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-accent transition-all duration-200">
-          <Avatar className="h-8 w-8 ring-2 ring-primary/20">
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-primary/10 transition-all duration-300">
+          <Avatar className="h-8 w-8 ring-2 ring-primary/30 hover:ring-primary/60 transition-all duration-300">
             <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
-            <AvatarFallback className="bg-primary text-primary-foreground font-semibold">{initials}</AvatarFallback>
+            <AvatarFallback className="bg-primary/80 text-primary-foreground font-semibold">{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56 transition-all duration-300" align="end" forceMount>
+      <DropdownMenuContent className="w-56 glass-card border border-border/30 rounded-xl" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-semibold leading-none">{user.fullName || user.username}</p>
             <p className="text-xs leading-none text-muted-foreground">{user.primaryEmailAddress?.emailAddress}</p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border/30" />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer hover:bg-accent">
+          <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer hover:bg-primary/10 focus:bg-primary/10 rounded-lg">
             Profile
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border/30" />
         <DropdownMenuItem
           onClick={() => signOut(() => navigate("/"))}
-          className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10"
+          className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10 rounded-lg"
         >
           Log out
         </DropdownMenuItem>
