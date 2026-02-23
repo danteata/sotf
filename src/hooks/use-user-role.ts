@@ -124,11 +124,11 @@ export function useAccessibleUnits() {
     _id: u._id
   }));
 
-  const ministries = units.filter(unit => unit.type === 'ministry');
-
+  // Return all units for filtering purposes (not just 'ministry' type)
+  // The 'ministries' name is kept for backwards compatibility
   return {
     units,
-    ministries,
+    ministries: units, // All units, not just ministry type
     isLoading: allUnits === undefined,
     error: null
   };

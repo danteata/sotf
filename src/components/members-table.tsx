@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, ArrowUpDown, Mail, Phone, Tag, Users } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Phone, Tag, Users } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -181,9 +181,9 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 </div>
               </TableHead>
               <TableHead className="hidden md:table-cell">
-                <div className="flex items-center space-x-2" onClick={() => handleSort("joined_date")}>
-                  <span className="font-bold">Join Date</span>
-                  <ArrowUpDown className="h-4 w-4 cursor-pointer" />
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span className="font-bold">Units</span>
                 </div>
               </TableHead>
               <TableHead className="hidden xl:table-cell">
@@ -221,20 +221,26 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
-                  <div className="flex flex-col">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Mail className="mr-1 h-3 w-3" />
-                      <span>{member.email}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Phone className="mr-1 h-3 w-3" />
-                      <span>{member.phone}</span>
-                    </div>
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Phone className="mr-1 h-3 w-3" />
+                    <span>{member.phone || '—'}</span>
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell font-medium">{member.city}</TableCell>
                 <TableCell>{getStatusBadge(member.status)}</TableCell>
-                <TableCell className="hidden md:table-cell font-medium">{member.joined_date}</TableCell>
+                <TableCell className="hidden md:table-cell">
+                  <div className="flex flex-wrap gap-1">
+                    {((member as any).unit_names || []).length > 0 ? (
+                      ((member as any).unit_names || []).map((unitName: string, idx: number) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {unitName}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   <MemberLabels labels={(member as any).labels || []} />
                 </TableCell>
