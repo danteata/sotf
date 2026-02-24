@@ -167,11 +167,12 @@ export const recordFullAttendance = mutation({
     args: {
         date: v.string(),
         event_type_id: v.id("event_types"),
+        event_id: v.optional(v.id("events")), // Optional: link to existing event
         notes: v.optional(v.string()),
         member_ids: v.array(v.id("members")),
     },
     handler: async (ctx, args) => {
-        const { date, event_type_id, notes, member_ids } = args;
+        const { date, event_type_id, event_id, notes, member_ids } = args;
         await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx);
         if (!orgId) throw new Error("Organization not set");
@@ -181,23 +182,33 @@ export const recordFullAttendance = mutation({
         if (!eventType) throw new Error("Event type not found");
 
         // 2. Find or Create Event
-        let event = await ctx.db
-            .query("events")
-            .withIndex("by_date", q => q.eq("date", date))
-            .filter(q => q.eq(q.field("event_type_id"), event_type_id))
-            .filter(q => q.eq(q.field("organization_id"), orgId))
-            .first();
+        let event: any = null;
 
-        if (!event) {
-            const eventId = await ctx.db.insert("events", {
-                title: `${eventType.label} - ${date}`,
-                date,
-                description: notes || "Attendance record",
-                event_type_id,
-                organization_id: orgId,
-                active: true,
-            });
-            event = await ctx.db.get(eventId);
+        if (event_id) {
+            // Use provided event
+            event = await ctx.db.get(event_id);
+            if (!event) throw new Error("Event not found");
+        } else {
+            // Find or create event for this date/type
+            event = await ctx.db
+                .query("events")
+                .withIndex("by_date", q => q.eq("date", date))
+                .filter(q => q.eq(q.field("event_type_id"), event_type_id))
+                .filter(q => q.eq(q.field("organization_id"), orgId))
+                .first();
+
+            if (!event) {
+                const eventId = await ctx.db.insert("events", {
+                    title: `${eventType.label} - ${date}`,
+                    date,
+                    time: eventType.default_time, // Use default time from event type
+                    description: notes || "Auto-created from attendance",
+                    event_type_id,
+                    organization_id: orgId,
+                    active: true,
+                });
+                event = await ctx.db.get(eventId);
+            }
         }
 
         // 3. Find or Create Attendance

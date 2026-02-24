@@ -28,6 +28,7 @@ export default defineSchema({
         icon: v.optional(v.string()),
         category: v.optional(v.string()),
         description: v.optional(v.string()),
+        default_time: v.optional(v.string()), // Default time for events of this type (e.g., "09:00")
         is_active: v.boolean(),
         sort_order: v.number(),
     }).index("by_value", ["value"]),

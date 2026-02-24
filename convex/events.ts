@@ -25,6 +25,38 @@ export const list = query({
             event_type_label: event.event_type_id ? typeMap.get(event.event_type_id)?.label : null,
             event_type_color: event.event_type_id ? typeMap.get(event.event_type_id)?.color : 'default',
             event_type_value: event.event_type_id ? typeMap.get(event.event_type_id)?.value : null,
+            event_type_default_time: event.event_type_id ? typeMap.get(event.event_type_id)?.default_time : null,
+        }));
+    },
+});
+
+export const getByDate = query({
+    args: {
+        date: v.string(),
+        organization_id: v.optional(v.id("organizations")),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+
+        const events = await ctx.db
+            .query("events")
+            .withIndex("by_date", q => q.eq("date", args.date))
+            .collect();
+
+        const orgEvents = orgId
+            ? events.filter(e => e.organization_id === orgId)
+            : events;
+
+        const eventTypes = await ctx.db.query("event_types").collect();
+        const typeMap = new Map(eventTypes.map(t => [t._id, t]));
+
+        return orgEvents.map(event => ({
+            ...event,
+            id: event._id,
+            event_type_label: event.event_type_id ? typeMap.get(event.event_type_id)?.label : null,
+            event_type_color: event.event_type_id ? typeMap.get(event.event_type_id)?.color : 'default',
+            event_type_value: event.event_type_id ? typeMap.get(event.event_type_id)?.value : null,
         }));
     },
 });

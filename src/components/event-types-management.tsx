@@ -51,6 +51,7 @@ const eventTypeSchema = z.object({
   icon: z.string().optional(),
   category: z.string().optional(),
   description: z.string().optional(),
+  default_time: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format").optional().or(z.literal("")),
 })
 
 type EventTypeFormData = z.infer<typeof eventTypeSchema>
@@ -85,6 +86,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
       icon: "",
       category: "",
       description: "",
+      default_time: "",
     },
   })
 
@@ -97,6 +99,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
       icon: "",
       category: "",
       description: "",
+      default_time: "",
     })
     setIsDialogOpen(true)
   }
@@ -110,6 +113,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
       icon: eventType.icon || "",
       category: eventType.category || "",
       description: eventType.description || "",
+      default_time: eventType.default_time || "",
     })
     setIsDialogOpen(true)
   }
@@ -441,6 +445,27 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="default_time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Default Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          placeholder="e.g., 09:00"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">
+                        Default start time for events of this type (used when auto-creating events)
+                      </p>
                     </FormItem>
                   )}
                 />

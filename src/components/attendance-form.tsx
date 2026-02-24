@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CalendarIcon, Search, RefreshCw } from "lucide-react"
+import { CalendarIcon, Search, RefreshCw, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
@@ -37,6 +37,7 @@ export function AttendanceForm({
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMembers, setSelectedMembers] = useState<string[]>([])
   const [attendanceType, setAttendanceType] = useState("")
+  const [selectedEventId, setSelectedEventId] = useState<string>("auto-create")
   const [notes, setNotes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast();
@@ -51,6 +52,17 @@ export function AttendanceForm({
   // Find event type ID from value
   const selectedEventType = eventTypes.find(et => et.value === attendanceType);
   const eventTypeId = selectedEventType?.id as Id<"event_types"> | undefined;
+
+  // Fetch events for the selected date
+  const eventsForDate = useQuery(
+    api.events.getByDate,
+    date ? { date: format(date, "yyyy-MM-dd") } : "skip"
+  );
+
+  // Filter events by selected event type
+  const filteredEvents = eventsForDate?.filter((e: any) =>
+    !attendanceType || e.event_type_value === attendanceType
+  ) || [];
 
   // Fetch existing attendance for the selected date and type
   const existingAttendance = useQuery(
@@ -78,6 +90,11 @@ export function AttendanceForm({
       setSelectedMembers([]);
     }
   }, [existingMembers, existingAttendance]);
+
+  // Reset selected event when date or type changes
+  useEffect(() => {
+    setSelectedEventId("auto-create");
+  }, [date, attendanceType]);
 
   const handleSelectMember = (id: string) => {
     if (selectedMembers.includes(id)) {
@@ -133,6 +150,7 @@ export function AttendanceForm({
       await recordFullAttendance({
         date: formattedDate,
         event_type_id: eventTypeId,
+        event_id: selectedEventId !== "auto-create" ? (selectedEventId as Id<"events">) : undefined,
         notes,
         member_ids: selectedMembers as Id<"members">[],
       });
@@ -176,7 +194,7 @@ export function AttendanceForm({
           </div>
         </CardHeader>
         <CardContent className="space-y-8 p-8 pt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider pl-1">Event Type</Label>
               <Select value={attendanceType || undefined} onValueChange={setAttendanceType}>
@@ -219,6 +237,30 @@ export function AttendanceForm({
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider pl-1">
+                Event {filteredEvents.length > 0 && `(${filteredEvents.length} available)`}
+              </Label>
+              <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                <SelectTrigger className="h-12 border-border rounded-xl font-medium bg-background focus:ring-primary">
+                  <SelectValue placeholder={filteredEvents.length > 0 ? "Select Event (optional)" : "Auto-create on save"} />
+                </SelectTrigger>
+                <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
+                  <SelectItem value="auto-create" className="font-medium py-3 rounded-lg focus:bg-muted">
+                    <span className="text-muted-foreground">Auto-create event on save</span>
+                  </SelectItem>
+                  {filteredEvents.map((event: any) => (
+                    <SelectItem key={event._id} value={event._id} className="font-medium py-3 rounded-lg focus:bg-muted">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        <span>{event.title}</span>
+                        {event.time && <span className="text-muted-foreground text-xs">({event.time})</span>}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

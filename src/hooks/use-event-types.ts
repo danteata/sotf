@@ -14,6 +14,7 @@ export interface EventType {
   icon?: string
   category?: string
   description?: string
+  default_time?: string
 }
 
 export interface EventTypeCategory {
@@ -75,6 +76,7 @@ export function useEventTypes() {
       icon: dbType.icon,
       category: dbType.category,
       description: dbType.description,
+      default_time: dbType.default_time,
     }
   })
 
@@ -87,6 +89,7 @@ export function useEventTypes() {
         icon: eventType.icon,
         category: eventType.category,
         description: eventType.description,
+        default_time: eventType.default_time,
         is_active: true,
         sort_order: eventTypes.length + 1,
       })
@@ -106,6 +109,7 @@ export function useEventTypes() {
           icon: updates.icon,
           category: updates.category,
           description: updates.description,
+          default_time: updates.default_time,
         }
       })
       return { success: true }
