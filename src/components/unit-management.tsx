@@ -68,7 +68,7 @@ export function UnitManagement() {
         active: true,
         type: data.type,
         category: data.category,
-        leader_id: data.leaderId,
+        leader_id: data.leader_id,
       });
       toast({ title: "Success", description: "Unit created successfully" });
       setCreateUnitDialogOpen(false);
@@ -87,7 +87,7 @@ export function UnitManagement() {
           parent_unit_id: data.unit_id === "" || data.unit_id === "none" ? undefined : data.unit_id,
           type: data.type,
           category: data.category,
-          leader_id: data.leaderId,
+          leader_id: data.leader_id,
         }
       });
       toast({ title: "Success", description: "Unit updated successfully" });
