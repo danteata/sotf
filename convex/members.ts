@@ -441,6 +441,56 @@ export const getRecent = query({
     }
 });
 
+// Bulk add members to a unit
+export const bulkAddToUnit = mutation({
+    args: {
+        member_ids: v.array(v.id("members")),
+        unit_id: v.id("units"),
+    },
+    handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+
+        const unit = await ctx.db.get(args.unit_id);
+        if (!unit) throw new Error("Unit not found");
+
+        // Verify all members exist and belong to the same organization
+        const members = await Promise.all(
+            args.member_ids.map(id => ctx.db.get(id))
+        );
+
+        for (const member of members) {
+            if (!member) throw new Error("Member not found");
+            if (member.organization_id !== unit.organization_id) {
+                throw new Error("Member and unit must belong to the same organization");
+            }
+        }
+
+        // Check for existing assignments to avoid duplicates
+        const existingAssignments = await ctx.db
+            .query("member_units")
+            .withIndex("by_unit", q => q.eq("unit_id", args.unit_id))
+            .collect();
+
+        const existingMemberIds = new Set(existingAssignments.map(a => a.member_id));
+
+        // Add only members who aren't already in the unit
+        const addedCount = await Promise.all(
+            args.member_ids
+                .filter(memberId => !existingMemberIds.has(memberId))
+                .map(memberId =>
+                    ctx.db.insert("member_units", {
+                        member_id: memberId,
+                        unit_id: args.unit_id,
+                        joined_date: new Date().toISOString(),
+                        is_active: true
+                    })
+                )
+        );
+
+        return { added: addedCount.length, skipped: args.member_ids.length - addedCount.length };
+    },
+});
+
 // Delete member
 export const remove = mutation({
     args: { id: v.id("members") },

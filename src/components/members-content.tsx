@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Download, Filter, Plus, Search, Upload, Users } from "lucide-react"
+import { Download, Filter, Plus, Search, Upload, Users, Building2, Tag } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -23,11 +23,14 @@ interface MembersContentProps {
 export function MembersContent({ initialMembers }: MembersContentProps) {
   const [statusFilter, setStatusFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [unitFilter, setUnitFilter] = useState("all")
+  const [labelFilter, setLabelFilter] = useState("all")
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
   const { organization } = useOrganization()
   const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
+  const labelsData = useQuery(api.labels.list, {});
 
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]
@@ -37,6 +40,22 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       filtered = filtered.filter(member => member.status === statusFilter)
     }
 
+    // Apply unit filter
+    if (unitFilter !== "all") {
+      filtered = filtered.filter(member => {
+        const memberUnitIds = (member as any).unit_ids || [];
+        const memberUnitNames = (member as any).unit_names || [];
+        return memberUnitIds.includes(unitFilter) || memberUnitNames.some((name: string) => name === unitFilter);
+      });
+    }
+
+    // Apply label filter
+    if (labelFilter !== "all") {
+      filtered = filtered.filter(member => {
+        const memberLabels = (member as any).labels || [];
+        return memberLabels.some((label: any) => label._id === labelFilter || label.name === labelFilter);
+      });
+    }
 
     // Apply search filter
     if (searchQuery) {
@@ -48,7 +67,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       )
     }
     return filtered;
-  }, [initialMembers, statusFilter, searchQuery])
+  }, [initialMembers, statusFilter, searchQuery, unitFilter, labelFilter])
 
   const totalMembers = filteredMembers.length
 
@@ -102,7 +121,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-5 relative group">
+            <div className="md:col-span-4 relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
                 type="search"
@@ -122,6 +141,38 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="visitor">Visitor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Select value={unitFilter} onValueChange={setUnitFilter}>
+                <SelectTrigger className="rounded-lg">
+                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Unit" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
+                  <SelectItem value="all">All Units</SelectItem>
+                  {unitsData?.map((unit) => (
+                    <SelectItem key={unit._id} value={unit._id}>
+                      {unit.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <Select value={labelFilter} onValueChange={setLabelFilter}>
+                <SelectTrigger className="rounded-lg">
+                  <Tag className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Label" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
+                  <SelectItem value="all">All Labels</SelectItem>
+                  {labelsData?.map((label: any) => (
+                    <SelectItem key={label._id} value={label._id}>
+                      {label.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

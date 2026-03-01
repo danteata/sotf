@@ -44,7 +44,8 @@ import {
   Link,
   Copy,
   Search,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react'
 import { useTerminology } from '@/hooks/use-terminology'
 import { useToast } from '@/hooks/use-toast'
@@ -112,6 +113,14 @@ export function LeaderInvitationSystem() {
   })
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [memberSearchQuery, setMemberSearchQuery] = useState('')
+
+  // New state for member leader invitation
+  const [isLeaderInviteDialogOpen, setIsLeaderInviteDialogOpen] = useState(false)
+  const [selectedMemberForLeader, setSelectedMemberForLeader] = useState<string | null>(null)
+  const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([])
+  const [leaderMemberSearchQuery, setLeaderMemberSearchQuery] = useState('')
+  const [unitSearchQuery, setUnitSearchQuery] = useState('')
+  const [isCreatingLeaderInvite, setIsCreatingLeaderInvite] = useState(false)
 
   const isLoading = members.length === 0 && allUnits.length === 0;
 
@@ -278,6 +287,52 @@ export function LeaderInvitationSystem() {
     }
   }
 
+  // Handler for creating leader invitation with unit assignment
+  const handleLeaderInvite = async () => {
+    if (!selectedMemberForLeader) {
+      toast({ variant: "destructive", title: "Error", description: "Please select a member." });
+      return;
+    }
+    if (selectedUnitIds.length === 0) {
+      toast({ variant: "destructive", title: "Error", description: "Please select at least one unit." });
+      return;
+    }
+
+    setIsCreatingLeaderInvite(true);
+    try {
+      const member = members.find(m => m._id === selectedMemberForLeader);
+      if (!member) {
+        throw new Error("Member not found");
+      }
+
+      const result = await createInvitation({
+        email: member.email || '',
+        member_id: member._id as Id<"members">,
+        intended_role: 'unit_admin',
+        intended_units: selectedUnitIds,
+        organization_id: activeOrganization?._id,
+      });
+
+      const link = `${window.location.origin}/accept-invitation?token=${result.token}`;
+      setGeneratedLink(link);
+      setIsInviteLinkDialogOpen(true);
+      setIsLeaderInviteDialogOpen(false);
+      setSelectedMemberForLeader(null);
+      setSelectedUnitIds([]);
+
+      toast({ title: "Success", description: "Leader invitation created successfully." });
+    } catch (err: any) {
+      console.error('Leader invite error:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to create leader invitation."
+      });
+    } finally {
+      setIsCreatingLeaderInvite(false);
+    }
+  }
+
   const copyToClipboard = () => {
     if (generatedLink) {
       navigator.clipboard.writeText(generatedLink)
@@ -302,14 +357,24 @@ export function LeaderInvitationSystem() {
                 Invite {terminology.unit_term} leaders to create accounts and access their dashboards
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setIsAdminInviteDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <Mail className="h-4 w-4" />
-              Invite Admin
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsLeaderInviteDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Invite Leader
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsAdminInviteDialogOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Invite Admin
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -657,6 +722,172 @@ export function LeaderInvitationSystem() {
             >
               <Link className="h-3 w-3" />
               Generate Link
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Leader Invitation Dialog */}
+      <Dialog
+        open={isLeaderInviteDialogOpen}
+        onOpenChange={setIsLeaderInviteDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Invite Unit Leader</DialogTitle>
+            <DialogDescription>
+              Select a member and assign them as a leader of one or more units. Upon acceptance, they will automatically become the unit leader.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Member Selection */}
+            <div className="space-y-2">
+              <Label>Select Member</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search members..."
+                  value={leaderMemberSearchQuery}
+                  onChange={(e) => setLeaderMemberSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <div className="max-h-40 overflow-y-auto border rounded-md">
+                {members.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No members found
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {members
+                      .filter((m: any) => {
+                        if (!activeOrganization?._id) return false;
+                        const memberOrgId = m.organization_id;
+                        return memberOrgId === activeOrganization._id;
+                      })
+                      .filter((m: any) => {
+                        if (!leaderMemberSearchQuery) return true;
+                        const name = m.name || '';
+                        const email = m.email || '';
+                        return name.toLowerCase().includes(leaderMemberSearchQuery.toLowerCase()) ||
+                          email.toLowerCase().includes(leaderMemberSearchQuery.toLowerCase());
+                      })
+                      .map((m: any) => (
+                        <div
+                          key={m._id}
+                          className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors ${selectedMemberForLeader === m._id ? 'bg-primary/10' : ''}`}
+                          onClick={() => {
+                            setSelectedMemberForLeader(m._id as string);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium">{m.name}</div>
+                              <div className="text-sm text-muted-foreground">{m.email}</div>
+                            </div>
+                            {selectedMemberForLeader === m._id && (
+                              <CheckCircle className="h-5 w-5 text-primary" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Unit Selection */}
+            <div className="space-y-2">
+              <Label>Select Units to Lead</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search units..."
+                  value={unitSearchQuery}
+                  onChange={(e) => setUnitSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <div className="max-h-40 overflow-y-auto border rounded-md">
+                {allUnits.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No units found
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-2">
+                    {allUnits
+                      .filter((u: any) => {
+                        if (!unitSearchQuery) return true;
+                        return u.name.toLowerCase().includes(unitSearchQuery.toLowerCase());
+                      })
+                      .map((u: any) => (
+                        <div
+                          key={u._id}
+                          className={`p-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-md flex items-center gap-2 ${selectedUnitIds.includes(u._id) ? 'bg-primary/10' : ''}`}
+                          onClick={() => {
+                            setSelectedUnitIds(prev =>
+                              prev.includes(u._id)
+                                ? prev.filter(id => id !== u._id)
+                                : [...prev, u._id]
+                            );
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedUnitIds.includes(u._id)}
+                            onCheckedChange={() => {
+                              setSelectedUnitIds(prev =>
+                                prev.includes(u._id)
+                                  ? prev.filter(id => id !== u._id)
+                                  : [...prev, u._id]
+                              );
+                            }}
+                          />
+                          <div>
+                            <div className="font-medium">{u.name}</div>
+                            {u.type && (
+                              <Badge variant="outline" className="ml-2">
+                                {u.type}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsLeaderInviteDialogOpen(false);
+                setSelectedMemberForLeader(null);
+                setSelectedUnitIds([]);
+                setLeaderMemberSearchQuery('');
+                setUnitSearchQuery('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLeaderInvite}
+              disabled={!selectedMemberForLeader || selectedUnitIds.length === 0 || isCreatingLeaderInvite}
+              className="flex items-center gap-1"
+            >
+              {isCreatingLeaderInvite ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Invitation
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

@@ -101,7 +101,7 @@ export function CreateUnitDialog({
             <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <Layers className="h-5 w-5" />
             </div>
-            Create Organizational Unit
+            Create Unit
           </DialogTitle>
           <DialogDescription>
             Add a new group, team, or department to your organization.
@@ -202,7 +202,7 @@ export function CreateUnitDialog({
           <Button
             className="shadow-soft hover:shadow-lg transition-all"
             onClick={handleSubmit}
-            disabled={creating || !name.trim() || !unitId}
+            disabled={creating || !name.trim()}
           >
             {creating ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

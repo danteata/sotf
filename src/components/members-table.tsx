@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, ArrowUpDown, Phone, Tag, Users } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Phone, Tag, Users, Building2 } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -20,6 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MemberEditDialog } from "@/components/member-edit-dialog"
 import { MemberProfileDialog } from "@/components/member-profile-dialog"
 import { BulkLabelDialog } from "@/components/bulk-label-manager"
+import { BulkAddToUnitDialog } from "@/components/bulk-add-to-unit-dialog"
 import { MemberLabels } from "@/components/label-selector"
 import { Member } from "@/types/database"
 import type { Label } from "@/types/database"
@@ -142,6 +143,19 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   Manage Labels
                 </Button>
               }
+            />
+            <BulkAddToUnitDialog
+              selectedMembers={members.filter((m: any) => selectedMembers.includes(m.id || ''))}
+              trigger={
+                <Button variant="outline" size="sm" className="gap-2 border-blue-300 hover:bg-blue-100 dark:border-blue-700 dark:hover:bg-blue-900/50">
+                  <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  Add to Unit
+                </Button>
+              }
+              onSuccess={() => {
+                setSelectedMembers([]);
+                onMemberUpdate?.();
+              }}
             />
             <Button
               variant="ghost"

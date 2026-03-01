@@ -119,7 +119,7 @@ export function MemberEditDialog({
       city: member.city || "",
       state: member.state || "",
       zip: member.zip || "",
-      country: member.country || "United States",
+      country: member.country || "Ghana",
       plus_code: member.plus_code || "",
       unit_ids: memberUnitIds,
       avatar: member.avatar || "",
@@ -162,7 +162,7 @@ export function MemberEditDialog({
         city: member.city || "",
         state: member.state || "",
         zip: member.zip || "",
-        country: member.country || "United States",
+        country: member.country || "Ghana",
         plus_code: member.plus_code || "",
         unit_ids: currentUnitIds,
         avatar: member.avatar_url || member.avatar || "",
@@ -510,7 +510,7 @@ export function MemberEditDialog({
                     name="plus_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Dispatch Coordinates (Plus Code)</FormLabel>
+                        <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Maps Location (Plus Code)</FormLabel>
                         <FormControl>
                           <Input {...field} className="rounded-xl border-slate-200 font-mono text-xs" />
                         </FormControl>

@@ -198,6 +198,36 @@
         border: 1px solid hsl(var(--border) / 0.3);
     }
 
+    /* Soft Shadows */
+    .shadow-soft {
+        box-shadow:
+            0 1px 3px 0 rgb(0 0 0 / 0.1),
+            0 1px 2px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .shadow-soft-lg {
+        box-shadow:
+            0 4px 6px -1px rgb(0 0 0 / 0.1),
+            0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    .shadow-soft-xl {
+        box-shadow:
+            0 10px 15px -3px rgb(0 0 0 / 0.1),
+            0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    .shadow-soft-2xl {
+        box-shadow:
+            0 20px 25px -5px rgb(0 0 0 / 0.1),
+            0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+    /* Border Input */
+    .border-input-border {
+        border-color: hsl(var(--input));
+    }
+
     .glass-sidebar {
         background: linear-gradient(180deg,
                 hsl(var(--sidebar-background) / 0.95) 0%,

@@ -73,7 +73,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     defaultValues: {
       title: "",
       status: "visitor",
-      country: "United States",
+      country: "Ghana",
       unit_ids: [],
     },
   })
