@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { requireOrgAdmin, requireUser, resolveOrgId } from "./auth";
+import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
 
 // Helper to format member with details (typed)
 async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
@@ -42,7 +42,9 @@ async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
 
 // Internal helper to get managed member IDs
 async function resolveManagedMemberIds(ctx: any) {
-    const user = await requireUser(ctx);
+    const user = await getUserSafe(ctx);
+
+    if (!user) return new Set<Id<"members">>(); // Return empty set if user doesn't exist
 
     if (user.role === 'super_admin') {
         return "all";

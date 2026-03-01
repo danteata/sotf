@@ -2,11 +2,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId } from "./auth";
+import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, getUserSafe } from "./auth";
 
 export const listWithDetails = query({
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
+        const user = await getUserSafe(ctx);
+        if (!user) return []; // Return empty array if user doesn't exist
         if (isSuperAdmin(user)) {
             const attendance = await ctx.db.query("attendance").order("desc").collect();
             return await Promise.all(attendance.map(async (a) => {
@@ -38,7 +39,8 @@ export const listWithDetails = query({
 
 export const listWithMembers = query({
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
+        const user = await getUserSafe(ctx);
+        if (!user) return []; // Return empty array if user doesn't exist
         let records;
         if (isSuperAdmin(user)) {
             records = await ctx.db.query("attendance").collect();

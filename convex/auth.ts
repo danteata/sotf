@@ -30,6 +30,22 @@ export async function requireUser(ctx: Ctx) {
     return user;
 }
 
+// Safe version that returns null instead of throwing when user doesn't exist
+// Use this for queries that need to handle new users who haven't been synced yet
+export async function getUserSafe(ctx: Ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+        .unique();
+
+    if (!user) return null;
+    if (!user.active) return null;
+    return user;
+}
+
 export function isSuperAdmin(user: { role: UserRole }) {
     return user.role === "super_admin";
 }

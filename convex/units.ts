@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId } from "./auth";
+import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
 
 // Utility functions for hierarchical operations
 export const buildPath = (parentPath: string, unitName: string): string => {
@@ -67,7 +67,8 @@ export const getChildren = query({
 export const list = query({
     args: {},
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
+        const user = await getUserSafe(ctx);
+        if (!user) return []; // Return empty array if user doesn't exist
         if (user.role === "super_admin") {
             return await ctx.db.query("units").collect();
         }

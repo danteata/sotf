@@ -2,10 +2,11 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
+import { Id } from "./_generated/dataModel";
 
 export const store = mutation({
-    args: {},
-    handler: async (ctx) => {
+    args: { invitationToken: v.optional(v.string()) },
+    handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) throw new Error("Called storeUser without authentication present");
 
@@ -16,6 +17,7 @@ export const store = mutation({
             .unique();
 
         if (user !== null) {
+            // Update name/email if changed, but preserve organization_id and role
             if (user.name !== identity.name || user.email !== identity.email) {
                 await ctx.db.patch(user._id, { name: identity.name, email: identity.email });
             }
@@ -24,24 +26,98 @@ export const store = mutation({
 
         // Check if this is the first user
         const anyUser = await ctx.db.query("users").first();
-        const role = anyUser ? "member" : "super_admin";
+        const isFirstUser = !anyUser;
+
+        // Check for pending invitation by token (preferred) or email (fallback)
+        let invitation = null;
+
+        // First try to find by token if provided
+        if (args.invitationToken) {
+            const token = args.invitationToken;
+            invitation = await ctx.db
+                .query("invitations")
+                .withIndex("by_token", (q) => q.eq("invitation_token", token))
+                .filter((q) => q.eq(q.field("status"), "pending"))
+                .first();
+
+            // Check if invitation is not expired
+            if (invitation && invitation.expires_at && invitation.expires_at < Date.now()) {
+                invitation = null;
+            }
+        }
+
+        // Fallback to email lookup if no token or token didn't find valid invitation
+        if (!invitation && identity.email) {
+            const email = identity.email;
+            invitation = await ctx.db
+                .query("invitations")
+                .withIndex("by_email", (q) => q.eq("email", email))
+                .filter((q) => q.eq(q.field("status"), "pending"))
+                .first();
+
+            // Also check if invitation is not expired
+            if (invitation && invitation.expires_at && invitation.expires_at < Date.now()) {
+                invitation = null;
+            }
+        }
+
+        // Determine role and organization_id
+        let role = isFirstUser ? "super_admin" : "member";
+        let organization_id: Id<"organizations"> | undefined = undefined;
+
+        if (invitation) {
+            role = invitation.intended_role;
+            organization_id = invitation.organization_id;
+            console.log(`Found pending invitation, applying role: ${role}, org: ${organization_id}`);
+        }
 
         const userId = await ctx.db.insert("users", {
             clerk_user_id: identity.subject,
             name: identity.name,
-            email: identity.email!,
+            email: identity.email,
             role: role,
+            organization_id: organization_id,
             active: true,
         });
 
-        // Try to link existing member by email
-        const member = await ctx.db
-            .query("members")
-            .withIndex("by_email", (q) => q.eq("email", identity.email!))
-            .first();
+        // If invitation found, mark as accepted and apply settings
+        if (invitation) {
+            // Update member record if linked
+            if (invitation.member_id) {
+                await ctx.db.patch(invitation.member_id, {
+                    user_id: userId,
+                    email: identity.email
+                });
 
-        if (member && !member.user_id) {
-            await ctx.db.patch(member._id, { user_id: userId });
+                // Apply leadership if units provided
+                if (invitation.intended_units) {
+                    for (const unitId of invitation.intended_units) {
+                        const uId = ctx.db.normalizeId("units", unitId);
+                        if (uId) {
+                            const unit = await ctx.db.get(uId);
+                            if (unit && unit.organization_id === invitation.organization_id) {
+                                await ctx.db.patch(uId, { leader_id: invitation.member_id });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Mark invitation as accepted
+            await ctx.db.patch(invitation._id, { status: "accepted" });
+            console.log(`Auto-accepted invitation ${invitation._id} for user ${userId}`);
+        }
+
+        // Try to link existing member by email
+        if (identity.email) {
+            const member = await ctx.db
+                .query("members")
+                .withIndex("by_email", (q) => q.eq("email", identity.email!))
+                .first();
+
+            if (member && !member.user_id) {
+                await ctx.db.patch(member._id, { user_id: userId });
+            }
         }
 
         return userId;

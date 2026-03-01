@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { useOrganization } from "@/hooks/use-organization"
 import { toast } from "sonner"
 import { Building2, Loader2 } from "lucide-react"
+import { useConvexAuth } from "convex/react"
 
 export function SetupOrganizationDialog() {
     const { organization, isLoading: isOrgLoading } = useOrganization()
@@ -23,9 +24,17 @@ export function SetupOrganizationDialog() {
     const [name, setName] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isOpen, setIsOpen] = useState(true)
+    const { isAuthenticated } = useConvexAuth()
 
-    // Only show if fully loaded and NO organization is present
-    if (isOrgLoading || organization) {
+    // Get user role to check if super_admin
+    const user = useQuery(api.users.current, isAuthenticated ? undefined : "skip")
+
+    // Don't show if:
+    // 1. Still loading
+    // 2. Has organization
+    // 3. Is super_admin (they manage all orgs, don't need to create one)
+    // 4. User data still loading
+    if (isOrgLoading || organization || user === undefined || user?.role === "super_admin") {
         return null
     }
 

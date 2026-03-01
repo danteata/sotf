@@ -6,7 +6,16 @@ import { requireOrgAccess, requireOrgAdmin, requireSuperAdmin, requireUser, reso
 
 export const list = query({
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return [];
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+            .unique();
+
+        if (!user) return []; // User not synced yet, return empty array
+
         if (isSuperAdmin(user)) {
             return await ctx.db.query("organizations").collect();
         }
@@ -68,7 +77,15 @@ export const getById = query({
 
 export const current = query({
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return null;
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+            .unique();
+
+        if (!user) return null; // User not synced yet, return null instead of throwing
         if (!user.organization_id) return null;
         return await ctx.db.get(user.organization_id as Id<"organizations">);
     },

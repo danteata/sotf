@@ -71,11 +71,24 @@ interface PotentialLeader {
 export function LeaderInvitationSystem() {
   const { terminology } = useTerminology()
   const { toast } = useToast()
-  const { organization } = useOrganization()
+  const { organization, context } = useOrganization()
+
+  // Get current user to check if super_admin
+  const currentUser = useQuery(api.users.current);
+  const isSuperAdmin = currentUser?.role === "super_admin";
+
+  // For super_admins, get all organizations and allow selection
+  const allOrganizations = useQuery(api.organizations.list, isSuperAdmin ? undefined : "skip");
+  const [selectedOrgId, setSelectedOrgId] = useState<Id<"organizations"> | null>(null);
+
+  // Use selected org for super_admins, otherwise use the context organization
+  const activeOrganization = isSuperAdmin
+    ? allOrganizations?.find(o => o._id === selectedOrgId) || allOrganizations?.[0]
+    : organization;
 
   // Convex Queries
   const members = useQuery(api.members.getAll, {}) || []
-  const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
+  const unitsData = useQuery(api.units.listByOrg, activeOrganization?._id ? { organization_id: activeOrganization._id } : "skip");
   const allUnits = unitsData || [];
   const users = useQuery(api.users.list) || []
   const invitations = useQuery(api.invitations.list, {}) || []
@@ -187,12 +200,12 @@ export function LeaderInvitationSystem() {
         description: `Sent ${selectedLeaders.length} invitations.`
       });
       setSelectedLeaders([]);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('Send invitations error:', err);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to send invitations."
+        description: err.message || "Failed to send invitations."
       });
     } finally {
       setIsSendingInvites(false)
@@ -210,13 +223,19 @@ export function LeaderInvitationSystem() {
         member_id: leader.id as Id<"members">,
         intended_role: role,
         intended_units: leader.led_unit_ids as Id<"units">[],
+        organization_id: activeOrganization?._id,
       });
 
       const link = `${window.location.origin}/accept-invitation?token=${result.token}`;
       setGeneratedLink(link);
       setIsInviteLinkDialogOpen(true);
-    } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to generate link." });
+    } catch (err: any) {
+      console.error('Generate invitation link error:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to generate link."
+      });
     }
   }
 
@@ -242,14 +261,20 @@ export function LeaderInvitationSystem() {
         email,
         member_id: memberId,
         intended_role: 'organization_admin', // Access level for admin
+        organization_id: activeOrganization?._id,
       });
 
       const link = `${window.location.origin}/accept-invitation?token=${result.token}`;
       setGeneratedLink(link);
       setIsInviteLinkDialogOpen(true);
       setIsAdminInviteDialogOpen(false);
-    } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to generate admin link." });
+    } catch (err: any) {
+      console.error('Admin invite error:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to generate admin link."
+      });
     }
   }
 
@@ -288,6 +313,34 @@ export function LeaderInvitationSystem() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* Organization selector for super_admins */}
+          {isSuperAdmin && allOrganizations && allOrganizations.length > 0 && (
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg border">
+              <Label className="text-sm font-medium mb-2 block">Select Organization</Label>
+              <Select
+                value={selectedOrgId || allOrganizations[0]?._id}
+                onValueChange={(value) => setSelectedOrgId(value as Id<"organizations">)}
+              >
+                <SelectTrigger className="w-[300px]">
+                  <SelectValue placeholder="Select an organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allOrganizations.map((org: any) => (
+                    <SelectItem key={org._id} value={org._id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {!activeOrganization && !isSuperAdmin && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+              <p className="text-yellow-800">No organization selected. Please select an organization to manage invitations.</p>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
             <div className="flex-1">
               <Input

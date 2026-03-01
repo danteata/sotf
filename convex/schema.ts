@@ -5,7 +5,7 @@ import { v } from "convex/values";
 export default defineSchema({
     users: defineTable({
         clerk_user_id: v.string(),
-        email: v.string(),
+        email: v.optional(v.string()),
         name: v.optional(v.string()),
         role: v.string(), // 'super_admin', 'organization_admin', 'division_admin', 'unit_admin', 'sub_unit_admin'
         organization_id: v.optional(v.string()), // UUID from migration, keeping as string for now

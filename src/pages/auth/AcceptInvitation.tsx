@@ -5,9 +5,10 @@ import { useUser } from "@clerk/clerk-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, AlertCircle, Loader2, UserCheck, ShieldAlert, Key } from "lucide-react"
+import { CheckCircle, AlertCircle, Loader2, UserCheck, ShieldAlert, Key, Mail, Clock, User } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
+import { UserSync } from "@/components/user-sync"
 
 export default function AcceptInvitationPage() {
     const [searchParams] = useSearchParams()
@@ -34,7 +35,7 @@ export default function AcceptInvitationPage() {
     // Handle invitation status errors (like expired or used)
     useEffect(() => {
         if (invitation === null && token) {
-            setError('Invalid or expired invitation protocol')
+            setError('Invalid or expired invitation')
         }
     }, [invitation, token])
 
@@ -48,13 +49,14 @@ export default function AcceptInvitationPage() {
             setSuccess(true)
 
             // Redirect to appropriate dashboard after 3 seconds
-            const redirectPath = invitation.intended_role === 'admin' ? '/admin' : '/'
+            // Use window.location.href for a full page reload to ensure all queries refresh
+            const redirectPath = invitation.intended_role === 'organization_admin' || invitation.intended_role === 'admin' ? '/admin' : '/dashboard'
             redirectTimeoutRef.current = window.setTimeout(() => {
-                navigate(redirectPath, { replace: true })
+                window.location.href = redirectPath
             }, 3000)
         } catch (err: any) {
             console.error('Error accepting invitation:', err)
-            setError(err.message || 'Failed to authorize leadership protocol')
+            setError(err.message || 'Failed to accept invitation')
         } finally {
             setIsAccepting(false)
         }
@@ -70,10 +72,10 @@ export default function AcceptInvitationPage() {
 
     if (token === "" || (invitation === undefined && !error)) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center p-6">
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
                 <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-12 w-12 animate-spin text-black stroke-[3px]" />
-                    <span className="font-black uppercase tracking-widest text-xs">DECRYPTING_INVITATION_PACKAGE...</span>
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    <span className="text-muted-foreground">Loading invitation...</span>
                 </div>
             </div>
         )
@@ -82,23 +84,23 @@ export default function AcceptInvitationPage() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center p-6">
-                <Card className="w-full max-w-md border-4 border-black shadow-brutal rounded-3xl overflow-hidden">
-                    <CardHeader className="bg-red-500 text-black border-b-4 border-black p-6">
-                        <CardTitle className="flex items-center gap-3 font-black uppercase tracking-tighter text-2xl">
-                            <ShieldAlert className="h-8 w-8" />
-                            PROTOCOL_FAILURE
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
+                <Card className="w-full max-w-md">
+                    <CardHeader className="bg-destructive/10">
+                        <CardTitle className="flex items-center gap-3 text-destructive">
+                            <ShieldAlert className="h-6 w-6" />
+                            Invitation Error
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-6">
-                        <div className="p-4 bg-red-50 border-2 border-dashed border-red-500 rounded-xl">
-                            <p className="font-bold text-red-700 uppercase text-xs leading-relaxed">{error}</p>
+                    <CardContent className="p-6 space-y-4">
+                        <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+                            <p className="text-destructive">{error}</p>
                         </div>
                         <Button
                             onClick={() => navigate('/')}
-                            className="w-full h-14 border-4 border-black bg-black text-white hover:bg-black/90 shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all rounded-2xl font-black uppercase text-lg"
+                            className="w-full"
                         >
-                            RETURN_TO_BASE
+                            Return Home
                         </Button>
                     </CardContent>
                 </Card>
@@ -108,32 +110,29 @@ export default function AcceptInvitationPage() {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center p-6">
-                <Card className="w-full max-w-md border-4 border-black shadow-brutal rounded-3xl overflow-hidden animate-in zoom-in duration-500">
-                    <CardHeader className="bg-primary text-black border-b-4 border-black p-6">
-                        <CardTitle className="flex items-center gap-3 font-black uppercase tracking-tighter text-2xl">
-                            <CheckCircle className="h-8 w-8" />
-                            ACCESS_GRANTED
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
+                <Card className="w-full max-w-md">
+                    <CardHeader className="bg-primary/10">
+                        <CardTitle className="flex items-center gap-3 text-primary">
+                            <CheckCircle className="h-6 w-6" />
+                            Welcome Aboard!
                         </CardTitle>
-                        <CardDescription className="text-black/60 font-bold uppercase text-[10px] mt-1">
-                            Identity verified. Leadership privileges activated.
+                        <CardDescription>
+                            Your invitation has been accepted successfully.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                        <div className="space-y-4">
-                            <p className="text-sm font-bold uppercase text-muted-foreground leading-tight">
-                                Uplink established. You now have command access to the leadership dashboard. Redirecting to tactical overview...
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Badge className="bg-black text-white border-2 border-black font-black uppercase py-2 px-4 text-xs rounded-xl">
-                                    {invitation?.intended_role?.toUpperCase()}
-                                </Badge>
-                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            </div>
+                    <CardContent className="p-6 space-y-4">
+                        <p className="text-muted-foreground">
+                            You now have access to the organization. Redirecting to your dashboard...
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Badge variant="secondary">
+                                {invitation?.intended_role?.replace('_', ' ')}
+                            </Badge>
+                            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                         </div>
-
                         <div className="pt-4 flex justify-center">
-                            <Loader2 className="h-10 w-10 animate-spin text-black stroke-[3px]" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     </CardContent>
                 </Card>
@@ -143,39 +142,42 @@ export default function AcceptInvitationPage() {
 
     if (!isLoaded) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center p-6">
-                <Loader2 className="h-12 w-12 animate-spin text-black stroke-[3px]" />
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
         )
     }
 
     if (!clerkUser) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center p-6">
-                <Card className="w-full max-w-md border-4 border-black shadow-brutal rounded-3xl overflow-hidden">
-                    <CardHeader className="bg-yellow-400 text-black border-b-4 border-black p-6">
-                        <CardTitle className="font-black uppercase tracking-tighter text-2xl">IDENTITY_REQUIRED</CardTitle>
-                        <CardDescription className="text-black/60 font-bold uppercase text-[10px]">
-                            Authentication token needed to accept invitation
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <User className="h-5 w-5" />
+                            Sign In Required
+                        </CardTitle>
+                        <CardDescription>
+                            Please sign in or create an account to accept this invitation
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="p-8 space-y-6">
-                        <p className="text-sm font-bold uppercase text-muted-foreground leading-relaxed italic">
-                            You must authenticate your identity to activate the leadership protocol. Existing credentials or new enrollment required.
+                    <CardContent className="p-6 space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            You need to be signed in to accept this invitation and join the organization.
                         </p>
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <Button
                                 onClick={() => navigate(`/sign-up?force_redirect_url=${encodeURIComponent(window.location.href)}`)}
-                                className="w-full h-14 border-4 border-black bg-primary text-black hover:bg-primary/90 shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all rounded-2xl font-black uppercase text-lg"
+                                className="w-full"
                             >
-                                START_ENROLLMENT
+                                Create Account
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => navigate(`/sign-in?force_redirect_url=${encodeURIComponent(window.location.href)}`)}
-                                className="w-full h-14 border-4 border-black bg-white text-black hover:bg-muted shadow-brutal-sm hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all rounded-2xl font-black uppercase text-lg"
+                                className="w-full"
                             >
-                                VERIFY_EXISTING
+                                Sign In
                             </Button>
                         </div>
                     </CardContent>
@@ -185,78 +187,80 @@ export default function AcceptInvitationPage() {
     }
 
     return (
-        <div className="min-h-screen bg-muted/30 flex items-center justify-center p-6">
-            <Card className="w-full max-w-md border-4 border-black shadow-brutal rounded-[40px] overflow-hidden bg-white">
-                <CardHeader className="bg-black text-white p-8">
-                    <CardTitle className="flex items-center gap-3 text-3xl font-black uppercase tracking-tighter">
-                        <Key className="h-8 w-8 text-primary" />
-                        INVITATION_DECRYPTED
-                    </CardTitle>
-                    <CardDescription className="text-white/60 font-bold uppercase text-[10px] tracking-widest mt-2">
-                        Deployment orders finalized for tactical integration
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="p-8 space-y-8">
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pl-1">
-                                ASSIGNED_ROLE
-                            </p>
-                            <div className="p-4 border-3 border-black rounded-2xl bg-primary/10 flex items-center justify-between">
-                                <span className="font-black uppercase text-lg">
-                                    {invitation?.intended_role?.toUpperCase()}
-                                </span>
-                                <Badge className="bg-black text-primary border-none font-black text-[9px] px-2 py-0.5">ACTIVE_REQ</Badge>
-                            </div>
-                        </div>
-
-                        {invitation?.member_id && (
+        <>
+            <UserSync />
+            <div className="min-h-screen bg-background flex items-center justify-center p-6">
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Mail className="h-5 w-5 text-primary" />
+                            You're Invited!
+                        </CardTitle>
+                        <CardDescription>
+                            You have been invited to join the organization
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                        <div className="space-y-4">
                             <div className="space-y-2">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground pl-1">
-                                    LINKED_IDENTITY
+                                <p className="text-sm font-medium text-muted-foreground">
+                                    Your Role
                                 </p>
-                                <div className="p-4 border-3 border-black rounded-2xl bg-muted/50">
-                                    <p className="font-black uppercase text-sm mb-1">MEMBER_REF: {invitation.member_id.substring(0, 8)}</p>
-                                    <p className="text-xs font-bold text-muted-foreground uppercase italic truncate">Associated with central personnel database</p>
+                                <div className="p-3 rounded-lg border bg-muted/50 flex items-center justify-between">
+                                    <span className="font-medium capitalize">
+                                        {invitation?.intended_role?.replace('_', ' ')}
+                                    </span>
+                                    <Badge variant="secondary">Active</Badge>
                                 </div>
                             </div>
-                        )}
 
-                        <div className="p-4 bg-muted/20 border-3 border-dashed border-black/20 rounded-2xl">
-                            <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-black uppercase text-muted-foreground">TOKEN_EXPIRY</span>
-                                <span className="text-[10px] font-black uppercase text-red-500">CRITICAL_WINDOW</span>
-                            </div>
-                            <p className="text-sm font-bold uppercase">
-                                {new Date(invitation?.expires_at || 0).toLocaleDateString()} @ {new Date(invitation?.expires_at || 0).toLocaleTimeString()}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="pt-2">
-                        <Button
-                            onClick={handleAccept}
-                            disabled={isAccepting}
-                            className="w-full h-16 border-4 border-black bg-primary text-black hover:bg-primary shadow-brutal hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all rounded-2xl font-black uppercase text-xl"
-                        >
-                            {isAccepting ? (
-                                <>
-                                    <Loader2 className="mr-3 h-6 w-6 animate-spin stroke-[3px]" />
-                                    ACTIVATING...
-                                </>
-                            ) : (
-                                'ACCEPT_COMMAND'
+                            {invitation?.member_id && (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium text-muted-foreground">
+                                        Linked Profile
+                                    </p>
+                                    <div className="p-3 rounded-lg border bg-muted/50">
+                                        <p className="text-sm font-medium">Member Profile Connected</p>
+                                        <p className="text-xs text-muted-foreground">Your profile is linked to this invitation</p>
+                                    </div>
+                                </div>
                             )}
-                        </Button>
-                    </div>
 
-                    <div className="p-4 bg-black/5 rounded-xl border-2 border-black/5">
-                        <p className="text-[9px] font-bold text-muted-foreground text-center uppercase leading-tight tracking-tight">
-                            By accepting this commission, you assume full responsibility for personnel management and tactical reporting within your authorized jurisdiction.
+                            <div className="p-3 bg-muted/30 rounded-lg border">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm font-medium text-muted-foreground">Expires</span>
+                                </div>
+                                <p className="text-sm">
+                                    {new Date(invitation?.expires_at || 0).toLocaleDateString()} at {new Date(invitation?.expires_at || 0).toLocaleTimeString()}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="pt-2">
+                            <Button
+                                onClick={handleAccept}
+                                disabled={isAccepting}
+                                className="w-full"
+                                size="lg"
+                            >
+                                {isAccepting ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Accepting...
+                                    </>
+                                ) : (
+                                    'Accept Invitation'
+                                )}
+                            </Button>
+                        </div>
+
+                        <p className="text-xs text-muted-foreground text-center">
+                            By accepting this invitation, you will join the organization with the role specified above.
                         </p>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </>
     )
 }

@@ -2,11 +2,12 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { isSuperAdmin, requireUser, resolveOrgId } from "./auth";
+import { isSuperAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
 
 // Internal helper to get managed member IDs
 async function getScopedMemberIds(ctx: any) {
-    const user = await requireUser(ctx);
+    const user = await getUserSafe(ctx);
+    if (!user) return new Set<Id<"members">>(); // Return empty set if user doesn't exist
     if (isSuperAdmin(user)) return "all";
 
     const orgId = await resolveOrgId(ctx);
@@ -49,7 +50,9 @@ async function getScopedMemberIds(ctx: any) {
 
 export const getDashboardData = query({
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
+        const user = await getUserSafe(ctx);
+        if (!user) return null; // Return null if user doesn't exist yet
+
         const scopedIds = await getScopedMemberIds(ctx);
         if (scopedIds === null) return null;
         const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);

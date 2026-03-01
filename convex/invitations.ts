@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { requireOrgAdmin, resolveOrgId } from "./auth";
+import { requireOrgAdmin, resolveOrgId, isOrgAdmin } from "./auth";
 import { v } from "convex/values";
 
 export const create = mutation({
@@ -13,6 +13,7 @@ export const create = mutation({
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) throw new Error("Unauthorized");
+
         const inviter = await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         if (!orgId) throw new Error("Organization context required");
@@ -26,8 +27,9 @@ export const create = mutation({
             "member",
         ]);
         if (!allowedRoles.has(args.intended_role)) throw new Error("Invalid intended role");
-        if (args.intended_role === "organization_admin" && inviter.role !== "super_admin") {
-            throw new Error("Forbidden");
+        // Allow both super_admin and organization_admin to create organization_admin invitations
+        if (args.intended_role === "organization_admin" && !isOrgAdmin(inviter)) {
+            throw new Error("Forbidden: Only admins can create organization_admin invitations");
         }
 
         const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -41,7 +43,7 @@ export const create = mutation({
         const invitationId = await ctx.db.insert("invitations", {
             email: args.email,
             member_id: args.member_id,
-            invited_by: identity?.subject,
+            invited_by: identity.subject,
             intended_role: args.intended_role,
             intended_units: args.intended_units || [],
             invitation_token: token,
@@ -49,6 +51,8 @@ export const create = mutation({
             expires_at: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
             organization_id: orgId,
         });
+
+        console.log(`Created invitation ${invitationId} for ${args.email} with role ${args.intended_role}, organization_id: ${orgId}, and units:`, args.intended_units);
 
         return { invitationId, token };
     }
@@ -82,39 +86,63 @@ export const accept = mutation({
         if (!invitation) throw new Error("Invalid token");
         if (invitation.status !== "pending") throw new Error("Invitation already used or revoked");
         if (invitation.expires_at && invitation.expires_at < Date.now()) throw new Error("Invitation expired");
-        if (identity.email && invitation.email && identity.email.toLowerCase() !== invitation.email.toLowerCase()) {
-            throw new Error("Invitation email mismatch");
-        }
 
-        // Update user role
-        const user = await ctx.db
+        // Note: We allow email mismatch to support placeholder emails in member records
+        // The user's actual email from their auth account will be used
+
+        // Find or create user
+        let user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", q => q.eq("clerk_user_id", identity.subject))
             .first();
 
-        if (!user) throw new Error("User not found");
+        if (!user) {
+            // Create user if they don't exist (new signup via invitation)
+            const userId = await ctx.db.insert("users", {
+                clerk_user_id: identity.subject,
+                email: identity.email,
+                name: identity.name,
+                role: invitation.intended_role,
+                organization_id: invitation.organization_id as any,
+                active: true,
+            });
+            user = await ctx.db.get(userId);
+            console.log(`Created new user ${userId} with organization_id: ${invitation.organization_id}`);
+        } else {
+            // Update existing user
+            await ctx.db.patch(user._id, {
+                role: invitation.intended_role,
+                organization_id: invitation.organization_id as any
+            });
+            console.log(`Updated user ${user._id} with organization_id: ${invitation.organization_id}`);
+        }
 
-        // Update user
-        await ctx.db.patch(user._id, {
-            role: invitation.intended_role,
-            organization_id: invitation.organization_id as any // Sync user to the invited organization
-        });
+        if (!user) throw new Error("Failed to create or update user");
 
         // Update Member record (link user_id)
         let memberId = invitation.member_id;
         if (!memberId) {
-            // Find member by email if not explicitly linked in invitation
-            const member = await ctx.db
+            // Find member by invitation email first, then by user's actual email
+            let member = await ctx.db
                 .query("members")
                 .withIndex("by_email", q => q.eq("email", invitation.email))
                 .first();
+
+            // If not found, try finding by the user's actual email
+            if (!member && identity.email) {
+                member = await ctx.db
+                    .query("members")
+                    .withIndex("by_email", q => q.eq("email", identity.email))
+                    .first();
+            }
             memberId = member?._id;
         }
 
         if (memberId) {
+            // Update member with user's actual email (replacing placeholder if needed)
             await ctx.db.patch(memberId, {
                 user_id: user._id,
-                email: user.email // Ensure email is in sync
+                email: identity.email || user.email // Use the user's actual email
             });
 
             // Apply leadership if units provided
