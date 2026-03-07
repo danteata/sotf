@@ -80,7 +80,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
             <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
               <Users className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Members</h1>
+            <h1 className="text-3xl tracking-tight text-foreground">Members</h1>
           </div>
           <p className="text-muted-foreground pl-12 text-sm">
             Manage your community directory and profiles
@@ -177,7 +177,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
               </Select>
             </div>
             <div className="md:col-span-2 flex items-center justify-end">
-              <span className="text-sm font-medium text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+              <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
                 {totalMembers.toLocaleString()} member{totalMembers !== 1 ? 's' : ''}
               </span>
             </div>

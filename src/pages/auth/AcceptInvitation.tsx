@@ -203,7 +203,7 @@ export default function AcceptInvitationPage() {
                     <CardContent className="p-6 space-y-6">
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <p className="text-sm font-medium text-muted-foreground">
+                                <p className="text-sm text-muted-foreground">
                                     Your Role
                                 </p>
                                 <div className="p-3 rounded-lg border bg-muted/50 flex items-center justify-between">
@@ -216,11 +216,11 @@ export default function AcceptInvitationPage() {
 
                             {invitation?.member_id && (
                                 <div className="space-y-2">
-                                    <p className="text-sm font-medium text-muted-foreground">
+                                    <p className="text-sm text-muted-foreground">
                                         Linked Profile
                                     </p>
                                     <div className="p-3 rounded-lg border bg-muted/50">
-                                        <p className="text-sm font-medium">Member Profile Connected</p>
+                                        <p className="text-sm">Member Profile Connected</p>
                                         <p className="text-xs text-muted-foreground">Your profile is linked to this invitation</p>
                                     </div>
                                 </div>
@@ -229,7 +229,7 @@ export default function AcceptInvitationPage() {
                             <div className="p-3 bg-muted/30 rounded-lg border">
                                 <div className="flex items-center gap-2 mb-1">
                                     <Clock className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm font-medium text-muted-foreground">Expires</span>
+                                    <span className="text-sm text-muted-foreground">Expires</span>
                                 </div>
                                 <p className="text-sm">
                                     {new Date(invitation?.expires_at || 0).toLocaleDateString()} at {new Date(invitation?.expires_at || 0).toLocaleTimeString()}

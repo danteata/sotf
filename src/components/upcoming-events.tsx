@@ -15,7 +15,7 @@ export function UpcomingEvents({ events, onEditEvent }: UpcomingEventsProps) {
     return (
       <div className="text-center py-8">
         <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-        <h3 className="text-lg font-medium mb-2">No upcoming events</h3>
+        <h3 className="text-lg mb-2">No upcoming events</h3>
         <p className="text-muted-foreground text-sm">
           Create your first event to get started.
         </p>

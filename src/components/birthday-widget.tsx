@@ -76,7 +76,7 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
                         <div className="inline-block p-4 bg-muted rounded-full mb-4">
                             <Gift className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">No birthday data available. Add member birthdays to see celebrations here!</p>
+                        <p className="text-sm text-muted-foreground">No birthday data available. Add member birthdays to see celebrations here!</p>
                     </div>
                 </CardContent>
             </Card>
@@ -164,7 +164,7 @@ export function BirthdayWidget({ members }: BirthdayWidgetProps) {
                         <div className="inline-block p-3 bg-muted rounded-full mb-3">
                             <Gift className="h-6 w-6 text-muted-foreground/50" />
                         </div>
-                        <p className="text-sm font-medium text-muted-foreground">No upcoming birthdays in the next few months.</p>
+                        <p className="text-sm text-muted-foreground">No upcoming birthdays in the next few months.</p>
                     </div>
                 )}
             </CardContent>

@@ -109,12 +109,12 @@ export function BulkAddToUnitDialog({
                 <div className="space-y-6 py-4">
                     {/* Selected members summary */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <label className="text-xs font-semibold text-muted-foreground tracking-wider">
                             Selected Members
                         </label>
                         <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg border border-border/50">
                             <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">
+                            <span className="text-sm">
                                 {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''} selected
                             </span>
                         </div>
@@ -122,7 +122,7 @@ export function BulkAddToUnitDialog({
 
                     {/* Unit selection */}
                     <div className="space-y-2">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        <label className="text-xs font-semibold text-muted-foreground tracking-wider">
                             Select Unit *
                         </label>
                         <Select value={selectedUnitId} onValueChange={setSelectedUnitId}>

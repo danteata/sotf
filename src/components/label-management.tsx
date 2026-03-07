@@ -174,7 +174,7 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
         return (
             <div className="text-center py-20 bg-slate-50/50 border border-dashed border-slate-200 rounded-[32px]">
                 <Tag className="mx-auto h-16 w-16 mb-6 text-slate-200" />
-                <h3 className="text-xl font-black tracking-tight mb-2">Access Denied</h3>
+                <h3 className="text-xl tracking-tight mb-2">Access Denied</h3>
                 <p className="font-medium text-slate-400 text-sm">You need administrator privileges to manage member labels</p>
             </div>
         )
@@ -184,8 +184,8 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
         <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-1">
-                    <h2 className="text-3xl font-black tracking-tight">Label Management</h2>
-                    <p className="text-slate-500 font-medium text-sm flex items-center gap-2">
+                    <h2 className="text-3xl tracking-tight">Label Management</h2>
+                    <p className="text-slate-500 text-sm flex items-center gap-2">
                         <Palette className="h-4 w-4 text-slate-400" /> Define the taxonomy for classifying your community members
                     </p>
                 </div>
@@ -196,7 +196,7 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                 }}>
                     <DialogTrigger asChild>
                         <Button
-                            className="h-12 px-6 bg-slate-900 text-white hover:bg-slate-800 shadow-soft-xl rounded-xl font-bold transition-all"
+                            className="h-12 px-6 bg-slate-900 text-white hover:bg-slate-800 shadow-soft-xl rounded-xl transition-all"
                         >
                             <Plus className="w-5 h-5 mr-2 stroke-[3px]" />
                             Create New Label
@@ -204,31 +204,31 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-[550px] p-0 border border-border/50 shadow-soft-2xl rounded-3xl overflow-hidden">
                         <DialogHeader className="p-8 pb-4">
-                            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
+                            <DialogTitle className="text-2xl tracking-tight flex items-center gap-3">
                                 {editingLabel ? <Edit className="h-6 w-6 text-slate-400" /> : <Plus className="h-6 w-6 text-slate-400" />}
                                 {editingLabel ? 'Update Label' : 'New Label Identity'}
                             </DialogTitle>
-                            <DialogDescription className="text-slate-500 font-medium text-sm">
+                            <DialogDescription className="text-slate-500 text-sm">
                                 Configure labels to categorize and track member engagement
                             </DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="p-8 pt-4 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Label Name</FormLabel>
+                                    <FormLabel className="text-[10px] text-slate-400 tracking-wider pl-1">Label Name</FormLabel>
                                     <Input
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         placeholder="e.g. Core Team"
-                                        className="rounded-xl border-slate-200 h-11 font-medium"
+                                        className="rounded-xl border-slate-200 h-11"
                                         required
                                     />
                                 </div>
 
                                 <div className="space-y-2">
-                                    <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Category</FormLabel>
+                                    <FormLabel className="text-[10px] text-slate-400 tracking-wider pl-1">Category</FormLabel>
                                     <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                                        <SelectTrigger className="rounded-xl border-slate-200 h-11 font-medium capitalize">
+                                        <SelectTrigger className="rounded-xl border-slate-200 h-11 capitalize">
                                             <SelectValue placeholder="Select Category" />
                                         </SelectTrigger>
                                         <SelectContent className="border border-border/50 shadow-soft rounded-xl">
@@ -243,18 +243,18 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                             </div>
 
                             <div className="space-y-2">
-                                <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Description</FormLabel>
+                                <FormLabel className="text-[10px] text-slate-400 tracking-wider pl-1">Description</FormLabel>
                                 <Textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     placeholder="Briefly explain the criteria for this label"
                                     rows={3}
-                                    className="rounded-xl border-slate-200 font-medium text-sm resize-none"
+                                    className="rounded-xl border-slate-200 text-sm resize-none"
                                 />
                             </div>
 
                             <div className="space-y-4">
-                                <FormLabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Visual Identity</FormLabel>
+                                <FormLabel className="text-[10px] text-slate-400 tracking-wider pl-1">Visual Identity</FormLabel>
                                 <div className="p-4 border border-slate-100 rounded-2xl bg-slate-50/50">
                                     <div className="flex flex-wrap gap-2 justify-center">
                                         {predefinedColors.map(color => (
@@ -289,14 +289,14 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                                     type="button"
                                     variant="ghost"
                                     onClick={() => setDialogOpen(false)}
-                                    className="rounded-xl font-bold text-slate-500"
+                                    className="rounded-xl text-slate-500"
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={loading}
-                                    className="px-8 h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-xl font-bold shadow-soft"
+                                    className="px-8 h-11 bg-slate-900 text-white hover:bg-slate-800 rounded-xl shadow-soft"
                                 >
                                     {loading ? "Processing..." : editingLabel ? 'Update Label' : 'Save Label'}
                                 </Button>
@@ -308,9 +308,9 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
 
             <Tabs defaultValue="all" className="w-full space-y-6">
                 <TabsList className="bg-slate-100/50 p-1 rounded-xl h-11">
-                    <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs px-6 capitalize">All Inventory</TabsTrigger>
-                    <TabsTrigger value="system" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs px-6 capitalize">System Labels</TabsTrigger>
-                    <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm font-bold text-xs px-6 capitalize">Custom Labels</TabsTrigger>
+                    <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-6 capitalize">All Inventory</TabsTrigger>
+                    <TabsTrigger value="system" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-6 capitalize">System Labels</TabsTrigger>
+                    <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs px-6 capitalize">Custom Labels</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="all" className="space-y-10 animate-in fade-in duration-500 outline-none">
@@ -323,9 +323,9 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                         Object.entries(groupedLabels).map(([category, categoryLabels]) => (
                             <section key={category} className="space-y-4">
                                 <div className="flex items-center gap-3">
-                                    <h3 className="text-lg font-black tracking-tight uppercase text-slate-900">{category}</h3>
+                                    <h3 className="text-lg tracking-tight text-slate-900">{category}</h3>
                                     <div className="flex-1 h-px bg-slate-100" />
-                                    <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-bold border-0 px-2">{categoryLabels.length}</Badge>
+                                    <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-0 px-2">{categoryLabels.length}</Badge>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {categoryLabels.map(label => (
@@ -340,15 +340,15 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                                                         {label.is_system_label && <ShieldIcon className="h-3 w-3 text-slate-400" />}
                                                     </div>
                                                     {label.description && (
-                                                        <p className="text-[11px] font-medium text-slate-500 leading-normal line-clamp-2">
+                                                        <p className="text-[11px] text-slate-500 leading-normal line-clamp-2">
                                                             {label.description}
                                                         </p>
                                                     )}
                                                     <div className="flex items-center gap-2 pt-2">
-                                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100 uppercase">
+                                                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
                                                             <Users className="h-2.5 w-2.5" /> {label.usage_count || 0}
                                                         </div>
-                                                        <Badge variant="outline" className="text-[9px] font-bold border-slate-100 text-slate-400 uppercase tracking-widest bg-transparent px-1.5">{label.category}</Badge>
+                                                        <Badge variant="outline" className="text-[9px] border-slate-100 text-slate-400 tracking-widest bg-transparent px-1.5">{label.category}</Badge>
                                                     </div>
                                                 </div>
                                                 <div className="flex flex-col gap-1 pl-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -383,7 +383,7 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                                                                     <AlertDialogCancel className="font-bold rounded-xl border-slate-200">Cancel</AlertDialogCancel>
                                                                     <AlertDialogAction
                                                                         onClick={() => handleDelete(label)}
-                                                                        className="bg-red-500 text-white hover:bg-red-600 font-bold rounded-xl shadow-sm px-6 h-10"
+                                                                        className="bg-red-500 text-white hover:bg-red-600 rounded-xl shadow-sm px-6 h-10"
                                                                     >
                                                                         Delete Permanently
                                                                     </AlertDialogAction>
@@ -414,7 +414,7 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                                             <span className="font-bold text-sm truncate text-slate-900">{label.name}</span>
                                             <ShieldIcon className="h-3 w-3 text-slate-400" />
                                         </div>
-                                        <p className="text-[10px] font-medium text-slate-500 uppercase">System Integrated Protocol</p>
+                                        <p className="text-[10px] text-slate-500">System Integrated Protocol</p>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -435,7 +435,7 @@ export function LabelManagement({ onLabelsChange }: LabelManagementProps) {
                                             <span className="font-bold text-sm truncate text-slate-900">{label.name}</span>
                                         </div>
                                         {label.description && (
-                                            <p className="text-[11px] font-medium text-slate-500 leading-normal line-clamp-2">
+                                            <p className="text-[11px] text-slate-500 leading-normal line-clamp-2">
                                                 {label.description}
                                             </p>
                                         )}

@@ -96,7 +96,7 @@ export function UnitCard({ unit, viewMode, onEdit }: UnitCardProps) {
             </div>
             <div>
               <h4 className="font-semibold text-base tracking-tight leading-none mb-1.5 text-foreground">{unit.name}</h4>
-              <p className="text-xs font-medium text-muted-foreground capitalize">
+              <p className="text-xs text-muted-foreground capitalize">
                 {unit.type || 'Administrative'}
               </p>
             </div>

@@ -50,7 +50,7 @@ export default function OrganizationPage() {
                         <div className="mx-auto h-20 w-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center">
                             <Shield className="h-10 w-10" />
                         </div>
-                        <h2 className="text-2xl font-bold tracking-tight">Access Denied</h2>
+                        <h2 className="text-2xl tracking-tight">Access Denied</h2>
                         <p className="font-medium text-muted-foreground">
                             Your security clearance is insufficient for organization architecture protocols.
                         </p>
@@ -79,7 +79,7 @@ export default function OrganizationPage() {
                             <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
                                 <Building2 className="h-6 w-6" />
                             </div>
-                            <h1 className="text-3xl font-bold tracking-tight text-foreground">Command Center</h1>
+                            <h1 className="text-3xl tracking-tight text-foreground">Command Center</h1>
                         </div>
                         <p className="text-muted-foreground pl-12 text-sm">
                             Architectural oversight of {chartData?.organization?.name || "The Organization"}
@@ -87,7 +87,7 @@ export default function OrganizationPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Badge variant="secondary" className="h-9 px-4 rounded-lg bg-muted text-muted-foreground font-medium shadow-sm">
+                        <Badge variant="secondary" className="h-9 px-4 rounded-lg bg-muted text-muted-foreground shadow-sm">
                             Role: {role?.replace('_', ' ')}
                         </Badge>
 
@@ -205,8 +205,8 @@ function StatCard({ label, value, icon, iconBg }: { label: string, value: string
                     </Badge>
                 </div>
                 <div className="space-y-1">
-                    <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
-                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</div>
+                    <div className="text-2xl tracking-tight text-foreground">{value}</div>
+                    <div className="text-xs text-muted-foreground tracking-wide">{label}</div>
                 </div>
             </CardContent>
         </Card>
@@ -216,7 +216,7 @@ function StatCard({ label, value, icon, iconBg }: { label: string, value: string
 function InfoBlock({ title, items }: { title: string, items: string[] }) {
     return (
         <div className="p-6 rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all flex flex-col gap-4">
-            <h3 className="text-lg font-bold flex items-center gap-3">
+            <h3 className="text-lg flex items-center gap-3">
                 <div className="h-1.5 w-8 bg-primary rounded-full" /> {title}
             </h3>
             <ul className="space-y-3">
@@ -225,7 +225,7 @@ function InfoBlock({ title, items }: { title: string, items: string[] }) {
                         <div className="h-5 w-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                             <ArrowUpRight className="h-3 w-3" />
                         </div>
-                        <span className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{item}</span>
+                        <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{item}</span>
                     </li>
                 ))}
             </ul>

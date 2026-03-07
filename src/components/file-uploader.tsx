@@ -153,7 +153,7 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                 </div>
                 <div className="flex items-center gap-1">
                     <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
-                    {/* <span className="font-medium text-[10px] text-muted-foreground uppercase">Cloud Secured</span> */}
+                    {/* <span className="font-medium text-[10px] text-muted-foreground">Cloud Secured</span> */}
                 </div>
             </div>
 
@@ -185,7 +185,7 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                         <>
                             <Loader2 className="h-10 w-10 animate-spin text-primary stroke-[2px]" />
                             <div className="space-y-1">
-                                <p className="text-base font-bold text-slate-900">Uploading File...</p>
+                                <p className="text-base text-slate-900">Uploading File...</p>
                                 <p className="text-xs text-muted-foreground">Connecting to storage...</p>
                             </div>
                         </>
@@ -195,7 +195,7 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                                 <Upload className={`h-8 w-8 ${isDragOver ? 'text-primary' : 'text-slate-500'} stroke-[2px]`} />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-lg font-bold text-slate-900 tracking-tight">
+                                <p className="text-lg text-slate-900 tracking-tight">
                                     {isDragOver ? 'Drop file here' : 'Click to upload'}
                                 </p>
                                 <p className="text-sm text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
@@ -217,7 +217,7 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                     <div className="relative inline-block border border-dashed border-border rounded-lg overflow-hidden bg-white/50">
                         <div className="w-full h-32 flex flex-col items-center justify-center p-6 text-center gap-2">
                             <ShieldCheck className="h-8 w-8 text-emerald-500" />
-                            <p className="text-[10px] font-medium text-slate-500">File secured successfully</p>
+                            <p className="text-[10px] text-slate-500">File secured successfully</p>
                             <p className="text-[9px] font-mono text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-100">ID: {imageUrl.substring(0, 16)}...</p>
                         </div>
 

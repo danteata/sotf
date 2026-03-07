@@ -41,7 +41,7 @@ export function MainNav() {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-xs font-bold text-primary uppercase tracking-wider px-3 mb-2">
+      <SidebarGroupLabel className="text-xs text-primary tracking-wider px-3 mb-2">
         Navigation
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -52,9 +52,9 @@ export function MainNav() {
                 asChild
                 isActive={pathname === item.href}
                 className={cn(
-                  "w-full justify-start gap-3 px-3 py-2.5 text-sm font-bold transition-all duration-200 rounded-lg",
+                  "w-full justify-start gap-3 px-3 py-2.5 text-sm transition-all duration-200 rounded-lg",
                   pathname === item.href
-                    ? "bg-[hsl(262,83%,40%)] text-white shadow-md ring-1 ring-primary/20"
+                    ? "bg-primary text-white shadow-md ring-1 ring-primary/20"
                     : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >

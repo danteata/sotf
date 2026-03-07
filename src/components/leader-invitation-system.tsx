@@ -381,7 +381,7 @@ export function LeaderInvitationSystem() {
           {/* Organization selector for super_admins */}
           {isSuperAdmin && allOrganizations && allOrganizations.length > 0 && (
             <div className="mb-4 p-4 bg-muted/50 rounded-lg border">
-              <Label className="text-sm font-medium mb-2 block">Select Organization</Label>
+              <Label className="text-sm mb-2 block">Select Organization</Label>
               <Select
                 value={selectedOrgId || allOrganizations[0]?._id}
                 onValueChange={(value) => setSelectedOrgId(value as Id<"organizations">)}

@@ -130,7 +130,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
             <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50">
               <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <span className="text-sm font-bold text-blue-900 dark:text-blue-100">
+            <span className="text-sm text-blue-900 dark:text-blue-100">
               {selectedMembers.length} member{selectedMembers.length !== 1 ? 's' : ''} selected
             </span>
           </div>
@@ -240,7 +240,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                     <span>{member.phone || '—'}</span>
                   </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell font-medium">{member.city}</TableCell>
+                <TableCell className="hidden md:table-cell">{member.city}</TableCell>
                 <TableCell>{getStatusBadge(member.status)}</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <div className="flex flex-wrap gap-1">

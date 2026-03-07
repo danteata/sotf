@@ -21,7 +21,7 @@ function SignUpContent() {
             <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
                 <div className="mb-8 flex items-center gap-2">
                     <Church className="h-8 w-8 text-primary" />
-                    <h1 className="text-2xl font-bold">Makarios Church</h1>
+                    <h1 className="text-2xl">Makarios Church</h1>
                 </div>
 
                 <Card className="mx-auto w-full max-w-md">
@@ -71,7 +71,7 @@ function SignUpContent() {
         <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
             <div className="mb-8 flex items-center gap-2">
                 <Church className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold">Makarios Church</h1>
+                <h1 className="text-2xl">Makarios Church</h1>
             </div>
             <SignUp
                 appearance={{
@@ -96,7 +96,7 @@ export default function SignUpPage() {
             <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
                 <div className="mb-8 flex items-center gap-2">
                     <Church className="h-8 w-8 text-primary" />
-                    <h1 className="text-2xl font-bold">Makarios Church</h1>
+                    <h1 className="text-2xl">Makarios Church</h1>
                 </div>
                 <div className="animate-pulse">Loading...</div>
             </div>

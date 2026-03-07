@@ -55,7 +55,7 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
           className={`flex items-center gap-2 h-9 px-3 hover:bg-primary/10 border border-transparent hover:border-primary/30 transition-all duration-300 rounded-lg ${className}`}
         >
           <Building2 className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium truncate max-w-[150px]">
+          <span className="text-sm truncate max-w-[150px]">
             {currentOrganization?.name || "Select Organization"}
           </span>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")} />
@@ -64,7 +64,7 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
 
       <DropdownMenuContent align="start" className="w-[280px] p-1.5 glass-card border border-border/30 rounded-xl overflow-hidden">
         <div className="p-2 mb-1 bg-muted/30 rounded-lg border border-border/20">
-          <DropdownMenuLabel className="p-0 text-[10px] font-medium uppercase text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
+          <DropdownMenuLabel className="p-0 text-[10px] text-muted-foreground tracking-wider mb-1.5 flex items-center gap-1.5">
             <Globe className="h-3 w-3" /> Current
           </DropdownMenuLabel>
 
@@ -84,7 +84,7 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
 
         <DropdownMenuSeparator className="my-1.5 bg-border/30" />
 
-        <DropdownMenuLabel className="px-2 pb-1.5 text-[10px] font-medium uppercase text-muted-foreground tracking-wider">
+        <DropdownMenuLabel className="px-2 pb-1.5 text-[10px] text-muted-foreground tracking-wider">
           Switch Organization
         </DropdownMenuLabel>
 

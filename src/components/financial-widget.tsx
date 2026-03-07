@@ -42,7 +42,7 @@ export function FinancialWidget({
             <Card className={`${className} h-[400px] flex items-center justify-center shadow-soft`}>
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="text-sm font-medium text-muted-foreground">Loading Financial Data...</span>
+                    <span className="text-sm text-muted-foreground">Loading Financial Data...</span>
                 </div>
             </Card>
         )
@@ -141,22 +141,22 @@ export function FinancialWidget({
             <CardHeader className="p-8 bg-gradient-to-r from-muted/50 via-muted/30 to-transparent border-b border-border/50">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+                        <CardTitle className="flex items-center gap-3 text-2xl">
                             <div className="p-2.5 bg-gradient-primary text-primary-foreground rounded-xl shadow-md">
                                 <DollarSign className="h-6 w-6" />
                             </div>
                             Financial Report
                         </CardTitle>
-                        <CardDescription className="mt-2 text-sm font-medium">
+                        <CardDescription className="mt-2 text-sm">
                             {getPeriodLabel()} • Operational Summary
                         </CardDescription>
                     </div>
                     <div className="flex flex-wrap items-center gap-4">
                         <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as any)}>
                             <TabsList className="bg-background border border-input shadow-sm">
-                                <TabsTrigger value="month" className="px-4 text-xs font-medium">Month</TabsTrigger>
-                                <TabsTrigger value="quarter" className="px-4 text-xs font-medium">Quarter</TabsTrigger>
-                                <TabsTrigger value="year" className="px-4 text-xs font-medium">Year</TabsTrigger>
+                                <TabsTrigger value="month" className="px-4 text-xs">Month</TabsTrigger>
+                                <TabsTrigger value="quarter" className="px-4 text-xs">Quarter</TabsTrigger>
+                                <TabsTrigger value="year" className="px-4 text-xs">Year</TabsTrigger>
                             </TabsList>
                         </Tabs>
                         {onAddTransaction && (
@@ -178,17 +178,17 @@ export function FinancialWidget({
                     <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 hover-lift transition-all">
                         <div className="h-1 w-12 bg-success rounded-full mb-4"></div>
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Revenue</span>
+                            <span className="text-xs font-semibold tracking-wider text-muted-foreground">Revenue</span>
                             {incomeChange !== 0 && (
                                 <Badge variant="success" className="font-bold">
                                     {incomeChange > 0 ? "+" : ""}{incomeChange.toFixed(1)}%
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-3xl font-bold tracking-tight mb-1 text-foreground">
+                        <div className="text-3xl tracking-tight mb-1 text-foreground">
                             {formatCurrency(currentTotals.income)}
                         </div>
-                        <div className="text-xs font-medium text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                             Previous: {formatCurrency(previousTotals.income)}
                         </div>
                     </div>
@@ -196,17 +196,17 @@ export function FinancialWidget({
                     <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 hover-lift transition-all">
                         <div className="h-1 w-12 bg-destructive rounded-full mb-4"></div>
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expenses</span>
+                            <span className="text-xs font-semibold tracking-wider text-muted-foreground">Expenses</span>
                             {expenseChange !== 0 && (
                                 <Badge variant="destructive" className="font-bold">
                                     {expenseChange > 0 ? "+" : ""}{expenseChange.toFixed(1)}%
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-3xl font-bold tracking-tight mb-1 text-foreground">
+                        <div className="text-3xl tracking-tight mb-1 text-foreground">
                             {formatCurrency(currentTotals.expense)}
                         </div>
-                        <div className="text-xs font-medium text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                             Previous: {formatCurrency(previousTotals.expense)}
                         </div>
                     </div>
@@ -214,17 +214,17 @@ export function FinancialWidget({
                     <div className="bg-card rounded-xl border border-border/50 shadow-sm p-6 hover-lift transition-all">
                         <div className={`h-1 w-12 rounded-full mb-4 ${currentTotals.net >= 0 ? 'bg-primary' : 'bg-destructive'}`}></div>
                         <div className="flex items-center justify-between mb-4">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Net Income</span>
+                            <span className="text-xs font-semibold tracking-wider text-muted-foreground">Net Income</span>
                             {netChange !== 0 && (
                                 <Badge variant={currentTotals.net >= 0 ? "default" : "destructive"} className="font-bold">
                                     {netChange > 0 ? "+" : ""}{netChange.toFixed(1)}%
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-3xl font-bold tracking-tight mb-1 text-foreground">
+                        <div className="text-3xl tracking-tight mb-1 text-foreground">
                             {formatCurrency(currentTotals.net)}
                         </div>
-                        <div className={`text-xs font-bold uppercase ${currentTotals.net >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        <div className={`text-xs ${currentTotals.net >= 0 ? 'text-success' : 'text-destructive'}`}>
                             {currentTotals.net >= 0 ? 'Surplus' : 'Deficit'}
                         </div>
                     </div>
@@ -237,7 +237,7 @@ export function FinancialWidget({
                             <div className="p-1.5 bg-success/10 text-success rounded-md">
                                 <TrendingUp className="h-4 w-4" />
                             </div>
-                            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top Revenue Sources</h4>
+                            <h4 className="text-sm font-semibold tracking-wide text-muted-foreground">Top Revenue Sources</h4>
                         </div>
                         <div className="space-y-3">
                             {topIncomeCategories.length > 0 ? (
@@ -249,11 +249,11 @@ export function FinancialWidget({
                                         <div key={category} className="flex items-center justify-between p-3 bg-white dark:bg-card rounded-lg border border-border/50 shadow-sm">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xl">{categoryInfo?.icon || '💰'}</span>
-                                                <span className="text-xs font-bold text-foreground">{categoryInfo?.label || category}</span>
+                                                <span className="text-xs text-foreground">{categoryInfo?.label || category}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-sm font-bold text-success">{formatCurrency(totals.income)}</div>
-                                                <div className="text-[10px] font-medium text-muted-foreground">{percentage.toFixed(1)}%</div>
+                                                <div className="text-sm text-success">{formatCurrency(totals.income)}</div>
+                                                <div className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</div>
                                             </div>
                                         </div>
                                     )
@@ -271,7 +271,7 @@ export function FinancialWidget({
                             <div className="p-1.5 bg-destructive/10 text-destructive rounded-md">
                                 <TrendingDown className="h-4 w-4" />
                             </div>
-                            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Top Expenses</h4>
+                            <h4 className="text-sm font-semibold tracking-wide text-muted-foreground">Top Expenses</h4>
                         </div>
                         <div className="space-y-3">
                             {topExpenseCategories.length > 0 ? (
@@ -283,11 +283,11 @@ export function FinancialWidget({
                                         <div key={category} className="flex items-center justify-between p-3 bg-white dark:bg-card rounded-lg border border-border/50 shadow-sm">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xl">{categoryInfo?.icon || '💸'}</span>
-                                                <span className="text-xs font-bold text-foreground">{categoryInfo?.label || category}</span>
+                                                <span className="text-xs text-foreground">{categoryInfo?.label || category}</span>
                                             </div>
                                             <div className="text-right">
-                                                <div className="text-sm font-bold text-destructive">{formatCurrency(totals.expense)}</div>
-                                                <div className="text-[10px] font-medium text-muted-foreground">{percentage.toFixed(1)}%</div>
+                                                <div className="text-sm text-destructive">{formatCurrency(totals.expense)}</div>
+                                                <div className="text-[10px] text-muted-foreground">{percentage.toFixed(1)}%</div>
                                             </div>
                                         </div>
                                     )

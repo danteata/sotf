@@ -80,7 +80,7 @@ export function AttendanceHistory({
   return (
     <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
       <CardHeader className="p-8 pb-4">
-        <CardTitle className="text-xl font-black tracking-tight text-foreground">Historical Archives</CardTitle>
+        <CardTitle className="text-xl tracking-tight text-foreground">Historical Archives</CardTitle>
         <CardDescription className="font-medium text-muted-foreground">Comprehensive log of processed attendance records across the organization</CardDescription>
       </CardHeader>
       <CardContent className="p-8 pt-4">
@@ -90,14 +90,14 @@ export function AttendanceHistory({
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by note or date..."
-                className="pl-11 h-11 border-border rounded-xl font-medium bg-background focus:ring-primary max-w-md"
+                className="pl-11 h-11 border-border rounded-xl bg-background focus:ring-primary max-w-md"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             <div className="flex flex-row gap-3 items-center flex-wrap">
               <Select value={eventType} onValueChange={setEventType}>
-                <SelectTrigger className="w-[180px] h-11 border-border rounded-xl font-medium bg-background">
+                <SelectTrigger className="w-[180px] h-11 border-border rounded-xl bg-background">
                   <SelectValue placeholder="All Protocols" />
                 </SelectTrigger>
                 <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
@@ -115,7 +115,7 @@ export function AttendanceHistory({
               </Select>
 
               <Select value={unitFilter} onValueChange={setUnitFilter}>
-                <SelectTrigger className="w-[180px] h-11 border-border rounded-xl font-medium bg-background" disabled={filtersLoading}>
+                <SelectTrigger className="w-[180px] h-11 border-border rounded-xl bg-background" disabled={filtersLoading}>
                   <SelectValue placeholder={filtersLoading ? "Loading..." : "Unit Allocation"} />
                 </SelectTrigger>
                 <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
@@ -128,7 +128,7 @@ export function AttendanceHistory({
                 </SelectContent>
               </Select>
 
-              <Button variant="outline" size="sm" className="h-11 rounded-xl border-border font-bold text-muted-foreground px-6">
+              <Button variant="outline" size="sm" className="h-11 rounded-xl border-border text-muted-foreground px-6">
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
@@ -139,10 +139,10 @@ export function AttendanceHistory({
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow className="hover:bg-transparent border-border">
-                  <TableHead className="font-black uppercase text-[10px] text-muted-foreground tracking-wider pl-6 py-4 text-center">Protocol Date</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] text-muted-foreground tracking-wider py-4">Event Type</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] text-muted-foreground tracking-wider py-4 text-center">Engagement</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] text-muted-foreground tracking-wider py-4 pr-6">Context & Actions</TableHead>
+                  <TableHead className="font-black text-[10px] text-muted-foreground tracking-wider pl-6 py-4 text-center">Protocol Date</TableHead>
+                  <TableHead className="font-black text-[10px] text-muted-foreground tracking-wider py-4">Event Type</TableHead>
+                  <TableHead className="font-black text-[10px] text-muted-foreground tracking-wider py-4 text-center">Engagement</TableHead>
+                  <TableHead className="font-black text-[10px] text-muted-foreground tracking-wider py-4 pr-6">Context & Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -178,20 +178,20 @@ export function AttendanceHistory({
                       <TableCell className="pl-6 py-5 text-center">
                         <div className="flex flex-col items-center">
                           <span className="font-bold text-foreground">{record.date}</span>
-                          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter">Processed Log</span>
+                          <span className="text-[10px] text-muted-foreground tracking-tighter">Processed Log</span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-5 font-bold text-foreground">
+                      <TableCell className="py-5 text-foreground">
                         {record.event_type_label || record.event_type_value || 'Direct Record'}
                       </TableCell>
                       <TableCell className="py-5 text-center">
-                        <Badge variant="outline" className="bg-muted text-foreground border-border font-black h-8 px-4 rounded-xl">
+                        <Badge variant="outline" className="bg-muted text-foreground border-border h-8 px-4 rounded-xl">
                           {record.count}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-5 pr-6">
                         <div className="flex gap-4 items-center justify-between">
-                          <span className="text-xs font-medium text-muted-foreground truncate max-w-[200px]">
+                          <span className="text-xs text-muted-foreground truncate max-w-[200px]">
                             {record.notes || <span className="italic opacity-50">No documentation</span>}
                           </span>
                           <Button

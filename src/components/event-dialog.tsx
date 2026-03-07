@@ -162,7 +162,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px] border border-border/50 shadow-soft-xl rounded-xl p-0 overflow-hidden bg-background">
         <DialogHeader className="p-6 bg-muted/30 border-b border-border/50">
-          <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
+          <DialogTitle className="text-xl flex items-center gap-2 text-foreground">
             <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <Sparkles className="h-5 w-5" />
             </div>
@@ -180,7 +180,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium flex items-center gap-2">
+                  <FormLabel className="text-sm flex items-center gap-2">
                     <Type className="h-4 w-4 text-muted-foreground" /> Event Title <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
@@ -196,7 +196,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium flex items-center gap-2">
+                  <FormLabel className="text-sm flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" /> Description
                   </FormLabel>
                   <FormControl>
@@ -217,7 +217,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel className="text-sm font-medium flex items-center gap-2">
+                    <FormLabel className="text-sm flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4 text-muted-foreground" /> Date <span className="text-destructive">*</span>
                     </FormLabel>
                     <Popover>
@@ -262,7 +262,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium flex items-center gap-2">
+                    <FormLabel className="text-sm flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-muted-foreground" /> Type <span className="text-destructive">*</span>
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
@@ -295,7 +295,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
                 name="time"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium flex items-center gap-2">
+                    <FormLabel className="text-sm flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" /> Time
                     </FormLabel>
                     <FormControl>
@@ -311,7 +311,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
                 name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium flex items-center gap-2">
+                    <FormLabel className="text-sm flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" /> Location
                     </FormLabel>
                     <FormControl>

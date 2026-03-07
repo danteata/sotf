@@ -326,7 +326,7 @@ export function AbsentMembers() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Follow-up Actions</h3>
+        <h3 className="text-sm">Follow-up Actions</h3>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline">
             Send Email to All

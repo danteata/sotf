@@ -263,7 +263,7 @@ export function ServiceMetadataSummaryDialog({
                     <DialogHeader className="p-8 pb-4">
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                                <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                                <DialogTitle className="text-2xl flex items-center gap-3">
                                     <div className="p-3 bg-purple-100 dark:bg-purple-900/20 rounded-xl text-purple-600 dark:text-purple-400">
                                         <ClipboardCheck className="h-6 w-6" />
                                     </div>
@@ -277,7 +277,7 @@ export function ServiceMetadataSummaryDialog({
                                 <Badge variant="secondary" className="px-3 py-1 text-sm font-semibold rounded-lg bg-secondary/50 text-secondary-foreground">
                                     {summary ? 'ID: ' + (summary._id as string).slice(-8) : 'NEW RECORD'}
                                 </Badge>
-                                <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Service Log</span>
+                                <span className="text-[10px] text-muted-foreground tracking-wider">Service Log</span>
                             </div>
                         </div>
                     </DialogHeader>
@@ -298,7 +298,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="service_date"
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-col">
-                                                    <FormLabel className="text-sm font-medium">Date</FormLabel>
+                                                    <FormLabel className="text-sm">Date</FormLabel>
                                                     <Popover>
                                                         <PopoverTrigger asChild>
                                                             <FormControl>
@@ -328,7 +328,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="service_type"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Service Type</FormLabel>
+                                                    <FormLabel className="text-sm">Service Type</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="h-11 rounded-lg bg-background">
@@ -354,7 +354,7 @@ export function ServiceMetadataSummaryDialog({
                                                 name="event_id"
                                                 render={({ field }) => (
                                                     <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                                        <FormLabel className="text-sm font-medium">Linked Event</FormLabel>
+                                                        <FormLabel className="text-sm">Linked Event</FormLabel>
                                                         <Select onValueChange={field.onChange} value={field.value}>
                                                             <FormControl>
                                                                 <SelectTrigger className="h-11 rounded-lg bg-background">
@@ -381,7 +381,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="service_name"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Service Name (Optional)</FormLabel>
+                                                    <FormLabel className="text-sm">Service Name (Optional)</FormLabel>
                                                     <FormControl>
                                                         <Input
                                                             placeholder="e.g. Special Revival Service"
@@ -409,7 +409,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="message_title"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Sermon Title</FormLabel>
+                                                    <FormLabel className="text-sm">Sermon Title</FormLabel>
                                                     <FormControl>
                                                         <Input placeholder="Theme of the message..." className="h-11 rounded-lg bg-white/50" {...field} />
                                                     </FormControl>
@@ -423,7 +423,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="message_category"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Category</FormLabel>
+                                                    <FormLabel className="text-sm">Category</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="h-11 rounded-lg bg-white/50">
@@ -460,7 +460,7 @@ export function ServiceMetadataSummaryDialog({
                                                     }}
                                                     className="h-4 w-4 accent-primary cursor-pointer"
                                                 />
-                                                <label htmlFor="member-speaker" className="text-xs font-medium cursor-pointer">Internal Speaker</label>
+                                                <label htmlFor="member-speaker" className="text-xs cursor-pointer">Internal Speaker</label>
                                             </div>
                                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-white/50">
                                                 <input
@@ -473,7 +473,7 @@ export function ServiceMetadataSummaryDialog({
                                                     }}
                                                     className="h-4 w-4 accent-primary cursor-pointer"
                                                 />
-                                                <label htmlFor="guest-speaker" className="text-xs font-medium cursor-pointer">Guest Speaker</label>
+                                                <label htmlFor="guest-speaker" className="text-xs cursor-pointer">Guest Speaker</label>
                                             </div>
                                         </div>
 
@@ -483,7 +483,7 @@ export function ServiceMetadataSummaryDialog({
                                                 name="preacher_name"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-sm font-medium">Guest Name</FormLabel>
+                                                        <FormLabel className="text-sm">Guest Name</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="Name of guest speaker..." className="h-11 rounded-lg bg-white/50" {...field} />
                                                         </FormControl>
@@ -497,7 +497,7 @@ export function ServiceMetadataSummaryDialog({
                                                 name="preacher_id"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-sm font-medium">Select Minister</FormLabel>
+                                                        <FormLabel className="text-sm">Select Minister</FormLabel>
                                                         <MemberCombobox
                                                             members={members?.map(m => ({
                                                                 id: m._id,
@@ -538,9 +538,9 @@ export function ServiceMetadataSummaryDialog({
                                                     name="attendance_adults"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-sm font-medium">Adults</FormLabel>
+                                                            <FormLabel className="text-sm">Adults</FormLabel>
                                                             <FormControl>
-                                                                <Input type="number" className="h-11 rounded-lg bg-background text-lg font-medium" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
+                                                                <Input type="number" className="h-11 rounded-lg bg-background text-lg" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -551,9 +551,9 @@ export function ServiceMetadataSummaryDialog({
                                                     name="attendance_children"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-sm font-medium">Children</FormLabel>
+                                                            <FormLabel className="text-sm">Children</FormLabel>
                                                             <FormControl>
-                                                                <Input type="number" className="h-11 rounded-lg bg-background text-lg font-medium" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
+                                                                <Input type="number" className="h-11 rounded-lg bg-background text-lg" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
@@ -575,7 +575,7 @@ export function ServiceMetadataSummaryDialog({
                                                         name="first_timers"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground uppercase font-medium">First Timers</FormLabel>
+                                                                <FormLabel className="text-xs text-muted-foreground">First Timers</FormLabel>
                                                                 <FormControl>
                                                                     <Input type="number" className="h-10 rounded-md bg-background" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
                                                                 </FormControl>
@@ -587,7 +587,7 @@ export function ServiceMetadataSummaryDialog({
                                                         name="new_converts"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel className="text-xs text-muted-foreground uppercase font-medium">New Converts</FormLabel>
+                                                                <FormLabel className="text-xs text-muted-foreground">New Converts</FormLabel>
                                                                 <FormControl>
                                                                     <Input type="number" className="h-10 rounded-md bg-background" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
                                                                 </FormControl>
@@ -600,7 +600,7 @@ export function ServiceMetadataSummaryDialog({
                                                     name="tithe_payers"
                                                     render={({ field }) => (
                                                         <FormItem>
-                                                            <FormLabel className="text-xs text-muted-foreground uppercase font-medium">Tithe Payers</FormLabel>
+                                                            <FormLabel className="text-xs text-muted-foreground">Tithe Payers</FormLabel>
                                                             <FormControl>
                                                                 <Input type="number" className="h-10 rounded-md bg-background" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} />
                                                             </FormControl>
@@ -625,7 +625,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="verified_by_id"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Verified By (Optional)</FormLabel>
+                                                    <FormLabel className="text-sm">Verified By (Optional)</FormLabel>
                                                     <MemberCombobox
                                                         members={members?.map(m => ({
                                                             id: m._id,
@@ -648,7 +648,7 @@ export function ServiceMetadataSummaryDialog({
                                             name="notes"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Notes</FormLabel>
+                                                    <FormLabel className="text-sm">Notes</FormLabel>
                                                     <FormControl>
                                                         <Textarea
                                                             placeholder="Any additional observations or notes..."

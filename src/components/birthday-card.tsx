@@ -92,7 +92,7 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                                 <Badge
                                     variant={member.isToday ? "default" : "secondary"}
                                     className={cn(
-                                        "text-[10px] px-1.5 h-5 ml-2 font-bold",
+                                        "text-[10px] px-1.5 h-5 ml-2",
                                         member.isToday ? "bg-pink-500 hover:bg-pink-600" : ""
                                     )}
                                 >
@@ -101,12 +101,12 @@ export function BirthdayCard({ member, index }: BirthdayCardProps) {
                             )}
                         </div>
 
-                        <div className="text-xs font-medium text-muted-foreground mt-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5">
                             {formattedDate}
                         </div>
 
                         <div className={cn(
-                            "text-xs mt-1 transition-colors duration-300 font-medium",
+                            "text-xs mt-1 transition-colors duration-300",
                             member.isToday
                                 ? 'text-pink-500 dark:text-pink-300'
                                 : member.daysUntilBirthday <= 7

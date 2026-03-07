@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils"
 import { RoleBasedNavigation, RoleIndicator } from "@/components/role-based-navigation"
 import { OrganizationProvider } from "@/hooks/use-organization"
 import { OrganizationSelector } from "@/components/organization-selector"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { ModeToggle } from "@/components/mode-toggle"
 
 interface LayoutWrapperProps {
   children?: ReactNode
@@ -52,7 +52,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
               </div>
               <div className="flex flex-col">
                 <span className="font-bold text-sidebar-foreground tracking-tight">Floc</span>
-                <span className="text-[10px] text-sidebar-foreground/50 font-medium">Church Management</span>
+                <span className="text-[10px] text-sidebar-foreground/50">Church Management</span>
               </div>
             </div>
             <Button
@@ -67,7 +67,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
 
           {/* Navigation */}
           <div className="flex-1 px-3 py-5 overflow-y-auto scrollbar-thin">
-            <div className="text-[10px] font-bold text-sidebar-foreground/40 uppercase tracking-widest mb-3 px-3">
+            <div className="text-[10px] text-sidebar-foreground/40 tracking-widest mb-3 px-3">
               Navigation
             </div>
             <div onClick={() => setSidebarOpen(false)}>
@@ -108,7 +108,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
                 <Bell className="h-4 w-4 text-muted-foreground" />
                 <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full pulse-glow"></span>
               </Button>
-              <ThemeToggle />
+              <ModeToggle />
               <UserNav />
             </div>
           </header>

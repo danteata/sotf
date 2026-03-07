@@ -94,7 +94,7 @@ export function AdminContent() {
     return (
       <div className="w-full flex flex-col items-center justify-center py-20 gap-4 animate-in fade-in duration-500">
         <RefreshCw className="h-10 w-10 animate-spin text-primary/50" />
-        <p className="text-muted-foreground text-sm font-medium">Synchronizing configuration...</p>
+        <p className="text-muted-foreground text-sm">Synchronizing configuration...</p>
       </div>
     )
   }
@@ -108,14 +108,14 @@ export function AdminContent() {
             <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
               <Shield className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">System Console</h1>
+            <h1 className="text-3xl tracking-tight text-foreground">System Console</h1>
           </div>
           <p className="text-muted-foreground text-sm pl-12">
             Central Command Interface / Tactical Configuration Node
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 px-4 py-1.5 rounded-full text-xs font-medium">
+          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 px-4 py-1.5 rounded-full text-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-2 animate-pulse"></span>
             System Active
           </Badge>
@@ -141,7 +141,7 @@ export function AdminContent() {
             <CardHeader className="border-b border-border/50 bg-muted/20 px-6 py-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl font-bold tracking-tight text-foreground">Organizational Units</CardTitle>
+                  <CardTitle className="text-xl tracking-tight text-foreground">Organizational Units</CardTitle>
                   <CardDescription>
                     Manage all units including functional teams, geographic locations, and administrative divisions
                   </CardDescription>
@@ -172,12 +172,12 @@ export function AdminContent() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent border-border/50">
-                    <TableHead className="py-4 pl-6 font-medium">Name</TableHead>
-                    <TableHead className="hidden sm:table-cell font-medium">Type</TableHead>
-                    <TableHead className="hidden md:table-cell font-medium">Description</TableHead>
-                    <TableHead className="hidden lg:table-cell font-medium">Leader</TableHead>
+                    <TableHead className="py-4 pl-6">Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
+                    <TableHead className="hidden md:table-cell">Description</TableHead>
+                    <TableHead className="hidden lg:table-cell">Leader</TableHead>
                     <TableHead className="font-medium">Status</TableHead>
-                    <TableHead className="text-right pr-6 w-[150px] font-medium">Actions</TableHead>
+                    <TableHead className="text-right pr-6 w-[150px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -205,7 +205,7 @@ export function AdminContent() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`cursor-pointer font-medium px-2.5 py-0.5 rounded-full border text-xs ${unit.active ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border"}`}
+                          className={`cursor-pointer px-2.5 py-0.5 rounded-full border text-xs ${unit.active ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" : "bg-muted text-muted-foreground border-border"}`}
                           onClick={() => handleToggleUnitStatus(unit)}
                         >
                           {unit.active ? "Active" : "Standby"}
@@ -265,7 +265,7 @@ export function AdminContent() {
         <TabsContent value="events" className="mt-6 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden bg-card/50">
             <div className="border-b border-border/50 bg-muted/20 px-6 py-4">
-              <h2 className="text-xl font-bold tracking-tight text-foreground">Operational Protocols</h2>
+              <h2 className="text-xl tracking-tight text-foreground">Operational Protocols</h2>
               <p className="text-sm text-muted-foreground mt-1">Configure systemic event parameters and reporting categories</p>
             </div>
             <div className="p-6">
@@ -278,7 +278,7 @@ export function AdminContent() {
           <Card className="glass-card border-border/50 shadow-soft rounded-xl overflow-hidden">
             <CardHeader className="border-b border-border/50 bg-muted/20 px-6 py-4">
               <div className="space-y-1">
-                <CardTitle className="text-xl font-bold tracking-tight">System Core Settings</CardTitle>
+                <CardTitle className="text-xl tracking-tight">System Core Settings</CardTitle>
                 <CardDescription>
                   Configure system-wide parameters and terminology overrides
                 </CardDescription>

@@ -133,7 +133,7 @@ export function RoleBasedNavigation() {
             <Button
               variant="ghost"
               className={cn(
-                "w-full justify-start gap-3 h-10 px-3 rounded-xl font-medium text-sm transition-all duration-300",
+                "w-full justify-start gap-3 h-10 px-3 rounded-xl text-sm transition-all duration-300",
                 isActive
                   ? "bg-sidebar-accent/15 text-sidebar-accent-foreground border border-sidebar-accent/30"
                   : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 hover:border hover:border-sidebar-foreground/10"

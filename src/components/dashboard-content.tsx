@@ -91,7 +91,7 @@ export function DashboardContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
-          <div className="text-4xl font-bold text-foreground">{stats.totalMembers}</div>
+          <div className="text-4xl text-foreground">{stats.totalMembers}</div>
           <div className="inline-flex items-center gap-1.5 bg-success/15 text-success px-3 py-1.5 rounded-full text-xs font-semibold border border-success/30">
             <span className="text-lg">+</span>{stats.newMembersThisMonthCount} This Month
           </div>
@@ -108,7 +108,7 @@ export function DashboardContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
-          <div className="text-4xl font-bold text-foreground">{stats.weeklyAttendance}</div>
+          <div className="text-4xl text-foreground">{stats.weeklyAttendance}</div>
           <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border ${stats.attendanceChange >= 0
             ? 'bg-success/15 text-success border-success/30'
             : 'bg-destructive/15 text-destructive border-destructive/30'
@@ -135,13 +135,13 @@ export function DashboardContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
-          <div className="text-4xl font-bold text-foreground">
+          <div className="text-4xl text-foreground">
             {isAdmin
               ? stats.activeUnitsCount
               : stats.scopedMembersCount
             }
           </div>
-          <p className="text-xs font-medium text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {isAdmin
               ? "Organization Units"
               : `${stats.totalMembers > 0 ? Math.round((stats.scopedMembersCount / stats.totalMembers) * 100) : 0}% of Total`
@@ -160,8 +160,8 @@ export function DashboardContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
-          <div className="text-4xl font-bold text-foreground">{stats.upcomingEventsCount}</div>
-          <p className="text-xs font-medium text-muted-foreground truncate">
+          <div className="text-4xl text-foreground">{stats.upcomingEventsCount}</div>
+          <p className="text-xs text-muted-foreground truncate">
             Next: {stats.nextEventName}
           </p>
         </CardContent>

@@ -77,7 +77,7 @@ export function AttendanceTrends() {
                   <Calendar className="h-4 w-4" />
                 </div>
                 <div>
-                  <CardTitle className="text-base font-medium">Weekly Engagement</CardTitle>
+                  <CardTitle className="text-base">Weekly Engagement</CardTitle>
                   <CardDescription className="text-sm">Participation over the last 11 weeks</CardDescription>
                 </div>
               </div>
@@ -87,26 +87,26 @@ export function AttendanceTrends() {
                 <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={weeklyData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(var(--border))" />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                        tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 11 }}
                         dy={10}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                        tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 11 }}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--popover))',
+                          backgroundColor: 'oklch(var(--popover))',
                           borderRadius: '8px',
-                          border: '1px solid hsl(var(--border))',
+                          border: '1px solid oklch(var(--border))',
                           fontSize: '12px',
-                          color: 'hsl(var(--popover-foreground))'
+                          color: 'oklch(var(--popover-foreground))'
                         }}
                       />
                       <Legend
@@ -119,10 +119,10 @@ export function AttendanceTrends() {
                         type="monotone"
                         dataKey="count"
                         name="Attendees"
-                        stroke="hsl(var(--primary))"
+                        stroke="oklch(var(--primary))"
                         strokeWidth={2}
-                        dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 2, stroke: "hsl(var(--background))" }}
-                        activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                        dot={{ r: 4, fill: "oklch(var(--primary))", strokeWidth: 2, stroke: "oklch(var(--background))" }}
+                        activeDot={{ r: 6, strokeWidth: 2, stroke: "oklch(var(--background))" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -138,7 +138,7 @@ export function AttendanceTrends() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-border/50 rounded-lg">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+                <CardTitle className="text-sm">Growth Rate</CardTitle>
                 <CardDescription className="text-xs">Week-over-week change</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-4">
@@ -152,34 +152,34 @@ export function AttendanceTrends() {
                             parseFloat((((week.count - weeklyData[index].count) / weeklyData[index].count) * 100).toFixed(1)) : 0
                         }))}
                       >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(var(--border))" />
                         <XAxis
                           dataKey="name"
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                          tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
                           dy={5}
                         />
                         <YAxis
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                          tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
                         />
                         <Tooltip
-                          cursor={{ fill: 'hsl(var(--muted))' }}
+                          cursor={{ fill: 'oklch(var(--muted))' }}
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--popover))',
+                            backgroundColor: 'oklch(var(--popover))',
                             borderRadius: '16px',
-                            border: '1px solid hsl(var(--border))',
+                            border: '1px solid oklch(var(--border))',
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                             fontWeight: 700,
-                            color: 'hsl(var(--popover-foreground))'
+                            color: 'oklch(var(--popover-foreground))'
                           }}
                         />
                         <Bar
                           dataKey="growth"
                           name="Growth %"
-                          fill="hsl(var(--primary))"
+                          fill="oklch(var(--primary))"
                           radius={[8, 8, 0, 0]}
                           barSize={32}
                         />
@@ -187,7 +187,7 @@ export function AttendanceTrends() {
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground font-bold uppercase tracking-widest">
+                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground tracking-widest">
                     Awaiting Growth Metrics
                   </div>
                 )}
@@ -196,7 +196,7 @@ export function AttendanceTrends() {
 
             <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-card border-dashed">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-lg font-black tracking-tight text-foreground">Demographic Intel</CardTitle>
+                <CardTitle className="text-lg tracking-tight text-foreground">Demographic Intel</CardTitle>
                 <CardDescription className="font-medium text-muted-foreground text-sm">Compositional breakdown (In development)</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-4">
@@ -204,7 +204,7 @@ export function AttendanceTrends() {
                   <div className="h-16 w-16 bg-muted text-muted-foreground/50 rounded-2xl flex items-center justify-center">
                     <PieChartIcon className="h-8 w-8" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground max-w-[240px]">
+                  <p className="text-sm text-muted-foreground max-w-[240px]">
                     Detailed demographic analytics will be activated upon enrichment of member profile data.
                   </p>
                 </div>
@@ -221,7 +221,7 @@ export function AttendanceTrends() {
                   <BarChart3 className="h-6 w-6" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl font-black tracking-tight text-foreground">Monthly Yield Trajectory</CardTitle>
+                  <CardTitle className="text-xl tracking-tight text-foreground">Monthly Yield Trajectory</CardTitle>
                   <CardDescription className="font-medium text-muted-foreground text-sm">Strategic engagement benchmarks over the last 12-month cycle</CardDescription>
                 </div>
               </div>
@@ -233,38 +233,38 @@ export function AttendanceTrends() {
                     <AreaChart data={monthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                       <defs>
                         <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          <stop offset="5%" stopColor="oklch(var(--primary))" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="oklch(var(--primary))" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(var(--border))" />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                        tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
                         dy={10}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                        tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--popover))',
+                          backgroundColor: 'oklch(var(--popover))',
                           borderRadius: '16px',
-                          border: '1px solid hsl(var(--border))',
+                          border: '1px solid oklch(var(--border))',
                           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                           fontWeight: 700,
-                          color: 'hsl(var(--popover-foreground))'
+                          color: 'oklch(var(--popover-foreground))'
                         }}
                       />
                       <Area
                         type="monotone"
                         dataKey="count"
                         name="Aggregate Attendance"
-                        stroke="hsl(var(--primary))"
+                        stroke="oklch(var(--primary))"
                         strokeWidth={4}
                         fillOpacity={1}
                         fill="url(#colorCount)"
@@ -273,7 +273,7 @@ export function AttendanceTrends() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground font-bold uppercase tracking-widest bg-muted/50 rounded-2xl border border-dashed border-border">
+                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground tracking-widest bg-muted/50 rounded-2xl border border-dashed border-border">
                   Historical Log Deficit
                 </div>
               )}
@@ -289,7 +289,7 @@ export function AttendanceTrends() {
                   <PieChartIcon className="h-6 w-6" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl font-black tracking-tight text-foreground">Comparative Engagement</CardTitle>
+                  <CardTitle className="text-xl tracking-tight text-foreground">Comparative Engagement</CardTitle>
                   <CardDescription className="font-medium text-muted-foreground text-sm">Cross-protocol performance and utilization metrics</CardDescription>
                 </div>
               </div>
@@ -299,34 +299,34 @@ export function AttendanceTrends() {
                 <div className="h-[450px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={eventComparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(var(--border))" />
                       <XAxis
                         dataKey="name"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                        tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
                         dy={10}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
+                        tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 10, fontWeight: 700 }}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--popover))',
+                          backgroundColor: 'oklch(var(--popover))',
                           borderRadius: '16px',
-                          border: '1px solid hsl(var(--border))',
+                          border: '1px solid oklch(var(--border))',
                           boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                           fontWeight: 700,
-                          color: 'hsl(var(--popover-foreground))'
+                          color: 'oklch(var(--popover-foreground))'
                         }}
                       />
                       <Legend
                         verticalAlign="top"
                         align="right"
                         iconType="circle"
-                        formatter={(value) => <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider ml-1">{value}</span>}
+                        formatter={(value) => <span className="text-[10px] text-muted-foreground tracking-wider ml-1">{value}</span>}
                       />
                       {activeEventTypes.map((eventType, index) => (
                         <Bar
@@ -341,7 +341,7 @@ export function AttendanceTrends() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground font-bold uppercase tracking-widest bg-muted/50 rounded-2xl border border-dashed border-border">
+                <div className="h-[400px] flex items-center justify-center text-sm text-muted-foreground tracking-widest bg-muted/50 rounded-2xl border border-dashed border-border">
                   Insufficient Comparative Logs
                 </div>
               )}
@@ -351,7 +351,7 @@ export function AttendanceTrends() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="border-border/50 shadow-soft-xl rounded-[32px] overflow-hidden bg-card">
               <CardHeader className="p-8 pb-4">
-                <CardTitle className="text-lg font-black tracking-tight text-foreground">Event Protocol Weight</CardTitle>
+                <CardTitle className="text-lg tracking-tight text-foreground">Event Protocol Weight</CardTitle>
                 <CardDescription className="font-medium text-muted-foreground text-sm">Engagement distribution by protocol category</CardDescription>
               </CardHeader>
               <CardContent className="p-8 pt-4">
@@ -361,12 +361,12 @@ export function AttendanceTrends() {
                       <PieChart>
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--popover))',
+                            backgroundColor: 'oklch(var(--popover))',
                             borderRadius: '16px',
-                            border: '1px solid hsl(var(--border))',
+                            border: '1px solid oklch(var(--border))',
                             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                             fontWeight: 700,
-                            color: 'hsl(var(--popover-foreground))'
+                            color: 'oklch(var(--popover-foreground))'
                           }}
                         />
                         <Pie
@@ -389,13 +389,13 @@ export function AttendanceTrends() {
                           verticalAlign="bottom"
                           height={36}
                           iconType="circle"
-                          formatter={(value) => <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider ml-1">{value}</span>}
+                          formatter={(value) => <span className="text-[10px] text-muted-foreground tracking-wider ml-1">{value}</span>}
                         />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                 ) : (
-                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground font-bold uppercase tracking-widest">
+                  <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground tracking-widest">
                     Awaiting Yield Data
                   </div>
                 )}
@@ -411,8 +411,8 @@ export function AttendanceTrends() {
                   <Info className="h-7 w-7" />
                 </div>
                 <div className="space-y-2">
-                  <h4 className="text-xl font-black tracking-tight text-foreground">Analytics Foundation</h4>
-                  <p className="text-sm font-medium text-muted-foreground leading-relaxed max-w-sm">
+                  <h4 className="text-xl tracking-tight text-foreground">Analytics Foundation</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
                     All engagement data is processed through rigorous validation protocols. Seasonal variations are normalized to ensure strategic accuracy for leadership review.
                   </p>
                 </div>

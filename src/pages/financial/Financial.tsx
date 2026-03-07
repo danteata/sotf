@@ -178,7 +178,7 @@ export default function FinancialPage() {
                             <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
                                 <Wallet className="h-6 w-6" />
                             </div>
-                            <h1 className="text-3xl font-bold tracking-tight text-foreground">Treasury</h1>
+                            <h1 className="text-3xl tracking-tight text-foreground">Treasury</h1>
                         </div>
                         <p className="text-muted-foreground pl-12 text-sm">
                             Financial management for {organization?.name || "The Organization"}
@@ -364,7 +364,7 @@ export default function FinancialPage() {
                                 <TableBody>
                                     {filteredTransactions.map((transaction) => (
                                         <TableRow key={transaction._id} className="hover:bg-muted/30 border-b border-border/50 transition-colors">
-                                            <TableCell className="pl-6 font-medium text-sm text-muted-foreground">
+                                            <TableCell className="pl-6 text-sm text-muted-foreground">
                                                 {new Date(transaction.date).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
@@ -471,11 +471,11 @@ function FinancialStatCard({ label, value, trend, icon, iconBg, trendColor }: { 
                     </div>
                 </div>
                 <div className="space-y-1">
-                    <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
+                    <div className="text-2xl tracking-tight text-foreground">{value}</div>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</span>
+                        <span className="text-xs text-muted-foreground tracking-wide">{label}</span>
                         {trend && (
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-muted/50 ${trendColor || 'text-muted-foreground'}`}>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 ${trendColor || 'text-muted-foreground'}`}>
                                 {trend}
                             </span>
                         )}
@@ -490,7 +490,7 @@ function ActionBox({ title, description, buttonText, onClick, icon }: { title: s
     return (
         <div className="p-6 rounded-xl border border-border/50 bg-card shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-6 group cursor-pointer" onClick={onClick}>
             <div className="space-y-2">
-                <h3 className="text-lg font-bold flex items-center gap-2 group-hover:text-primary transition-colors">
+                <h3 className="text-lg flex items-center gap-2 group-hover:text-primary transition-colors">
                     {title}
                 </h3>
                 <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">

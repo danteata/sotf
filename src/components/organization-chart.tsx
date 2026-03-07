@@ -425,7 +425,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
               x={node.x + node.width / 2}
               y={node.y + (showDetails ? 30 : 45)}
               textAnchor="middle"
-              className="text-sm font-bold fill-white"
+              className="text-sm fill-white"
               style={{ fontSize: '14px' }}
             >
               {node.name}
@@ -435,7 +435,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
               x={node.x + node.width / 2}
               y={node.y + (showDetails ? 45 : 45)}
               textAnchor="middle"
-              className="text-xs fill-white/80 font-medium"
+              className="text-xs fill-white/80"
               style={{ fontSize: '11px' }}
             >
               {getNodeTypeLabel(node)}
@@ -497,7 +497,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
         <CardHeader className="border-b border-border/50 pb-4 bg-white">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <Building2 className="h-5 w-5 text-primary" />
                 Organization Chart
               </CardTitle>
@@ -521,7 +521,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                 <Button variant="ghost" size="icon" onClick={handleZoomOut} className="h-7 w-7 rounded-md">
                   <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
-                <span className="text-xs text-muted-foreground min-w-[40px] text-center font-medium">
+                <span className="text-xs text-muted-foreground min-w-[40px] text-center">
                   {Math.round(zoom * 100)}%
                 </span>
                 <Button variant="ghost" size="icon" onClick={handleZoomIn} className="h-7 w-7 rounded-md">
@@ -601,7 +601,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                       x={mousePos.x}
                       y={mousePos.y}
                       textAnchor="middle"
-                      className="text-sm font-bold fill-white"
+                      className="text-sm fill-white"
                       style={{ fontSize: '14px', dominantBaseline: 'middle' }}
                     >
                       {draggedNode.name}
@@ -617,7 +617,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       <Dialog open={nodeDetailsOpen} onOpenChange={setNodeDetailsOpen}>
         <DialogContent className="rounded-xl shadow-soft-lg border-border/50 sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+            <DialogTitle className="flex items-center gap-2 text-xl">
               <div className={`p-2 rounded-lg ${selectedNode?.type === 'organization' ? 'bg-slate-100 text-slate-700' :
                 selectedNode?.type === 'division' ? 'bg-blue-50 text-blue-600' :
                   'bg-emerald-50 text-emerald-600'
@@ -637,7 +637,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
             <div className="space-y-6 pt-2">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Type</Label>
+                  <Label className="text-xs text-muted-foreground tracking-wide">Type</Label>
                   <div>
                     <Badge variant="outline" className="font-medium bg-secondary/20 border-secondary-foreground/20">
                       {getNodeTypeLabel(selectedNode)}
@@ -646,8 +646,8 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Personnel</Label>
-                  <div className="text-2xl font-bold text-foreground">{selectedNode.memberCount} <span className="text-sm font-normal text-muted-foreground">members</span></div>
+                  <Label className="text-xs text-muted-foreground tracking-wide">Personnel</Label>
+                  <div className="text-2xl text-foreground">{selectedNode.memberCount} <span className="text-sm font-normal text-muted-foreground">members</span></div>
                 </div>
               </div>
 
@@ -666,8 +666,8 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
 
               {selectedNode.children.length > 0 && (
                 <div className="pt-2 border-t border-border/50">
-                  <Label className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2 block">Direct Subordinates</Label>
-                  <div className="text-sm font-medium bg-muted/30 p-3 rounded-lg border border-border/50">
+                  <Label className="text-xs text-muted-foreground tracking-wide mb-2 block">Direct Subordinates</Label>
+                  <div className="text-sm bg-muted/30 p-3 rounded-lg border border-border/50">
                     {selectedNode.children.length} direct children nodes
                   </div>
                 </div>

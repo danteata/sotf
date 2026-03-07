@@ -96,20 +96,20 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                     <Users className="h-8 w-8" />
                 </div>
                 <div className="space-y-1 text-center md:text-left">
-                    <h3 className="text-2xl font-black tracking-tight text-slate-900">Mass Classification</h3>
-                    <p className="text-slate-500 font-medium text-sm flex items-center gap-2 justify-center md:justify-start">
+                    <h3 className="text-2xl tracking-tight text-slate-900">Mass Classification</h3>
+                    <p className="text-slate-500 text-sm flex items-center gap-2 justify-center md:justify-start">
                         <Tag className="h-3.5 w-3.5 text-slate-400" /> Targeted update for {selectedMembers.length} members
                     </p>
                 </div>
 
                 <div className="flex flex-wrap gap-1.5 justify-center md:justify-end flex-1 max-w-md">
                     {selectedMembers.slice(0, 8).map((member) => (
-                        <Badge key={member._id} variant="secondary" className="bg-white border border-slate-200 text-slate-600 font-bold text-[10px] px-2 py-0.5 rounded-lg shadow-sm">
+                        <Badge key={member._id} variant="secondary" className="bg-white border border-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-lg shadow-sm">
                             {member.name}
                         </Badge>
                     ))}
                     {selectedMembers.length > 8 && (
-                        <Badge className="bg-slate-100 text-slate-500 font-bold text-[10px] border-0 rounded-lg">
+                        <Badge className="bg-slate-100 text-slate-500 text-[10px] border-0 rounded-lg">
                             +{selectedMembers.length - 8} More
                         </Badge>
                     )}
@@ -120,9 +120,9 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                 {/* Left Column: Configuration */}
                 <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
                     <div className="space-y-4">
-                        <UILabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Configuration Strategy</UILabel>
+                        <UILabel className="text-[10px] text-slate-400 tracking-wider pl-1">Configuration Strategy</UILabel>
                         <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
-                            <SelectTrigger className="h-12 border-slate-200 rounded-xl font-bold bg-white focus:ring-slate-900">
+                            <SelectTrigger className="h-12 border-slate-200 rounded-xl bg-white focus:ring-slate-900">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="border border-border/50 rounded-xl shadow-soft-2xl">
@@ -145,7 +145,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                         </Select>
 
                         <div className={cn(
-                            "p-4 border rounded-2xl font-medium text-xs flex items-start gap-3 leading-relaxed",
+                            "p-4 border rounded-2xl text-xs flex items-start gap-3 leading-relaxed",
                             operation === 'add' ? "bg-emerald-50/50 border-emerald-100 text-emerald-800" :
                                 operation === 'remove' ? "bg-rose-50/50 border-rose-100 text-rose-800" : "bg-slate-50 border-slate-100 text-slate-600"
                         )}>
@@ -159,13 +159,13 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                     </div>
 
                     <div className="space-y-2">
-                        <UILabel className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Documentation Notes</UILabel>
+                        <UILabel className="text-[10px] text-slate-400 tracking-wider pl-1">Documentation Notes</UILabel>
                         <Textarea
                             placeholder="Provide rationale for this mass update..."
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={4}
-                            className="rounded-xl border-slate-200 font-medium text-sm resize-none bg-white focus:ring-slate-900"
+                            className="rounded-xl border-slate-200 text-sm resize-none bg-white focus:ring-slate-900"
                         />
                     </div>
                 </div>
@@ -178,7 +178,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                             placeholder="Filter Taxonomy..."
                             value={searchValue}
                             onChange={(e) => setSearchValue(e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 font-bold text-sm p-0 bg-transparent h-auto"
+                            className="border-0 shadow-none focus-visible:ring-0 text-sm p-0 bg-transparent h-auto"
                         />
                     </div>
 
@@ -191,7 +191,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                         ) : (
                             Object.entries(groupedLabels).map(([category, labels]) => (
                                 <div key={category} className="space-y-4">
-                                    <h4 className="font-black uppercase text-[10px] tracking-widest pl-1 text-slate-400">
+                                    <h4 className="font-black text-[10px] tracking-widest pl-1 text-slate-400">
                                         {category}
                                     </h4>
                                     <div className="grid grid-cols-1 gap-2">
@@ -232,7 +232,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
 
                     {selectedLabels.length > 0 && (
                         <div className="p-5 bg-slate-900 text-white animate-in slide-in-from-bottom duration-300">
-                            <div className="text-[10px] font-black uppercase tracking-wider mb-4 flex justify-between items-center text-slate-400">
+                            <div className="text-[10px] tracking-wider mb-4 flex justify-between items-center text-slate-400">
                                 <span className="flex items-center gap-2">
                                     <Tag className="h-3 w-3 text-slate-500" /> Active Payload ({selectedLabels.length})
                                 </span>
@@ -242,7 +242,7 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                                 {selectedLabels.map((label) => (
                                     <Badge
                                         key={label._id}
-                                        className="bg-slate-800 text-white font-bold text-[10px] border border-slate-700 hover:bg-slate-700 transition-colors cursor-default py-1 px-2.5 rounded-lg flex items-center gap-2"
+                                        className="bg-slate-800 text-white text-[10px] border border-slate-700 hover:bg-slate-700 transition-colors cursor-default py-1 px-2.5 rounded-lg flex items-center gap-2"
                                     >
                                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
                                         {label.name}
@@ -260,13 +260,13 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
 
             {/* Global Actions */}
             <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
-                <Button variant="ghost" onClick={onCancel} disabled={saving} className="h-12 px-8 font-bold text-slate-500 rounded-xl">
+                <Button variant="ghost" onClick={onCancel} disabled={saving} className="h-12 px-8 text-slate-500 rounded-xl">
                     Cancel Operation
                 </Button>
                 <Button
                     onClick={handleBulkOperation}
                     disabled={saving || selectedLabels.length === 0}
-                    className="h-12 px-10 bg-slate-900 text-white hover:bg-slate-800 shadow-soft-xl rounded-xl font-bold transition-all min-w-[240px]"
+                    className="h-12 px-10 bg-slate-900 text-white hover:bg-slate-800 shadow-soft-xl rounded-xl transition-all min-w-[240px]"
                 >
                     {saving ? (
                         <div className="flex items-center gap-3">
@@ -308,7 +308,7 @@ export function BulkLabelDialog({ selectedMembers, trigger }: {
                                 <Tag className="h-7 w-7 text-white" />
                             </div>
                             <div>
-                                <DialogTitle className="text-3xl font-black tracking-tight text-slate-900">
+                                <DialogTitle className="text-3xl tracking-tight text-slate-900">
                                     Bulk Classification
                                 </DialogTitle>
                                 <DialogDescription className="font-medium text-slate-500 text-sm">

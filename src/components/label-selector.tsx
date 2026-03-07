@@ -166,7 +166,7 @@ export function LabelSelector({
             </div>
 
             <div className="border rounded-lg p-4">
-                <Label className="text-sm font-medium mb-2 block">Available Labels</Label>
+                <Label className="text-sm mb-2 block">Available Labels</Label>
                 <Input
                     placeholder="Search labels..."
                     value={searchValue}
@@ -177,7 +177,7 @@ export function LabelSelector({
                 <div className="max-h-60 overflow-y-auto space-y-3">
                     {Object.entries(groupedLabels).map(([category, labels]: [string, any]) => (
                         <div key={category}>
-                            <h4 className="text-sm font-medium text-gray-700 mb-2 capitalize">
+                            <h4 className="text-sm text-gray-700 mb-2 capitalize">
                                 {category}
                             </h4>
                             <div className="grid grid-cols-1 gap-2">

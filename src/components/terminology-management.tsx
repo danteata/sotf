@@ -99,8 +99,8 @@ export function TerminologyManagement() {
           <CardContent className="pt-12 pb-12">
             <div className="text-center">
               <Settings className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-              <h3 className="text-xl font-black tracking-tight mb-2">Access Denied</h3>
-              <p className="text-slate-500 font-medium">
+              <h3 className="text-xl tracking-tight mb-2">Access Denied</h3>
+              <p className="text-slate-500">
                 You don't have permission to manage terminology settings.
               </p>
             </div>
@@ -123,7 +123,7 @@ export function TerminologyManagement() {
     <div className="container p-4 md:p-10 max-w-6xl mx-auto space-y-10">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Terminology Configuration</h1>
+          <h1 className="text-3xl tracking-tight text-slate-900">Terminology Configuration</h1>
           <p className="font-medium text-slate-500">
             Define the naming conventions used across your organizational hierarchy
           </p>
@@ -134,7 +134,7 @@ export function TerminologyManagement() {
         {/* Current Terminology Preview */}
         <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden bg-slate-50/30">
           <CardHeader className="bg-white border-b border-border/50 p-8">
-            <CardTitle className="flex items-center gap-3 font-black tracking-tight text-xl">
+            <CardTitle className="flex items-center gap-3 tracking-tight text-xl">
               <Settings className="h-5 w-5 text-slate-400" />
               Active Taxonomy
             </CardTitle>
@@ -145,34 +145,34 @@ export function TerminologyManagement() {
           <CardContent className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Level 1: Organization</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 1: Organization</Label>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level1_singular}</Badge>
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level1_plural}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level1_singular}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level1_plural}</Badge>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Level 2: Division</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 2: Division</Label>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level2_singular}</Badge>
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level2_plural}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level2_singular}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level2_plural}</Badge>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Level 3: Unit</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 3: Unit</Label>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level3_singular}</Badge>
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level3_plural}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level3_singular}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level3_plural}</Badge>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Level 4: Sub-Unit</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 4: Sub-Unit</Label>
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level4_singular}</Badge>
-                  <Badge variant="outline" className="border-slate-200 text-slate-600 font-bold h-8 px-3 rounded-lg bg-white">{formData.level4_plural}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level4_singular}</Badge>
+                  <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level4_plural}</Badge>
                 </div>
               </div>
             </div>
@@ -191,73 +191,73 @@ export function TerminologyManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
               {/* Organization Level */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 1 Singular</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 1 Singular</Label>
                 <Input
                   value={formData.level1_singular}
                   onChange={(e) => setFormData({ ...formData, level1_singular: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 1 Plural</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 1 Plural</Label>
                 <Input
                   value={formData.level1_plural}
                   onChange={(e) => setFormData({ ...formData, level1_plural: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
 
               {/* Division Level */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 2 Singular</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 2 Singular</Label>
                 <Input
                   value={formData.level2_singular}
                   onChange={(e) => setFormData({ ...formData, level2_singular: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 2 Plural</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 2 Plural</Label>
                 <Input
                   value={formData.level2_plural}
                   onChange={(e) => setFormData({ ...formData, level2_plural: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
 
               {/* Unit Level */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 3 Singular</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 3 Singular</Label>
                 <Input
                   value={formData.level3_singular}
                   onChange={(e) => setFormData({ ...formData, level3_singular: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 3 Plural</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 3 Plural</Label>
                 <Input
                   value={formData.level3_plural}
                   onChange={(e) => setFormData({ ...formData, level3_plural: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
 
               {/* Sub-Unit Level */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 4 Singular</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 4 Singular</Label>
                 <Input
                   value={formData.level4_singular}
                   onChange={(e) => setFormData({ ...formData, level4_singular: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider pl-1">Level 4 Plural</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 4 Plural</Label>
                 <Input
                   value={formData.level4_plural}
                   onChange={(e) => setFormData({ ...formData, level4_plural: e.target.value })}
-                  className="rounded-xl border-slate-200 h-11 font-medium"
+                  className="rounded-xl border-slate-200 h-11"
                 />
               </div>
             </div>
@@ -273,7 +273,7 @@ export function TerminologyManagement() {
               <Button
                 onClick={handleSaveTerminology}
                 disabled={isSaving}
-                className="bg-slate-900 text-white hover:bg-slate-800 font-bold rounded-xl h-11 px-10 shadow-soft"
+                className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl h-11 px-10 shadow-soft"
               >
                 {isSaving ? (
                   <RefreshCw className="h-4 w-4 animate-spin mr-2" />
@@ -289,10 +289,10 @@ export function TerminologyManagement() {
         {/* System Preview */}
         <Card className="border-border/50 shadow-soft rounded-3xl overflow-hidden bg-slate-50/50">
           <CardHeader className="p-8 pb-4">
-            <CardTitle className="font-black tracking-tight text-lg uppercase text-slate-400">Contextual Integration</CardTitle>
+            <CardTitle className="font-black tracking-tight text-lg text-slate-400">Contextual Integration</CardTitle>
           </CardHeader>
           <CardContent className="p-8 pt-2">
-            <div className="space-y-4 text-sm font-medium text-slate-600">
+            <div className="space-y-4 text-sm text-slate-600">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                 <span className="text-slate-400">Navigation Pattern:</span>
                 <span className="text-slate-900">{formData.level1_plural} <span className="text-slate-300">/</span> {formData.level2_plural} <span className="text-slate-300">/</span> {formData.level3_plural}</span>

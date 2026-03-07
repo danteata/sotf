@@ -399,7 +399,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         {(uploadStatus === "uploading" || uploadStatus === "validating") && (
           <div className="py-8 space-y-4 text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            <p className="text-sm font-medium">{uploadStatus === "uploading" ? "Uploading..." : "Validating..."}</p>
+            <p className="text-sm">{uploadStatus === "uploading" ? "Uploading..." : "Validating..."}</p>
             <Progress value={progress} className="h-2" />
           </div>
         )}
@@ -407,7 +407,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         {uploadStatus === "preview" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">{fileName}</p>
+              <p className="text-sm">{fileName}</p>
               <div className="flex gap-2">
                 <Badge variant="outline" className="bg-green-50 text-green-700">{validCount} Valid</Badge>
                 {invalidCount > 0 && <Badge variant="outline" className="bg-red-50 text-red-700">{invalidCount} Invalid</Badge>}
@@ -415,7 +415,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs uppercase font-bold text-muted-foreground">Assign to Unit (Optional)</Label>
+              <Label className="text-xs text-muted-foreground">Assign to Unit (Optional)</Label>
               <Select value={targetUnitId} onValueChange={setTargetUnitId}>
                 <SelectTrigger><SelectValue placeholder="Select a unit" /></SelectTrigger>
                 <SelectContent>
@@ -459,7 +459,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         {uploadStatus === "success" && (
           <div className="py-8 text-center space-y-2">
             <Check className="h-12 w-12 text-green-600 mx-auto" />
-            <h3 className="text-lg font-bold">Success!</h3>
+            <h3 className="text-lg">Success!</h3>
             <p className="text-sm text-muted-foreground">{errorMessage}</p>
           </div>
         )}

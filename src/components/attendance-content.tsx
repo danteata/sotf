@@ -84,7 +84,7 @@ export function AttendanceContent() {
           {/* Total Active Members */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Total Members</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">Total Members</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
@@ -95,7 +95,7 @@ export function AttendanceContent() {
           {/* This Week's Attendance */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">This Week</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">This Week</CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
@@ -106,7 +106,7 @@ export function AttendanceContent() {
           {/* Weekly Growth Rate */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Growth</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">Growth</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
@@ -123,7 +123,7 @@ export function AttendanceContent() {
           {/* Attendance Rate */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Rate</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">Rate</CardTitle>
               <Target className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
@@ -134,7 +134,7 @@ export function AttendanceContent() {
           {/* Recent Activity */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Active Days</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">Active Days</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
@@ -145,7 +145,7 @@ export function AttendanceContent() {
           {/* Total Records */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs font-medium text-muted-foreground">Records</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">Records</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
@@ -237,7 +237,7 @@ export function AttendanceContent() {
                 <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-3">
                   <BarChart3 className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <h3 className="text-base font-medium text-foreground mb-1">Service Summaries</h3>
+                <h3 className="text-base text-foreground mb-1">Service Summaries</h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
                   Add detailed metrics and notes to attendance records for comprehensive insights.
                 </p>

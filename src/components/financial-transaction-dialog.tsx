@@ -226,7 +226,7 @@ export function FinancialTransactionDialog({
                     <DialogHeader className="p-8 pb-4">
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
-                                <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                                <DialogTitle className="text-2xl flex items-center gap-3">
                                     <div className={cn(
                                         "p-3 rounded-xl",
                                         watchedType === 'income' ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
@@ -243,8 +243,8 @@ export function FinancialTransactionDialog({
                                 <Badge variant="outline" className="px-3 py-1 text-sm font-semibold rounded-lg border-border/50">
                                     {transaction ? 'ID: ' + (transaction._id as string).slice(-8) : 'NEW ENTRY'}
                                 </Badge>
-                                {(watchedType === 'income') && <span className="text-[10px] text-success font-medium uppercase tracking-wider">Revenue</span>}
-                                {(watchedType === 'expense') && <span className="text-[10px] text-destructive font-medium uppercase tracking-wider">Expense</span>}
+                                {(watchedType === 'income') && <span className="text-[10px] text-success tracking-wider">Revenue</span>}
+                                {(watchedType === 'expense') && <span className="text-[10px] text-destructive tracking-wider">Expense</span>}
                             </div>
                         </div>
                     </DialogHeader>
@@ -265,7 +265,7 @@ export function FinancialTransactionDialog({
                                             name="type"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Type</FormLabel>
+                                                    <FormLabel className="text-sm">Type</FormLabel>
                                                     <Select onValueChange={(val) => {
                                                         field.onChange(val)
                                                         // Reset category when type changes
@@ -294,7 +294,7 @@ export function FinancialTransactionDialog({
                                             name="category"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Category</FormLabel>
+                                                    <FormLabel className="text-sm">Category</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="h-11 rounded-lg bg-background">
@@ -331,7 +331,7 @@ export function FinancialTransactionDialog({
                                             name="amount"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Amount</FormLabel>
+                                                    <FormLabel className="text-sm">Amount</FormLabel>
                                                     <FormControl>
                                                         <div className="relative">
                                                             <div className="absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-muted-foreground">$</div>
@@ -354,7 +354,7 @@ export function FinancialTransactionDialog({
                                             name="payment_method"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="text-sm font-medium">Payment Method</FormLabel>
+                                                    <FormLabel className="text-sm">Payment Method</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl>
                                                             <SelectTrigger className="h-11 rounded-lg bg-background">
@@ -384,7 +384,7 @@ export function FinancialTransactionDialog({
                                                 name="date"
                                                 render={({ field }) => (
                                                     <FormItem className="flex flex-col">
-                                                        <FormLabel className="text-sm font-medium">Date</FormLabel>
+                                                        <FormLabel className="text-sm">Date</FormLabel>
                                                         <Popover>
                                                             <PopoverTrigger asChild>
                                                                 <FormControl>
@@ -421,7 +421,7 @@ export function FinancialTransactionDialog({
                                                     name="member_id"
                                                     render={({ field }) => (
                                                         <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                                            <FormLabel className="text-sm font-medium">Member</FormLabel>
+                                                            <FormLabel className="text-sm">Member</FormLabel>
                                                             <MemberCombobox
                                                                 members={members?.map(m => ({
                                                                     id: m._id,
@@ -443,7 +443,7 @@ export function FinancialTransactionDialog({
                                                     name="event_id"
                                                     render={({ field }) => (
                                                         <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                                            <FormLabel className="text-sm font-medium">Event</FormLabel>
+                                                            <FormLabel className="text-sm">Event</FormLabel>
                                                             <Select onValueChange={field.onChange} value={field.value}>
                                                                 <FormControl>
                                                                     <SelectTrigger className="h-11 rounded-lg bg-background">
@@ -471,7 +471,7 @@ export function FinancialTransactionDialog({
                                                 name="description"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-sm font-medium">Description</FormLabel>
+                                                        <FormLabel className="text-sm">Description</FormLabel>
                                                         <FormControl>
                                                             <Input
                                                                 placeholder="Short description..."
@@ -488,7 +488,7 @@ export function FinancialTransactionDialog({
                                                 name="notes"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-sm font-medium">Notes (Optional)</FormLabel>
+                                                        <FormLabel className="text-sm">Notes (Optional)</FormLabel>
                                                         <FormControl>
                                                             <Textarea
                                                                 placeholder="Additional details..."

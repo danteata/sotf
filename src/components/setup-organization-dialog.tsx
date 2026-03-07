@@ -63,7 +63,7 @@ export function SetupOrganizationDialog() {
                     <div className="mx-auto bg-gradient-primary p-4 rounded-2xl shadow-soft">
                         <Building2 className="w-10 h-10 text-primary-foreground" />
                     </div>
-                    <DialogTitle className="text-3xl font-bold text-center bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                    <DialogTitle className="text-3xl text-center bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
                         Setup Organization
                     </DialogTitle>
                     <DialogDescription className="text-center text-base text-muted-foreground">

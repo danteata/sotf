@@ -192,7 +192,7 @@ export function ServiceSummaryWidget({
                                 <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                                     <Users className="h-4 w-4" />
                                 </div>
-                                <span className="text-sm font-medium text-muted-foreground">Total Attendance</span>
+                                <span className="text-sm text-muted-foreground">Total Attendance</span>
                             </div>
                             {attendanceChange !== 0 && (
                                 <Badge variant={attendanceChange > 0 ? "success" : "destructive"} className="text-xs border-0">
@@ -205,10 +205,10 @@ export function ServiceSummaryWidget({
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-2xl font-bold text-foreground">
+                        <div className="text-2xl text-foreground">
                             {currentTotals.totalAttendance.toLocaleString()}
                         </div>
-                        <div className="text-xs font-medium text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                             Avg: {Math.round(avgAttendance)} per service
                         </div>
                     </div>
@@ -220,7 +220,7 @@ export function ServiceSummaryWidget({
                                 <div className="p-2 rounded-lg bg-success/10 text-success group-hover:bg-success group-hover:text-success-foreground transition-colors">
                                     <Target className="h-4 w-4" />
                                 </div>
-                                <span className="text-sm font-medium text-muted-foreground">Tithe Payers</span>
+                                <span className="text-sm text-muted-foreground">Tithe Payers</span>
                             </div>
                             {tithePayersChange !== 0 && (
                                 <Badge variant={tithePayersChange > 0 ? "success" : "destructive"} className="text-xs border-0">
@@ -233,10 +233,10 @@ export function ServiceSummaryWidget({
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-2xl font-bold text-foreground">
+                        <div className="text-2xl text-foreground">
                             {currentTotals.totalTithePayers}
                         </div>
-                        <div className="text-xs font-medium text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                             {currentTotals.totalAttendance > 0
                                 ? `${((currentTotals.totalTithePayers / currentTotals.totalAttendance) * 100).toFixed(1)}% of attendance`
                                 : '0% of attendance'
@@ -254,7 +254,7 @@ export function ServiceSummaryWidget({
                                 <div className="p-2 rounded-lg bg-success/10 text-success group-hover:bg-success group-hover:text-success-foreground transition-colors">
                                     <DollarSign className="h-4 w-4" />
                                 </div>
-                                <span className="text-sm font-medium text-muted-foreground">Total Tithes</span>
+                                <span className="text-sm text-muted-foreground">Total Tithes</span>
                             </div>
                             {tithesChange !== 0 && (
                                 <Badge variant={tithesChange > 0 ? "success" : "destructive"} className="text-xs border-0">
@@ -267,10 +267,10 @@ export function ServiceSummaryWidget({
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-2xl font-bold text-success">
+                        <div className="text-2xl text-success">
                             {formatCurrency(currentTotals.totalTithes)}
                         </div>
-                        <div className="text-xs font-medium text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                             Avg: {formatCurrency(avgTithes)} per service
                         </div>
                     </div>
@@ -282,7 +282,7 @@ export function ServiceSummaryWidget({
                                 <div className="p-2 rounded-lg bg-accent/10 text-accent-foreground group-hover:bg-accent group-hover:text-accent-foreground transition-colors">
                                     <Church className="h-4 w-4" />
                                 </div>
-                                <span className="text-sm font-medium text-muted-foreground">Total Offerings</span>
+                                <span className="text-sm text-muted-foreground">Total Offerings</span>
                             </div>
                             {offeringsChange !== 0 && (
                                 <Badge variant={offeringsChange > 0 ? "success" : "destructive"} className="text-xs border-0">
@@ -295,10 +295,10 @@ export function ServiceSummaryWidget({
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-2xl font-bold text-accent-foreground">
+                        <div className="text-2xl text-accent-foreground">
                             {formatCurrency(currentTotals.totalOfferings)}
                         </div>
-                        <div className="text-xs font-medium text-muted-foreground mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                             Avg: {formatCurrency(avgOfferings)} per service
                         </div>
                     </div>
@@ -311,9 +311,9 @@ export function ServiceSummaryWidget({
                             <div className="p-1.5 rounded-md bg-primary/10 text-primary">
                                 <DollarSign className="h-3.5 w-3.5" />
                             </div>
-                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total Income</div>
+                            <div className="text-xs font-semibold text-muted-foreground tracking-wide">Total Income</div>
                         </div>
-                        <div className="text-xl font-bold text-foreground">
+                        <div className="text-xl text-foreground">
                             {formatCurrency(totalIncome)}
                         </div>
                     </div>
@@ -323,9 +323,9 @@ export function ServiceSummaryWidget({
                             <div className="p-1.5 rounded-md bg-secondary text-secondary-foreground">
                                 <Calendar className="h-3.5 w-3.5" />
                             </div>
-                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Services Recorded</div>
+                            <div className="text-xs font-semibold text-muted-foreground tracking-wide">Services Recorded</div>
                         </div>
-                        <div className="text-xl font-bold text-foreground">
+                        <div className="text-xl text-foreground">
                             {currentTotals.serviceCount}
                         </div>
                     </div>
@@ -343,13 +343,13 @@ export function ServiceSummaryWidget({
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             {currentTotals.totalDonations > 0 && (
                                 <div className="flex items-center justify-between p-2 rounded-md bg-white/50 dark:bg-black/20">
-                                    <span className="text-muted-foreground font-medium">Donations:</span>
+                                    <span className="text-muted-foreground">Donations:</span>
                                     <span className="font-bold">{formatCurrency(currentTotals.totalDonations)}</span>
                                 </div>
                             )}
                             {currentTotals.totalSpecialOfferings > 0 && (
                                 <div className="flex items-center justify-between p-2 rounded-md bg-white/50 dark:bg-black/20">
-                                    <span className="text-muted-foreground font-medium">Special Offerings:</span>
+                                    <span className="text-muted-foreground">Special Offerings:</span>
                                     <span className="font-bold">{formatCurrency(currentTotals.totalSpecialOfferings)}</span>
                                 </div>
                             )}

@@ -21,7 +21,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <ClerkProvider publishableKey={clerkKey}>
             <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-                <ThemeProvider defaultTheme="light" storageKey="floc-ui-theme">
+                <ThemeProvider defaultTheme="light">
                     <OrganizationProvider>
                         <App />
                     </OrganizationProvider>

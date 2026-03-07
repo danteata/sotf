@@ -110,7 +110,7 @@ export function CreateUnitDialog({
 
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name *</Label>
+            <Label className="text-xs font-semibold text-muted-foreground tracking-wider">Name *</Label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -121,7 +121,7 @@ export function CreateUnitDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</Label>
+            <Label className="text-xs font-semibold text-muted-foreground tracking-wider">Description</Label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -133,7 +133,7 @@ export function CreateUnitDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parent Unit</Label>
+              <Label className="text-xs font-semibold text-muted-foreground tracking-wider">Parent Unit</Label>
               <Select value={unitId} onValueChange={setUnitId} disabled={creating}>
                 <SelectTrigger className="bg-background/50 border-input-border">
                   <SelectValue placeholder="Select unit (optional)" />
@@ -150,7 +150,7 @@ export function CreateUnitDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type *</Label>
+              <Label className="text-xs font-semibold text-muted-foreground tracking-wider">Type *</Label>
               <Select
                 value={type}
                 onValueChange={(value: any) => setType(value)}
@@ -169,7 +169,7 @@ export function CreateUnitDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Category / Tag</Label>
+            <Label className="text-xs font-semibold text-muted-foreground tracking-wider">Unit Category / Tag</Label>
             <Input
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -180,7 +180,7 @@ export function CreateUnitDialog({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Unit Leader</Label>
+            <Label className="text-xs font-semibold text-muted-foreground tracking-wider">Unit Leader</Label>
             <MemberCombobox
               members={availableMembers}
               value={leaderId}

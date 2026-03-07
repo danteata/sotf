@@ -181,7 +181,7 @@ export function FinancialReports() {
         return (
             <div className="flex flex-col items-center justify-center h-64 border border-dashed border-border/50 rounded-xl bg-muted/10 animate-pulse">
                 <Loader2 className="h-10 w-10 animate-spin mb-4 text-primary" />
-                <span className="text-sm font-medium text-muted-foreground">Gathering intelligence...</span>
+                <span className="text-sm text-muted-foreground">Gathering intelligence...</span>
             </div>
         )
     }
@@ -194,7 +194,7 @@ export function FinancialReports() {
                 <CardHeader className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
-                            <CardTitle className="flex items-center gap-3 text-2xl font-bold tracking-tight">
+                            <CardTitle className="flex items-center gap-3 text-2xl tracking-tight">
                                 <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
                                     <FileText className="h-6 w-6" />
                                 </div>
@@ -215,7 +215,7 @@ export function FinancialReports() {
                 <CardContent className="p-6 pt-0">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground ml-1">Analysis Type</label>
+                            <label className="text-sm text-muted-foreground ml-1">Analysis Type</label>
                             <Select value={reportType} onValueChange={(value: ReportType) => setReportType(value)}>
                                 <SelectTrigger className="h-11 rounded-lg border-input-border bg-background/50 hover:bg-accent/50 transition-colors">
                                     <SelectValue />
@@ -231,7 +231,7 @@ export function FinancialReports() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground ml-1">Temporal Range</label>
+                            <label className="text-sm text-muted-foreground ml-1">Temporal Range</label>
                             <Select value={dateRange} onValueChange={setDateRange}>
                                 <SelectTrigger className="h-11 rounded-lg border-input-border bg-background/50 hover:bg-accent/50 transition-colors">
                                     <SelectValue />
@@ -247,7 +247,7 @@ export function FinancialReports() {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-muted-foreground ml-1">Actions</label>
+                            <label className="text-sm text-muted-foreground ml-1">Actions</label>
                             <Button
                                 onClick={exportReport}
                                 className="w-full h-11 rounded-lg bg-primary text-primary-foreground shadow-soft hover:shadow-soft-lg transition-all"
@@ -261,7 +261,7 @@ export function FinancialReports() {
                     {dateRange === 'custom' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 p-4 bg-muted/30 rounded-xl border border-dashed border-border">
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide ml-1">Start Date</label>
+                                <label className="text-xs text-muted-foreground tracking-wide ml-1">Start Date</label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="outline" className={cn("w-full h-10 justify-start text-left font-normal rounded-lg border-input-border", !customStartDate && "text-muted-foreground")}>
@@ -276,7 +276,7 @@ export function FinancialReports() {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide ml-1">End Date</label>
+                                <label className="text-xs text-muted-foreground tracking-wide ml-1">End Date</label>
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="outline" className={cn("w-full h-10 justify-start text-left font-normal rounded-lg border-input-border", !customEndDate && "text-muted-foreground")}>
@@ -307,37 +307,37 @@ export function FinancialReports() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Card className="glass-card shadow-sm border-border/50 rounded-xl overflow-hidden hover:shadow-md transition-all">
                             <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Total Inflow</CardTitle>
+                                <CardTitle className="text-sm text-muted-foreground tracking-wide">Total Inflow</CardTitle>
                                 <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg">
                                     <TrendingUp className="h-4 w-4" />
                                 </div>
                             </CardHeader>
                             <CardContent className="px-6 pb-6">
-                                <div className="text-3xl font-bold tracking-tight text-foreground">{formatCurrency(reportData.totalIncome)}</div>
+                                <div className="text-3xl tracking-tight text-foreground">{formatCurrency(reportData.totalIncome)}</div>
                             </CardContent>
                         </Card>
 
                         <Card className="glass-card shadow-sm border-border/50 rounded-xl overflow-hidden hover:shadow-md transition-all">
                             <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Total Outflow</CardTitle>
+                                <CardTitle className="text-sm text-muted-foreground tracking-wide">Total Outflow</CardTitle>
                                 <div className="p-2 bg-rose-500/10 text-rose-600 rounded-lg">
                                     <TrendingDown className="h-4 w-4" />
                                 </div>
                             </CardHeader>
                             <CardContent className="px-6 pb-6">
-                                <div className="text-3xl font-bold tracking-tight text-foreground">{formatCurrency(reportData.totalExpenses)}</div>
+                                <div className="text-3xl tracking-tight text-foreground">{formatCurrency(reportData.totalExpenses)}</div>
                             </CardContent>
                         </Card>
 
                         <Card className="glass-card shadow-sm border-border/50 rounded-xl overflow-hidden hover:shadow-md transition-all">
                             <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
-                                <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Net Position</CardTitle>
+                                <CardTitle className="text-sm text-muted-foreground tracking-wide">Net Position</CardTitle>
                                 <div className={cn("p-2 rounded-lg", reportData.netIncome >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600")}>
                                     <DollarSign className="h-4 w-4" />
                                 </div>
                             </CardHeader>
                             <CardContent className="px-6 pb-6">
-                                <div className={cn("text-3xl font-bold tracking-tight", reportData.netIncome >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                <div className={cn("text-3xl tracking-tight", reportData.netIncome >= 0 ? "text-emerald-600" : "text-rose-600")}>
                                     {formatCurrency(reportData.netIncome)}
                                 </div>
                             </CardContent>
@@ -372,7 +372,7 @@ export function FinancialReports() {
                                                         <span className="font-medium text-foreground">{TRANSACTION_CATEGORIES[category as unknown as TransactionCategory]?.label || category}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium text-emerald-600">
+                                                <TableCell className="text-right text-emerald-600">
                                                     {formatCurrency(amount)}
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6">
@@ -422,7 +422,7 @@ export function FinancialReports() {
                                                         <span className="font-medium text-foreground">{TRANSACTION_CATEGORIES[category as unknown as TransactionCategory]?.label || category}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right font-medium text-rose-600">
+                                                <TableCell className="text-right text-rose-600">
                                                     {formatCurrency(amount)}
                                                 </TableCell>
                                                 <TableCell className="text-right pr-6">
@@ -479,9 +479,9 @@ export function FinancialReports() {
                                     {Object.entries(reportData.monthlyData).length > 0 ? (
                                         Object.entries(reportData.monthlyData).map(([month, data]) => (
                                             <TableRow key={month} className="border-border/50 hover:bg-muted/30 transition-colors">
-                                                <TableCell className="pl-6 py-4 font-medium text-foreground">{month}</TableCell>
-                                                <TableCell className="text-right text-emerald-600 font-medium">{formatCurrency(data.income)}</TableCell>
-                                                <TableCell className="text-right text-rose-600 font-medium">{formatCurrency(data.expenses)}</TableCell>
+                                                <TableCell className="pl-6 py-4 text-foreground">{month}</TableCell>
+                                                <TableCell className="text-right text-emerald-600">{formatCurrency(data.income)}</TableCell>
+                                                <TableCell className="text-right text-rose-600">{formatCurrency(data.expenses)}</TableCell>
                                                 <TableCell className="text-right pr-6">
                                                     <Badge variant="outline" className={cn("font-medium border-0", data.net >= 0 ? "bg-emerald-500/10 text-emerald-700" : "bg-rose-500/10 text-rose-700")}>
                                                         {formatCurrency(data.net)}
@@ -504,22 +504,22 @@ export function FinancialReports() {
             {/* Summary Footer */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                 <Card className="glass-card border-border/50 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Income</span>
-                    <span className="text-lg font-bold text-emerald-600">{formatCurrency(reportData.totalIncome)}</span>
+                    <span className="text-xs text-muted-foreground tracking-wide mb-1">Total Income</span>
+                    <span className="text-lg text-emerald-600">{formatCurrency(reportData.totalIncome)}</span>
                 </Card>
                 <Card className="glass-card border-border/50 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Expenses</span>
-                    <span className="text-lg font-bold text-rose-600">{formatCurrency(reportData.totalExpenses)}</span>
+                    <span className="text-xs text-muted-foreground tracking-wide mb-1">Total Expenses</span>
+                    <span className="text-lg text-rose-600">{formatCurrency(reportData.totalExpenses)}</span>
                 </Card>
                 <Card className="glass-card border-border/50 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Net Result</span>
-                    <span className={cn("text-lg font-bold", reportData.netIncome >= 0 ? "text-primary" : "text-rose-600")}>
+                    <span className="text-xs text-muted-foreground tracking-wide mb-1">Net Result</span>
+                    <span className={cn("text-lg", reportData.netIncome >= 0 ? "text-primary" : "text-rose-600")}>
                         {formatCurrency(reportData.netIncome)}
                     </span>
                 </Card>
                 <Card className="glass-card border-border/50 shadow-sm p-4 flex flex-col items-center justify-center text-center">
-                    <span className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Transactions</span>
-                    <span className="text-lg font-bold text-foreground">{reportData.transactionCount}</span>
+                    <span className="text-xs text-muted-foreground tracking-wide mb-1">Transactions</span>
+                    <span className="text-lg text-foreground">{reportData.transactionCount}</span>
                 </Card>
             </div>
         </div>

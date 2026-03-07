@@ -43,7 +43,7 @@ export function RecentMembers() {
             <p className="text-sm font-semibold leading-none">{member.name}</p>
             <p className="text-sm text-muted-foreground">{member.email || 'No email'}</p>
           </div>
-          <div className="ml-auto text-xs font-medium bg-secondary text-secondary-foreground px-2.5 py-1 rounded-md">
+          <div className="ml-auto text-xs bg-secondary text-secondary-foreground px-2.5 py-1 rounded-md">
             {format(new Date(member._creationTime), "MMM d")}
           </div>
         </div>

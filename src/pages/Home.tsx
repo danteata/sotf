@@ -24,7 +24,7 @@ export default function HomePage() {
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-12 h-12 border-4 border-primary border-t-accent rounded-full animate-spin"></div>
-                    <p className="text-muted-foreground font-medium">Loading your experience...</p>
+                    <p className="text-muted-foreground">Loading your experience...</p>
                 </div>
             </div>
         )
@@ -45,12 +45,12 @@ export default function HomePage() {
                     <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center neon-glow">
                         <Sparkles className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-2xl font-bold text-gradient">Floc</span>
+                    <span className="text-2xl text-gradient">Floc</span>
                 </div>
                 <nav className="hidden md:flex items-center gap-8">
-                    <a href="#features" className="text-muted-foreground hover:text-primary transition-colors duration-300 font-medium">Features</a>
-                    <a href="#beta" className="text-muted-foreground hover:text-primary transition-colors duration-300 font-medium">Beta Program</a>
-                    <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors duration-300 font-medium">FAQ</a>
+                    <a href="#features" className="text-muted-foreground hover:text-primary transition-colors duration-300">Features</a>
+                    <a href="#beta" className="text-muted-foreground hover:text-primary transition-colors duration-300">Beta Program</a>
+                    <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors duration-300">FAQ</a>
                     <SignInButton mode="modal">
                         <Button variant="neon" className="font-bold rounded-lg px-6">
                             Login
@@ -64,9 +64,9 @@ export default function HomePage() {
                 <div className="max-w-7xl mx-auto relative">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-primary/30 mb-8">
                         <Zap className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium text-primary">Now in Beta</span>
+                        <span className="text-sm text-primary">Now in Beta</span>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-black leading-tight mb-6">
+                    <h1 className="text-5xl md:text-7xl leading-tight mb-6">
                         <span className="text-foreground">IGNITE YOUR</span><br />
                         <span className="text-gradient neon-text">
                             MINISTRY
@@ -77,11 +77,11 @@ export default function HomePage() {
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-20">
                         <SignInButton mode="modal">
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg px-12 py-7 rounded-xl neon-glow transition-all duration-300 hover:-translate-y-1">
+                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-12 py-7 rounded-xl neon-glow transition-all duration-300 hover:-translate-y-1">
                                 Get Started Free
                             </Button>
                         </SignInButton>
-                        <a href="#features" className="inline-flex items-center justify-center glass text-primary font-bold text-lg px-10 py-[1.15rem] border border-primary/30 rounded-xl hover:bg-primary/10 transition-all duration-300">
+                        <a href="#features" className="inline-flex items-center justify-center glass text-primary text-lg px-10 py-[1.15rem] border border-primary/30 rounded-xl hover:bg-primary/10 transition-all duration-300">
                             See How It Works
                         </a>
                     </div>
@@ -124,7 +124,7 @@ export default function HomePage() {
             {/* Main Features Section */}
             <section id="features" className="relative z-10 py-32 px-6 lg:px-8">
                 <div className="max-w-7xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-black text-center mb-6 text-gradient leading-tight">
+                    <h2 className="text-4xl md:text-5xl text-center mb-6 text-gradient leading-tight">
                         EVERYTHING YOUR CHURCH<br />NEEDS IN ONE PLACE
                     </h2>
                     <p className="text-xl text-muted-foreground text-center mb-20 max-w-2xl mx-auto leading-relaxed">
@@ -133,37 +133,37 @@ export default function HomePage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <div className="glass-card rounded-2xl p-8 border border-border/20 hover:border-primary/30 transition-all duration-300 hover:neon-glow hover:-translate-y-2">
-                            <h3 className="text-2xl font-bold mb-4">Member Management</h3>
+                            <h3 className="text-2xl mb-4">Member Management</h3>
                             <p className="text-muted-foreground leading-relaxed">
                                 Know your flock better. Track attendance, manage member profiles, organize families, and build meaningful relationships with every person in your congregation.
                             </p>
                         </div>
                         <div className="glass-card rounded-2xl p-8 border border-border/20 hover:border-primary/30 transition-all duration-300 hover:neon-glow hover:-translate-y-2">
-                            <h3 className="text-2xl font-bold mb-4">Event Planning</h3>
+                            <h3 className="text-2xl mb-4">Event Planning</h3>
                             <p className="text-muted-foreground leading-relaxed">
                                 From Sunday services to Wednesday night Bible studies, plan every church event with ease. Coordinate volunteers, send automated reminders, and never miss a detail.
                             </p>
                         </div>
                         <div className="glass-card rounded-2xl p-8 border border-border/20 hover:border-primary/30 transition-all duration-300 hover:neon-glow hover:-translate-y-2">
-                            <h3 className="text-2xl font-bold mb-4">Online Giving</h3>
+                            <h3 className="text-2xl mb-4">Online Giving</h3>
                             <p className="text-muted-foreground leading-relaxed">
                                 Make giving simple for your members. Accept tithes and offerings online with secure payment processing, recurring giving options, and transparent financial reports.
                             </p>
                         </div>
                         <div className="glass-card rounded-2xl p-8 border border-border/20 hover:border-primary/30 transition-all duration-300 hover:neon-glow hover:-translate-y-2">
-                            <h3 className="text-2xl font-bold mb-4">Communication Hub</h3>
+                            <h3 className="text-2xl mb-4">Communication Hub</h3>
                             <p className="text-muted-foreground leading-relaxed">
                                 Reach your entire congregation instantly. Send targeted emails, text messages, and app notifications to specific groups—from youth ministry to elder board.
                             </p>
                         </div>
                         <div className="glass-card rounded-2xl p-8 border border-border/20 hover:border-primary/30 transition-all duration-300 hover:neon-glow hover:-translate-y-2">
-                            <h3 className="text-2xl font-bold mb-4">Small Groups</h3>
+                            <h3 className="text-2xl mb-4">Small Groups</h3>
                             <p className="text-muted-foreground leading-relaxed">
                                 Deepen discipleship through thriving small groups. Manage life groups, Bible studies, and prayer circles with easy scheduling, discussion tools, and member engagement tracking.
                             </p>
                         </div>
                         <div className="glass-card rounded-2xl p-8 border border-border/20 hover:border-primary/30 transition-all duration-300 hover:neon-glow hover:-translate-y-2">
-                            <h3 className="text-2xl font-bold mb-4">Analytics & Insights</h3>
+                            <h3 className="text-2xl mb-4">Analytics & Insights</h3>
                             <p className="text-muted-foreground leading-relaxed">
                                 Lead with wisdom. Get clear insights on attendance trends, giving patterns, member engagement, and ministry health to make informed decisions for your church's future.
                             </p>
@@ -178,10 +178,10 @@ export default function HomePage() {
                     <div className="glass-card border border-primary/30 rounded-3xl p-10 md:p-16 text-center relative overflow-hidden">
                         <div className="absolute inset-0 gradient-mesh opacity-30"></div>
                         <div className="relative z-10">
-                            <div className="inline-block bg-primary/20 text-primary font-bold text-xs px-4 py-2 rounded-full uppercase tracking-widest mb-6 border border-primary/30">
+                            <div className="inline-block bg-primary/20 text-primary text-xs px-4 py-2 rounded-full tracking-widest mb-6 border border-primary/30">
                                 Limited Beta Access
                             </div>
-                            <h2 className="text-4xl md:text-5xl font-black mb-6 leading-tight">
+                            <h2 className="text-4xl md:text-5xl mb-6 leading-tight">
                                 JOIN OUR FOUNDING<br />CHURCHES PROGRAM
                             </h2>
                             <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
@@ -228,11 +228,11 @@ export default function HomePage() {
                             </div>
 
                             <SignInButton mode="modal">
-                                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg px-12 py-7 rounded-xl neon-glow transition-all duration-300 transform hover:-translate-y-1">
+                                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-12 py-7 rounded-xl neon-glow transition-all duration-300 transform hover:-translate-y-1">
                                     Apply for Beta Access
                                 </Button>
                             </SignInButton>
-                            <p className="mt-6 text-muted-foreground font-medium">
+                            <p className="mt-6 text-muted-foreground">
                                 12 churches already testing • 13 spots remaining
                             </p>
                         </div>
@@ -243,7 +243,7 @@ export default function HomePage() {
             {/* FAQ Section */}
             <section id="faq" className="relative z-10 py-32 px-6 lg:px-8">
                 <div className="max-w-4xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-black text-center mb-6 text-gradient leading-tight uppercase">
+                    <h2 className="text-4xl md:text-5xl text-center mb-6 text-gradient leading-tight">
                         Questions Pastors<br />Ask Us
                     </h2>
                     <p className="text-xl text-muted-foreground text-center mb-20 max-w-2xl mx-auto leading-relaxed">
@@ -301,7 +301,7 @@ export default function HomePage() {
             {/* Final CTA Section */}
             <section className="relative z-10 py-32 px-6 lg:px-8 text-center">
                 <div className="container max-w-4xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-black text-gradient mb-6 leading-tight uppercase">
+                    <h2 className="text-4xl md:text-5xl text-gradient mb-6 leading-tight">
                         Ready to simplify your<br />church management?
                     </h2>
                     <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
@@ -309,7 +309,7 @@ export default function HomePage() {
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <SignInButton mode="modal">
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg px-12 py-7 rounded-xl neon-glow transition-all duration-300 transform hover:-translate-y-1">
+                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-12 py-7 rounded-xl neon-glow transition-all duration-300 transform hover:-translate-y-1">
                                 Apply for Beta Access
                             </Button>
                         </SignInButton>
@@ -329,14 +329,14 @@ export default function HomePage() {
             <footer className="relative z-10 glass border-t border-border/30 py-20 px-6 lg:px-8">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
                     <div>
-                        <h4 className="text-primary font-black uppercase tracking-widest text-sm mb-6">Product</h4>
+                        <h4 className="text-primary tracking-widest text-sm mb-6">Product</h4>
                         <div className="space-y-3">
                             <a href="#features" className="block text-muted-foreground hover:text-primary transition-colors">Features</a>
                             <a href="#beta" className="block text-muted-foreground hover:text-primary transition-colors">Beta Program</a>
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-primary font-black uppercase tracking-widest text-sm mb-6">Resources</h4>
+                        <h4 className="text-primary tracking-widest text-sm mb-6">Resources</h4>
                         <div className="space-y-3">
                             <a href="#" className="block text-muted-foreground hover:text-primary transition-colors">Documentation</a>
                             <a href="#" className="block text-muted-foreground hover:text-primary transition-colors">Support</a>
@@ -344,14 +344,14 @@ export default function HomePage() {
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-primary font-black uppercase tracking-widest text-sm mb-6">Company</h4>
+                        <h4 className="text-primary tracking-widest text-sm mb-6">Company</h4>
                         <div className="space-y-3">
                             <a href="#" className="block text-muted-foreground hover:text-primary transition-colors">About</a>
                             <a href="#" className="block text-muted-foreground hover:text-primary transition-colors">Our Story</a>
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-primary font-black uppercase tracking-widest text-sm mb-6">Legal</h4>
+                        <h4 className="text-primary tracking-widest text-sm mb-6">Legal</h4>
                         <div className="space-y-3">
                             <a href="#" className="block text-muted-foreground hover:text-primary transition-colors">Privacy Policy</a>
                             <a href="#" className="block text-muted-foreground hover:text-primary transition-colors">Terms of Service</a>

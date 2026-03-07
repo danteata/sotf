@@ -170,7 +170,7 @@ export function EventsContent() {
             <div className="p-2.5 bg-[#5b21b6] text-white rounded-xl shadow-md">
               <CalendarDays className="h-6 w-6" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Events</h1>
+            <h1 className="text-3xl tracking-tight text-foreground">Events</h1>
           </div>
           <p className="text-muted-foreground pl-12 text-sm">
             Manage and schedule upcoming events for {terminology.church_name}
@@ -317,18 +317,18 @@ export function EventsContent() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-[10px] bg-muted/50 border-input-border font-medium">
+                          <Badge variant="outline" className="text-[10px] bg-muted/50 border-input-border">
                             {event.event_type_label || 'Other'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm font-medium text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(event.date), 'MMM dd, yyyy')}
                         </TableCell>
                         <TableCell>
                           <Badge
                             variant={isUpcoming ? 'default' : 'secondary'}
                             className={cn(
-                              "text-[10px] px-2 py-0.5 border-0 font-medium",
+                              "text-[10px] px-2 py-0.5 border-0",
                               isUpcoming
                                 ? "bg-primary/15 text-primary hover:bg-primary/20"
                                 : "bg-muted text-muted-foreground hover:bg-muted/80"
@@ -413,8 +413,8 @@ function StatCard({ label, value, icon, iconBg }: { label: string, value: string
           </div>
         </div>
         <div className="space-y-1">
-          <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
-          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</div>
+          <div className="text-2xl tracking-tight text-foreground">{value}</div>
+          <div className="text-xs text-muted-foreground tracking-wide">{label}</div>
         </div>
       </CardContent>
     </Card>

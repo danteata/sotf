@@ -31,7 +31,7 @@ export function AuthLoadingWrapper({ children, fallback }: AuthLoadingWrapperPro
                     <CardHeader className="text-center">
                         <div className="flex justify-center mb-4">
                             <div className="w-12 h-12 rounded-lg bg-primary border-2 border-black dark:border-white flex items-center justify-center animate-pulse">
-                                <span className="text-white font-bold text-lg">M</span>
+                                <span className="text-white text-lg">M</span>
                             </div>
                         </div>
                         <Skeleton className="h-6 w-48 mx-auto mb-2" />

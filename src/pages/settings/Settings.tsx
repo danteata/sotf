@@ -21,7 +21,7 @@ export default function SettingsPage() {
         <LayoutWrapper>
             <div className="max-w-4xl mx-auto space-y-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
+                    <h1 className="text-3xl tracking-tight text-foreground">Settings</h1>
                     <p className="text-muted-foreground mt-1">Manage your account settings and preferences.</p>
                 </div>
 
@@ -31,7 +31,7 @@ export default function SettingsPage() {
                         {tabs.map((tab) => (
                             <button
                                 key={tab}
-                                className={`px-4 py-2 text-sm font-medium rounded-full transition-all whitespace-nowrap ${activeTab === tab
+                                className={`px-4 py-2 text-sm rounded-full transition-all whitespace-nowrap ${activeTab === tab
                                     ? "bg-primary text-primary-foreground shadow-sm"
                                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     }`}
@@ -73,7 +73,7 @@ export default function SettingsPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Live in</label>
+                                    <label className="text-xs font-semibold text-muted-foreground tracking-wider">Live in</label>
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
                                         <Input className="pl-10 bg-background/50 border-input-border focus:ring-primary/20 transition-all" defaultValue="Zurich, Switzerland" />
@@ -81,7 +81,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Street Address</label>
+                                    <label className="text-xs font-semibold text-muted-foreground tracking-wider">Street Address</label>
                                     <div className="relative">
                                         <Home className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
                                         <Input className="pl-10 bg-background/50 border-input-border focus:ring-primary/20 transition-all" defaultValue="2445 Crosswind Drive" />
@@ -89,7 +89,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Email Address</label>
+                                    <label className="text-xs font-semibold text-muted-foreground tracking-wider">Email Address</label>
                                     <div className="relative">
                                         <Mail className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
                                         <Input className="pl-10 bg-background/50 border-input-border focus:ring-primary/20 transition-all" defaultValue="uihutofficial@gmail.com" />
@@ -99,7 +99,7 @@ export default function SettingsPage() {
                                 <div className="hidden md:block"></div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Date Of Birth</label>
+                                    <label className="text-xs font-semibold text-muted-foreground tracking-wider">Date Of Birth</label>
                                     <div className="relative">
                                         <Calendar className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
                                         <Input className="pl-10 bg-background/50 border-input-border focus:ring-primary/20 transition-all" defaultValue="07.12.1995" />
@@ -107,7 +107,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Gender</label>
+                                    <label className="text-xs font-semibold text-muted-foreground tracking-wider">Gender</label>
                                     <div className="relative">
                                         <Male className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
                                         <Input className="pl-10 bg-background/50 border-input-border focus:ring-primary/20 transition-all" defaultValue="Male" />
@@ -119,14 +119,14 @@ export default function SettingsPage() {
                                 <h3 className="text-lg font-semibold mb-4">Social Profiles</h3>
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Facebook</label>
+                                        <label className="text-xs font-semibold text-muted-foreground tracking-wider">Facebook</label>
                                         <div className="flex shadow-sm rounded-md">
                                             <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input-border bg-muted/50 text-muted-foreground text-sm">facebook.com/</span>
                                             <Input className="rounded-l-none bg-background/50 border-input-border focus:ring-primary/20 transition-all" placeholder="username" />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Twitter</label>
+                                        <label className="text-xs font-semibold text-muted-foreground tracking-wider">Twitter</label>
                                         <div className="flex shadow-sm rounded-md">
                                             <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-input-border bg-muted/50 text-muted-foreground text-sm">twitter.com/</span>
                                             <Input className="rounded-l-none bg-background/50 border-input-border focus:ring-primary/20 transition-all" placeholder="username" />
@@ -147,7 +147,7 @@ export default function SettingsPage() {
                             <div className="p-4 bg-muted/30 rounded-full w-fit mx-auto mb-4">
                                 <Settings className="h-8 w-8 opacity-50" />
                             </div>
-                            <h3 className="text-lg font-medium mb-1">Coming Soon</h3>
+                            <h3 className="text-lg mb-1">Coming Soon</h3>
                             <p className="text-sm">The {activeTab} settings are currently under development.</p>
                         </div>
                     )}

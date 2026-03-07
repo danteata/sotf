@@ -154,7 +154,7 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden p-0 glass-card border-border/50 shadow-soft rounded-2xl">
         <DialogHeader className="p-6 bg-muted/20 border-b border-border/50">
-          <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-3 text-foreground">
+          <DialogTitle className="text-xl tracking-tight flex items-center gap-3 text-foreground">
             <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <Settings className="h-5 w-5" />
             </div>
@@ -184,11 +184,11 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Interface Name</Label>
+                      <Label className="text-xs text-muted-foreground tracking-wide">Interface Name</Label>
                       <Input placeholder="CMS" {...form.register("app_name")} className="bg-background/50 h-11" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Organization Label</Label>
+                      <Label className="text-xs text-muted-foreground tracking-wide">Organization Label</Label>
                       <Input placeholder="Organization Name" {...form.register("church_name")} className="bg-background/50 h-11" />
                     </div>
                   </CardContent>
@@ -203,7 +203,7 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
             <TabsContent value="organization" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <Card className="border border-border/50 shadow-sm bg-accent/5">
                 <CardHeader className="border-b border-border/50 px-6 py-4">
-                  <CardTitle className="text-sm font-semibold uppercase tracking-wide">Hierarchy Preview</CardTitle>
+                  <CardTitle className="text-sm font-semibold tracking-wide">Hierarchy Preview</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
                   <div className="flex flex-wrap gap-3">
@@ -218,37 +218,37 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 1 Singular</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 1 Singular</Label>
                     <Input value={orgTerms.level1_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level1_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 2 Singular</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 2 Singular</Label>
                     <Input value={orgTerms.level2_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level2_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 3 Singular</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 3 Singular</Label>
                     <Input value={orgTerms.level3_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level3_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 4 Singular</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 4 Singular</Label>
                     <Input value={orgTerms.level4_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level4_singular: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 1 Plural</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 1 Plural</Label>
                     <Input value={orgTerms.level1_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level1_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 2 Plural</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 2 Plural</Label>
                     <Input value={orgTerms.level2_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level2_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 3 Plural</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 3 Plural</Label>
                     <Input value={orgTerms.level3_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level3_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase text-muted-foreground tracking-wide">Level 4 Plural</Label>
+                    <Label className="text-xs text-muted-foreground tracking-wide">Level 4 Plural</Label>
                     <Input value={orgTerms.level4_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level4_plural: e.target.value })} className="bg-background/50 h-11" />
                   </div>
                 </div>

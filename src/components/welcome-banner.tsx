@@ -44,7 +44,7 @@ export function WelcomeBanner() {
             <Church className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Welcome to Makarios Church Management System</h2>
+            <h2 className="text-xl">Welcome to Makarios Church Management System</h2>
             <p className="text-muted-foreground">This is a demo version. Set up Clerk to enable authentication.</p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export function WelcomeBanner() {
           <Button onClick={() => navigate("/dashboard")} className="font-bold">
             Go to Dashboard
           </Button>
-          <Button variant="outline" onClick={() => navigate("/members")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
+          <Button variant="outline" onClick={() => navigate("/members")} className="border-2 border-primary text-primary hover:bg-primary/10">
             View Members
           </Button>
         </div>
@@ -68,7 +68,7 @@ export function WelcomeBanner() {
             <Church className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Welcome back, {user?.firstName || "Friend"}!</h2>
+            <h2 className="text-xl">Welcome back, {user?.firstName || "Friend"}!</h2>
             <p className="text-muted-foreground">Continue managing your church community</p>
           </div>
         </div>
@@ -76,7 +76,7 @@ export function WelcomeBanner() {
           <Button onClick={() => navigate("/dashboard")} className="font-bold">
             Go to Dashboard
           </Button>
-          <Button variant="outline" onClick={() => navigate("/members")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
+          <Button variant="outline" onClick={() => navigate("/members")} className="border-2 border-primary text-primary hover:bg-primary/10">
             View Members
           </Button>
         </div>
@@ -91,7 +91,7 @@ export function WelcomeBanner() {
           <Church className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Welcome to Makarios Church Management System</h2>
+          <h2 className="text-xl">Welcome to Makarios Church Management System</h2>
           <p className="text-muted-foreground">Sign in to access all features and manage your church community</p>
         </div>
       </div>
@@ -99,7 +99,7 @@ export function WelcomeBanner() {
         <Button onClick={() => navigate("/sign-in")} className="font-bold">
           Sign In
         </Button>
-        <Button variant="outline" onClick={() => navigate("/sign-up")} className="border-2 border-primary text-primary hover:bg-primary/10 font-bold">
+        <Button variant="outline" onClick={() => navigate("/sign-up")} className="border-2 border-primary text-primary hover:bg-primary/10">
           Create Account
         </Button>
       </div>
