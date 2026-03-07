@@ -46,7 +46,7 @@ export function useUserRole(): UserRoleData {
     id: userData._id,
     _id: userData._id,
     clerk_user_id: userData.clerk_user_id,
-    email: userData.email,
+    email: userData.email || '',
     name: userData.name || 'Unknown',
     role: userData.role as UserRole,
     is_active: userData.active,

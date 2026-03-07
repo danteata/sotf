@@ -217,7 +217,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
           </TableHeader>
           <TableBody>
             {getSortedMembers().map((member) => (
-              <TableRow key={member.id} className="hover:bg-accent/50 transition-colors">
+              <TableRow key={member.id} className="hover:bg-muted/50 transition-colors border-border last:border-0">
                 <TableCell>
                   <Checkbox
                     checked={selectedMembers.includes(member.id || '')}
@@ -229,7 +229,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   <div className="flex items-center gap-3">
                     <Avatar className="ring-2 ring-primary/20">
                       <AvatarImage src={member.avatar} alt={member.name} />
-                      <AvatarFallback className="bg-primary text-primary-foreground font-bold">{member.initials}</AvatarFallback>
+                      <AvatarFallback className="bg-muted text-foreground font-semibold text-sm border border-border/50">{member.initials}</AvatarFallback>
                     </Avatar>
                     <div className="font-bold">{member.name}</div>
                   </div>
