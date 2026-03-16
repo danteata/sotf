@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { AlertCircle, Check, Download, FileSpreadsheet, Upload, X, Loader2 } from "lucide-react"
 import * as XLSX from "xlsx"
 import { format } from "date-fns"
@@ -47,6 +47,10 @@ interface PreviewData {
   dob?: string
   birthMonth?: number
   birthDay?: number
+  gender?: string
+  address?: string
+  plusCode?: string
+  matchStatus?: "update" | "create"
   isValid: boolean
   errors?: string[]
 }
@@ -56,6 +60,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   const createBulk = useMutation(api.members.createBulk)
   const allUnitsQuery = useQuery(api.units.list, organization?._id ? {} : "skip")
   const allUnits = allUnitsQuery || []
+  const existingMembers = useQuery(api.members.getAll, organization?._id ? { organization_id: organization._id } : "skip")
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
   const [progress, setProgress] = useState(0)
@@ -63,6 +68,24 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   const [previewData, setPreviewData] = useState<PreviewData[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [targetUnitId, setTargetUnitId] = useState<string>("")
+
+  const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "")
+  const extractFirstName = (fullName?: string | null) => (fullName || "").trim().split(/\s+/)[0]?.toLowerCase() ?? ""
+
+  const existingMemberIndex = useMemo(() => {
+    const index = new Map<string, Set<string>>()
+    if (!existingMembers) return index
+    for (const m of existingMembers as any[]) {
+      const phone = normalizePhone(m.phone)
+      if (!phone) continue
+      const first = extractFirstName(m.name)
+      if (!first) continue
+      const bucket = index.get(phone) ?? new Set<string>()
+      bucket.add(first)
+      index.set(phone, bucket)
+    }
+    return index
+  }, [existingMembers])
 
   const validateRecord = useCallback((record: any): PreviewData => {
     const errors: string[] = []
@@ -94,7 +117,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     const phone = getValue(["phone", "mobile", "cell", "telephone", "contact"])
     let cleanPhone = ""
     if (phone) {
-      cleanPhone = phone.replace(/\D/g, '')
+      cleanPhone = normalizePhone(phone)
     }
 
     // --- STATUS VALIDATION ---
@@ -162,8 +185,8 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
     // --- NAME VALIDATION ---
     // Extended keys for Full Name support if firstName/lastName not explicit
-    let firstName = getValue(["firstName", "first_name", "given_name", "forename"])
-    let lastName = getValue(["lastName", "last_name", "surname", "family_name"])
+    let firstName = getValue(["first name", "firstname", "firstName", "first_name", "given_name", "forename"])
+    let lastName = getValue(["last name", "lastname", "lastName", "last_name", "surname", "family_name"])
 
     const fullName = getValue(["full name", "fullname", "name"])
     if ((!firstName || !lastName) && fullName) {
@@ -203,7 +226,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     }
 
     // 2. Ministries
-    const ministryInput = getValue(["ministries", "ministry", "department", "group"])
+    const ministryInput = getValue(["ministries", "ministry", "department", "group", "basonta"])
     if (ministryInput) {
       ministryInput.split(/[,;&]/).forEach(m => {
         const name = m.trim()
@@ -223,12 +246,24 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     // Unique by name
     const uniqueUnits = Array.from(new Map(rawUnits.map(item => [item.name, item])).values());
 
+    const physicalAddress = getValue(["physical address", "address"])
+    const location = getValue(["location", "residence"])
+    const plusCode = getValue(["gps address", "plus code", "plus_code", "g plus code", "g plus co"])
+    const gender = getValue(["gender", "sex"])
+
+    const matchStatus = cleanPhone && existingMemberIndex.get(cleanPhone)?.has(firstName.toLowerCase())
+      ? "update"
+      : "create"
+
     return {
       firstName,
       lastName,
       email,
       phone: cleanPhone,
-      location: getValue(["location", "address", "residence"]),
+      location,
+      address: physicalAddress || location,
+      plusCode: plusCode || undefined,
+      gender: gender || undefined,
       status,
       joinDate: getValue(["joinDate", "join_date", "dateJoined"]),
       dob: dob || undefined,
@@ -236,10 +271,11 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       birthDay,
       rawUnits: uniqueUnits,
       displayUnitNames: uniqueUnits.map(u => u.name),
+      matchStatus,
       isValid: errorsList.length === 0,
       errors: errorsList.length > 0 ? errorsList : undefined
     }
-  }, [allUnits, organization])
+  }, [allUnits, organization, existingMemberIndex])
 
   const processFile = (file: File) => {
     setFileName(file.name)
@@ -304,24 +340,30 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     setUploadStatus("uploading")
     try {
       const membersToInsert = validRecords.map(r => ({
-        name: `${r.firstName} ${r.lastName}`,
+        name: `${r.firstName} ${r.lastName}`.trim(),
+        first_name: r.firstName,
+        last_name: r.lastName,
         email: r.email,
         phone: r.phone || "0000000000",
         status: r.status,
         dob: r.dob,
         birth_month: r.birthMonth,
         birth_day: r.birthDay,
-        address: r.location || undefined,
+        gender: r.gender,
+        address: r.address || undefined,
+        plus_code: r.plusCode || undefined,
         units: r.rawUnits // Pass dynamic units to backend
       }))
 
-      await createBulk({
+      const result = await createBulk({
         members: membersToInsert,
         target_unit_id: (targetUnitId && targetUnitId !== "org_wide") ? targetUnitId as Id<"units"> : undefined,
         organization_id: organization?._id
       })
 
-      setErrorMessage(`Upload complete: ${validRecords.length} members added. ${invalidCount} skipped.`)
+      const created = (result as any)?.created ?? validRecords.length
+      const updated = (result as any)?.updated ?? 0
+      setErrorMessage(`Upload complete: ${created} created, ${updated} updated. ${invalidCount} skipped.`)
       setUploadStatus("success")
       onSuccess?.()
     } catch (err: any) {
@@ -333,15 +375,18 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
   const handleDownloadTemplate = () => {
     const template = [{
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@example.com",
-      phone: "1234567890",
-      dob: "1990-05-15",
-      region: "Western Region",
-      ministries: "Choir, Ushers",
-      location: "123 Main St",
-      status: "active",
+      "First Name": "Jerome",
+      "Surname": "Kudanu",
+      "Contact": "0509502393",
+      "Gender": "Male",
+      "Month": "9",
+      "Day": "8",
+      "Location": "Ogbojo",
+      "Physical Address": "29 Boundary Street",
+      "GPS Address": "GD-107-2177",
+      "Units": "Dancing Stars, Technical & Media",
+      "Region": "South Region",
+      "G Plus Code": "GD-107-2177",
     }]
     const ws = XLSX.utils.json_to_sheet(template)
     const wb = XLSX.utils.book_new()
@@ -370,7 +415,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload Members</DialogTitle>
-          <DialogDescription>Add multiple members at once using CSV or Excel.</DialogDescription>
+          <DialogDescription>Add or update members using CSV or Excel. Existing members are matched by first name + phone.</DialogDescription>
         </DialogHeader>
 
         {uploadStatus === "idle" && (
@@ -426,7 +471,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Note: Regions and Ministries found in the file will be created automatically.
+                Note: Regions and groups found in the file will be created automatically.
               </p>
             </div>
 
@@ -435,6 +480,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                 <TableHeader>
                   <TableRow>
                     <TableHead></TableHead>
+                    <TableHead>Action</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Units (New & Existing)</TableHead>
@@ -444,6 +490,11 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                   {previewData.slice(0, 50).map((r, i) => (
                     <TableRow key={i} className={r.isValid ? "" : "bg-red-50"}>
                       <TableCell>{r.isValid ? <Check className="h-4 w-4 text-green-600" /> : <X className="h-4 w-4 text-red-600" />}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={r.matchStatus === "update" ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"}>
+                          {r.matchStatus === "update" ? "Update" : "Create"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{r.firstName} {r.lastName}</TableCell>
                       <TableCell>{r.email || "-"}</TableCell>
                       <TableCell>{r.displayUnitNames.join(", ") || "-"}</TableCell>

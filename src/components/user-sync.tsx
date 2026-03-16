@@ -12,8 +12,23 @@ export function UserSync() {
     useEffect(() => {
         if (isLoaded && user) {
             // Pass invitation token from URL if present
-            const invitationToken = searchParams.get('token') || undefined;
-            storeUser({ invitationToken });
+            const tokenFromUrl = searchParams.get('token') || undefined;
+            let tokenFromStorage: string | undefined;
+            try {
+                tokenFromStorage = localStorage.getItem("pending_invitation_token") || undefined;
+            } catch {
+                tokenFromStorage = undefined;
+            }
+            const invitationToken = tokenFromUrl || tokenFromStorage;
+            storeUser({ invitationToken }).then(() => {
+                if (tokenFromStorage) {
+                    try {
+                        localStorage.removeItem("pending_invitation_token");
+                    } catch {
+                        // ignore
+                    }
+                }
+            });
         }
     }, [isLoaded, user, storeUser, searchParams]);
 

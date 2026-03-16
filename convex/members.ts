@@ -222,6 +222,8 @@ export const createBulk = mutation({
     args: {
         members: v.array(v.object({
             name: v.string(),
+            first_name: v.optional(v.string()),
+            last_name: v.optional(v.string()),
             email: v.optional(v.string()),
             phone: v.optional(v.string()),
             status: v.string(),
@@ -234,6 +236,7 @@ export const createBulk = mutation({
             state: v.optional(v.string()),
             zip: v.optional(v.string()),
             country: v.optional(v.string()),
+            plus_code: v.optional(v.string()),
             avatar_url: v.optional(v.string()),
             organization_id: v.optional(v.id("organizations")),
             user_id: v.optional(v.id("users")),
@@ -247,13 +250,22 @@ export const createBulk = mutation({
         organization_id: v.optional(v.id("organizations"))
     },
     handler: async (ctx, args) => {
-        const results = [];
+        const results: Id<"members">[] = [];
+        let createdCount = 0;
+        let updatedCount = 0;
         await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
 
         if (!orgId) {
             throw new Error("Organization ID is required for bulk upload");
         }
+
+        const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "");
+        const normalizeName = (name?: string | null) => (name || "").trim().toLowerCase();
+        const extractFirstName = (fullName?: string | null) => {
+            if (!fullName) return "";
+            return fullName.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+        };
 
         // 1. Analyze all units in the batch to find unique ones
         const unitsToResolve = new Map<string, string>(); // name -> type
@@ -293,25 +305,32 @@ export const createBulk = mutation({
             }
         }
 
-        // 4. Create members and link units
+        // 4. Load existing members for matching (first name + phone)
+        const existingMembers = await ctx.db
+            .query("members")
+            .withIndex("by_org", q => q.eq("organization_id", orgId))
+            .collect();
+
+        const membersByPhone = new Map<string, Doc<"members">[]>();
+        for (const m of existingMembers) {
+            const phone = normalizePhone(m.phone);
+            if (!phone) continue;
+            const bucket = membersByPhone.get(phone) ?? [];
+            bucket.push(m);
+            membersByPhone.set(phone, bucket);
+        }
+
+        // 5. Create or update members and link units
         for (const memberData of args.members) {
-            const { units, ...coreMemberData } = memberData;
+            const { units, first_name, last_name, ...coreMemberData } = memberData;
 
-            const memberId = await ctx.db.insert("members", {
-                ...coreMemberData,
-                organization_id: orgId ?? memberData.organization_id,
-            });
-            results.push(memberId);
+            const normalizedPhone = normalizePhone(coreMemberData.phone);
+            const inputFirstName = normalizeName(first_name) || extractFirstName(coreMemberData.name);
+            const candidates = normalizedPhone ? membersByPhone.get(normalizedPhone) ?? [] : [];
+            const match = candidates.find(c => extractFirstName(c.name) === inputFirstName);
 
-            // Collect unit IDs to link
             const unitIdsToLink = new Set<Id<"units">>();
-
-            // Add implicit target unit if provided
-            if (args.target_unit_id) {
-                unitIdsToLink.add(args.target_unit_id);
-            }
-
-            // Add dynamic units
+            if (args.target_unit_id) unitIdsToLink.add(args.target_unit_id);
             if (units) {
                 for (const u of units) {
                     const id = unitNameMap.get(u.name.toLowerCase().trim());
@@ -319,6 +338,69 @@ export const createBulk = mutation({
                 }
             }
 
+            if (match) {
+                const nameFromParts = `${first_name ?? ""} ${last_name ?? ""}`.trim();
+                const nameToUse = nameFromParts || coreMemberData.name;
+                const updates: Record<string, any> = {};
+                const addIfDefined = (key: string, value: any) => {
+                    if (value === undefined || value === null || value === "") return;
+                    updates[key] = value;
+                };
+
+                addIfDefined("name", nameToUse);
+                addIfDefined("email", coreMemberData.email);
+                addIfDefined("phone", coreMemberData.phone);
+                addIfDefined("status", coreMemberData.status);
+                addIfDefined("dob", coreMemberData.dob);
+                addIfDefined("birth_month", coreMemberData.birth_month);
+                addIfDefined("birth_day", coreMemberData.birth_day);
+                addIfDefined("gender", coreMemberData.gender);
+                addIfDefined("address", coreMemberData.address);
+                addIfDefined("city", coreMemberData.city);
+                addIfDefined("state", coreMemberData.state);
+                addIfDefined("zip", coreMemberData.zip);
+                addIfDefined("country", coreMemberData.country);
+                addIfDefined("plus_code", coreMemberData.plus_code);
+                addIfDefined("avatar_url", coreMemberData.avatar_url);
+                addIfDefined("user_id", coreMemberData.user_id);
+
+                if (Object.keys(updates).length > 0) {
+                    await ctx.db.patch(match._id, updates);
+                }
+
+                if (unitIdsToLink.size > 0) {
+                    const existingLinks = await ctx.db
+                        .query("member_units")
+                        .withIndex("by_member", q => q.eq("member_id", match._id))
+                        .collect();
+                    const existingUnitIds = new Set(existingLinks.map(l => l.unit_id));
+                    const newLinks = Array.from(unitIdsToLink).filter(uid => !existingUnitIds.has(uid));
+                    if (newLinks.length > 0) {
+                        await Promise.all(newLinks.map(uid =>
+                            ctx.db.insert("member_units", {
+                                member_id: match._id,
+                                unit_id: uid,
+                                joined_date: new Date().toISOString(),
+                                is_active: true
+                            })
+                        ));
+                    }
+                }
+
+                results.push(match._id);
+                updatedCount += 1;
+                continue;
+            }
+
+            const memberId = await ctx.db.insert("members", {
+                ...coreMemberData,
+                organization_id: orgId ?? coreMemberData.organization_id,
+            });
+            results.push(memberId);
+            createdCount += 1;
+
+            // Collect unit IDs to link
+            // unitIdsToLink already computed above
             // Insert member_units
             if (unitIdsToLink.size > 0) {
                 await Promise.all(Array.from(unitIdsToLink).map(uid =>
@@ -331,7 +413,12 @@ export const createBulk = mutation({
                 ));
             }
         }
-        return results;
+        return {
+            created: createdCount,
+            updated: updatedCount,
+            processed: args.members.length,
+            memberIds: results,
+        };
     },
 });
 

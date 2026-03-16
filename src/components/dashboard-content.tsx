@@ -14,7 +14,7 @@ import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 
 export function DashboardContent() {
-  const { isAdmin, isUnitLeader } = useUserRole()
+  const { isAdmin, isUnitLeader, role } = useUserRole()
   const data = useQuery(api.dashboard.getDashboardData);
 
   if (data === undefined) {
@@ -191,19 +191,23 @@ export function DashboardContent() {
       <BirthdayWidget members={birthdayMembers as any} />
     </div>
 
-    <div className="mt-6">
-      <FinancialWidget
-        onAddTransaction={() => {
-          window.location.href = '/financial'
-        }}
-      />
-    </div>
+    {role === "super_admin" && (
+      <div className="mt-6">
+        <FinancialWidget
+          onAddTransaction={() => {
+            window.location.href = '/financial'
+          }}
+        />
+      </div>
+    )}
 
-    <div className="mt-6">
-      <ServiceSummaryWidget
-        summaries={[]}
-      />
-    </div>
+    {role === "super_admin" && (
+      <div className="mt-6">
+        <ServiceSummaryWidget
+          summaries={[]}
+        />
+      </div>
+    )}
 
     <div className="mt-6">
       <UpcomingEvents events={upcomingEvents as any} />

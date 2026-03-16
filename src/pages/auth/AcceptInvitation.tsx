@@ -29,6 +29,12 @@ export default function AcceptInvitationPage() {
     useEffect(() => {
         if (!token) {
             setError('No invitation token provided')
+            return
+        }
+        try {
+            localStorage.setItem("pending_invitation_token", token)
+        } catch {
+            // ignore storage errors
         }
     }, [token])
 
@@ -47,6 +53,11 @@ export default function AcceptInvitationPage() {
         try {
             await acceptInvitationMutation({ token })
             setSuccess(true)
+            try {
+                localStorage.removeItem("pending_invitation_token")
+            } catch {
+                // ignore
+            }
 
             // Redirect to appropriate dashboard after 3 seconds
             // Use window.location.href for a full page reload to ensure all queries refresh

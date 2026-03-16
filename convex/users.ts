@@ -10,6 +10,38 @@ export const store = mutation({
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) throw new Error("Called storeUser without authentication present");
 
+        const findInvitation = async () => {
+            let invitation = null;
+
+            if (args.invitationToken) {
+                const token = args.invitationToken;
+                invitation = await ctx.db
+                    .query("invitations")
+                    .withIndex("by_token", (q) => q.eq("invitation_token", token))
+                    .filter((q) => q.eq(q.field("status"), "pending"))
+                    .first();
+
+                if (invitation && invitation.expires_at && invitation.expires_at < Date.now()) {
+                    invitation = null;
+                }
+            }
+
+            if (!invitation && identity.email) {
+                const email = identity.email;
+                invitation = await ctx.db
+                    .query("invitations")
+                    .withIndex("by_email", (q) => q.eq("email", email))
+                    .filter((q) => q.eq(q.field("status"), "pending"))
+                    .first();
+
+                if (invitation && invitation.expires_at && invitation.expires_at < Date.now()) {
+                    invitation = null;
+                }
+            }
+
+            return invitation;
+        };
+
         // Check if user exists
         const user = await ctx.db
             .query("users")
@@ -21,6 +53,38 @@ export const store = mutation({
             if (user.name !== identity.name || user.email !== identity.email) {
                 await ctx.db.patch(user._id, { name: identity.name, email: identity.email });
             }
+
+            // If user already exists but has no organization, attempt to apply invitation
+            if (!user.organization_id) {
+                const invitation = await findInvitation();
+                if (invitation) {
+                    await ctx.db.patch(user._id, {
+                        role: invitation.intended_role,
+                        organization_id: invitation.organization_id,
+                    });
+
+                    if (invitation.member_id) {
+                        await ctx.db.patch(invitation.member_id, {
+                            user_id: user._id,
+                            email: identity.email
+                        });
+
+                        if (invitation.intended_units) {
+                            for (const unitId of invitation.intended_units) {
+                                const uId = ctx.db.normalizeId("units", unitId);
+                                if (uId) {
+                                    const unit = await ctx.db.get(uId);
+                                    if (unit && unit.organization_id === invitation.organization_id) {
+                                        await ctx.db.patch(uId, { leader_id: invitation.member_id });
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    await ctx.db.patch(invitation._id, { status: "accepted" });
+                }
+            }
             return user._id;
         }
 
@@ -29,37 +93,7 @@ export const store = mutation({
         const isFirstUser = !anyUser;
 
         // Check for pending invitation by token (preferred) or email (fallback)
-        let invitation = null;
-
-        // First try to find by token if provided
-        if (args.invitationToken) {
-            const token = args.invitationToken;
-            invitation = await ctx.db
-                .query("invitations")
-                .withIndex("by_token", (q) => q.eq("invitation_token", token))
-                .filter((q) => q.eq(q.field("status"), "pending"))
-                .first();
-
-            // Check if invitation is not expired
-            if (invitation && invitation.expires_at && invitation.expires_at < Date.now()) {
-                invitation = null;
-            }
-        }
-
-        // Fallback to email lookup if no token or token didn't find valid invitation
-        if (!invitation && identity.email) {
-            const email = identity.email;
-            invitation = await ctx.db
-                .query("invitations")
-                .withIndex("by_email", (q) => q.eq("email", email))
-                .filter((q) => q.eq(q.field("status"), "pending"))
-                .first();
-
-            // Also check if invitation is not expired
-            if (invitation && invitation.expires_at && invitation.expires_at < Date.now()) {
-                invitation = null;
-            }
-        }
+        const invitation = await findInvitation();
 
         // Determine role and organization_id
         let role = isFirstUser ? "super_admin" : "member";

@@ -189,13 +189,14 @@ export function MemberEditDialog({
       if (data.plus_code) {
         latLng = await convertPlusCodeToLatLng(data.plus_code);
       }
+      const normalizedPhone = (data.phone || "").replace(/\D/g, "")
 
       await updateMember({
         id: member._id || (member as any).id,
         updates: {
           name: `${data.first_name} ${data.last_name}`,
           email: data.email,
-          phone: data.phone,
+          phone: normalizedPhone,
           status: data.status,
           dob: data.dob,
           birth_month: data.birth_month,

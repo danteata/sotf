@@ -123,10 +123,11 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   const onSubmit = async (data: MemberFormData) => {
     setIsSubmitting(true)
     try {
+      const normalizedPhone = (data.phone || "").replace(/\D/g, "")
       await createMember({
         name: `${data.first_name} ${data.last_name}`,
         email: data.email,
-        phone: data.phone,
+        phone: normalizedPhone,
         status: data.status,
         dob: data.dob,
         birth_month: data.birth_month,
