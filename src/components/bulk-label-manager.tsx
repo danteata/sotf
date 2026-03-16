@@ -91,38 +91,38 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
     return (
         <div className="space-y-8 flex flex-col h-full">
             {/* Header Area */}
-            <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-slate-50/50 border border-slate-100 rounded-[32px]">
+            <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-slate-50/50 border border-slate-100 rounded-[32px] w-full">
                 <div className="h-16 w-16 bg-slate-900 text-white flex items-center justify-center rounded-2xl shrink-0 shadow-soft">
                     <Users className="h-8 w-8" />
                 </div>
-                <div className="space-y-1 text-center md:text-left">
-                    <h3 className="text-2xl tracking-tight text-slate-900">Mass Classification</h3>
+                <div className="space-y-1 text-center md:text-left flex-1 min-w-0">
+                    <h3 className="text-2xl font-bold tracking-tight text-slate-900 truncate">Mass Classification</h3>
                     <p className="text-slate-500 text-sm flex items-center gap-2 justify-center md:justify-start">
                         <Tag className="h-3.5 w-3.5 text-slate-400" /> Targeted update for {selectedMembers.length} members
                     </p>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5 justify-center md:justify-end flex-1 max-w-md">
-                    {selectedMembers.slice(0, 8).map((member) => (
+                <div className="flex flex-wrap gap-1.5 justify-center md:justify-end flex-[2] overflow-y-auto max-h-32 p-1">
+                    {selectedMembers.slice(0, 15).map((member) => (
                         <Badge key={member._id} variant="secondary" className="bg-white border border-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-lg shadow-sm">
                             {member.name}
                         </Badge>
                     ))}
-                    {selectedMembers.length > 8 && (
+                    {selectedMembers.length > 15 && (
                         <Badge className="bg-slate-100 text-slate-500 text-[10px] border-0 rounded-lg">
-                            +{selectedMembers.length - 8} More
+                            +{selectedMembers.length - 15} More
                         </Badge>
                     )}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 flex-1 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 flex-1 overflow-hidden">
                 {/* Left Column: Configuration */}
-                <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="lg:col-span-2 space-y-8 overflow-y-auto pr-2 custom-scrollbar">
                     <div className="space-y-4">
-                        <UILabel className="text-[10px] text-slate-400 tracking-wider pl-1">Configuration Strategy</UILabel>
+                        <UILabel className="text-[10px] uppercase font-black text-slate-400 tracking-wider pl-1">Configuration Strategy</UILabel>
                         <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
-                            <SelectTrigger className="h-12 border-slate-200 rounded-xl bg-white focus:ring-slate-900">
+                            <SelectTrigger className="h-14 border-slate-200 rounded-xl bg-white focus:ring-slate-900 text-base">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="border border-border/50 rounded-xl shadow-soft-2xl">
@@ -145,11 +145,11 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                         </Select>
 
                         <div className={cn(
-                            "p-4 border rounded-2xl text-xs flex items-start gap-3 leading-relaxed",
-                            operation === 'add' ? "bg-emerald-50/50 border-emerald-100 text-emerald-800" :
-                                operation === 'remove' ? "bg-rose-50/50 border-rose-100 text-rose-800" : "bg-slate-50 border-slate-100 text-slate-600"
+                            "p-5 border rounded-2xl text-sm flex items-start gap-4 leading-relaxed shadow-sm",
+                            operation === 'add' ? "bg-emerald-50 border-emerald-100 text-emerald-800" :
+                                operation === 'remove' ? "bg-rose-50 border-rose-100 text-rose-800" : "bg-slate-50 border-slate-100 text-slate-600"
                         )}>
-                            <AlertTriangle className="h-5 w-5 shrink-0" />
+                            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
                             <span>
                                 {operation === 'add' && 'Labels will be integrated with existing data. System avoids duplicates automatically.'}
                                 {operation === 'remove' && 'Selected labels will be detached from all members in the current selection.'}
@@ -158,20 +158,19 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <UILabel className="text-[10px] text-slate-400 tracking-wider pl-1">Documentation Notes</UILabel>
+                    <div className="space-y-3">
+                        <UILabel className="text-[10px] uppercase font-black text-slate-400 tracking-wider pl-1">Documentation Notes</UILabel>
                         <Textarea
                             placeholder="Provide rationale for this mass update..."
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            rows={4}
-                            className="rounded-xl border-slate-200 text-sm resize-none bg-white focus:ring-slate-900"
+                            className="rounded-xl border-slate-200 text-base resize-none bg-white focus:ring-slate-900 min-h-[160px] p-4"
                         />
                     </div>
                 </div>
 
                 {/* Right Column: Inventory Selection */}
-                <div className="flex flex-col border border-border/50 rounded-[32px] overflow-hidden bg-slate-50/30 h-full max-h-[500px] shadow-soft">
+                <div className="lg:col-span-3 flex flex-col border border-border/50 rounded-[32px] overflow-hidden bg-slate-50/30 h-full shadow-soft">
                     <div className="p-4 border-b border-border/50 bg-white/50 backdrop-blur-sm flex items-center gap-3">
                         <Search className="h-5 w-5 text-slate-400" />
                         <Input
@@ -194,17 +193,17 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
                                     <h4 className="font-black text-[10px] tracking-widest pl-1 text-slate-400">
                                         {category}
                                     </h4>
-                                    <div className="grid grid-cols-1 gap-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {labels.map((label) => {
                                             const isSelected = selectedLabels.some(l => l._id === label._id)
                                             return (
                                                 <div
                                                     key={label._id}
                                                     className={cn(
-                                                        "flex items-center gap-4 p-4 rounded-2xl border transition-all cursor-pointer group",
+                                                        "flex items-center gap-4 p-5 rounded-2xl border transition-all cursor-pointer group",
                                                         isSelected
                                                             ? "border-slate-900 bg-slate-900 text-white shadow-soft"
-                                                            : "border-border/10 bg-white hover:border-slate-200 hover:shadow-sm"
+                                                            : "border-border/10 bg-white hover:border-slate-300 hover:shadow-md"
                                                     )}
                                                     onClick={() => handleLabelToggle(label)}
                                                 >
@@ -300,7 +299,7 @@ export function BulkLabelDialog({ selectedMembers, trigger }: {
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
-            <DialogContent className="max-w-5xl h-[90vh] p-0 border border-border/50 shadow-soft-2xl rounded-[40px] overflow-hidden">
+            <DialogContent className="sm:max-w-6xl h-[90vh] p-0 border border-border/50 shadow-soft-2xl rounded-[40px] overflow-hidden">
                 <div className="flex flex-col h-full bg-white">
                     <DialogHeader className="p-10 pb-6 shrink-0 space-y-2">
                         <div className="flex items-center gap-4">

@@ -25,6 +25,7 @@ interface Member {
   name: string
   email?: string
   avatar?: string
+  avatar_url?: string
   initials?: string
 }
 
@@ -67,7 +68,7 @@ export function MemberCombobox({
           {selectedMember ? (
             <div className="flex items-center gap-2">
               <Avatar className="h-6 w-6">
-                <AvatarImage src={selectedMember.avatar} alt={selectedMember.name} />
+                <AvatarImage src={selectedMember.avatar_url || selectedMember.avatar} alt={selectedMember.name} />
                 <AvatarFallback className="text-xs">
                   {selectedMember.initials || selectedMember.name.charAt(0)}
                 </AvatarFallback>
@@ -110,7 +111,7 @@ export function MemberCombobox({
                   )}
                 />
               </CommandItem>
-              
+
               {/* Member options */}
               {members.map((member) => (
                 <CommandItem
@@ -123,7 +124,7 @@ export function MemberCombobox({
                 >
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={member.avatar} alt={member.name} />
+                      <AvatarImage src={member.avatar_url || member.avatar} alt={member.name} />
                       <AvatarFallback className="text-xs">
                         {member.initials || member.name.charAt(0)}
                       </AvatarFallback>

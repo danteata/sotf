@@ -1,21 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, ArrowUpDown, Phone, Tag, Users, Building2 } from "lucide-react"
+import { MoreHorizontal, ArrowUpDown, Phone, Tag, Users, Building2, Eye, Edit, Trash2 } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MemberEditDialog } from "@/components/member-edit-dialog"
 import { MemberProfileDialog } from "@/components/member-profile-dialog"
@@ -187,7 +179,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 </div>
               </TableHead>
               <TableHead className="hidden md:table-cell">Contact</TableHead>
-              <TableHead className="hidden md:table-cell">City</TableHead>
+              <TableHead className="hidden md:table-cell">Address</TableHead>
               <TableHead>
                 <div className="flex items-center space-x-2" onClick={() => handleSort("status")}>
                   <span className="font-bold">Status</span>
@@ -212,7 +204,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                   <ArrowUpDown className="h-4 w-4 cursor-pointer" />
                 </div>
               </TableHead>
-              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="w-[50px] text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -228,7 +220,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="ring-2 ring-primary/20">
-                      <AvatarImage src={member.avatar} alt={member.name} />
+                      <AvatarImage src={member.avatar_url || member.avatar} alt={member.name} />
                       <AvatarFallback className="bg-muted text-foreground font-semibold text-sm border border-border/50">{member.initials}</AvatarFallback>
                     </Avatar>
                     <div className="font-bold">{member.name}</div>
@@ -240,7 +232,7 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                     <span>{member.phone || '—'}</span>
                   </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">{member.city}</TableCell>
+                <TableCell className="hidden md:table-cell">{member.address || member.city || '—'}</TableCell>
                 <TableCell>{getStatusBadge(member.status)}</TableCell>
                 <TableCell className="hidden md:table-cell">
                   <div className="flex flex-wrap gap-1">
@@ -260,36 +252,40 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 </TableCell>
                 <TableCell className="font-medium">{member.last_attendance}</TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="hover:bg-primary/10">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="shadow-lg">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setViewingMember(member)}>
-                        View profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setEditingMember(member)}>
-                        Edit member
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>View attendance</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={async () => {
-                          if (confirm("Are you sure you want to delete this member?")) {
-                            await deleteMember({ id: member.id as any });
-                            toast({ title: "Member deleted" });
-                          }
-                        }}
-                      >
-                        Delete member
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setViewingMember(member)}
+                    >
+                      <Eye className="h-4 w-4" />
+                      <span className="sr-only">View</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setEditingMember(member)}
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={async () => {
+                        if (confirm("Are you sure you want to delete this member?")) {
+                          await deleteMember({ id: member.id as any });
+                          toast({ title: "Member deleted" });
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

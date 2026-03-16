@@ -42,6 +42,7 @@ const memberSchema = z.object({
   state: z.string().optional(),
   zip: z.string().optional(),
   country: z.string().optional(),
+  plus_code: z.string().optional(),
   unit_ids: z.array(z.string()).optional(),
   skills: z.string().optional(),
   avatar_url: z.string().optional(),
@@ -139,6 +140,9 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
         organization_id: organization?._id,
         unit_ids: (data.unit_ids || []).map(id => id as any),
         avatar_url: data.avatar_url,
+        joined_date: data.joined_date,
+        skills: data.skills,
+        plus_code: (data as any).plus_code,
       });
 
       toast({
@@ -172,7 +176,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[calc(100%-2rem)] sm:w-[800px] max-h-[90vh] p-0 overflow-hidden border-neon glass-card"
+        className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] p-0 overflow-hidden border-neon glass-card"
       >
         <form onSubmit={onSubmitWrapper} className="flex flex-col h-full max-h-[90vh]">
           <DialogHeader className="p-6 pb-2">
@@ -194,7 +198,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <TabsContent value="basic" className="space-y-6 mt-0 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
                   <div className="md:col-span-1 space-y-2">
                     <Label htmlFor="title" className="text-sm font-medium">Title</Label>
                     <Select onValueChange={(value) => setValue("title", value)}>
@@ -210,7 +214,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="md:col-span-3 space-y-2">
+                  <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="first_name" className="text-sm font-medium after:content-['*'] after:text-destructive after:ml-0.5">
                       First Name
                     </Label>
@@ -219,10 +223,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       <p className="text-xs font-medium text-destructive mt-1">{errors.first_name.message}</p>
                     )}
                   </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
+                  <div className="md:col-span-2 space-y-2">
                     <Label htmlFor="last_name" className="text-sm font-medium after:content-['*'] after:text-destructive after:ml-0.5">
                       Last Name
                     </Label>
@@ -231,7 +232,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       <p className="text-xs font-medium text-destructive mt-1">{errors.last_name.message}</p>
                     )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="md:col-span-1 space-y-2">
                     <Label htmlFor="status" className="text-sm font-medium after:content-['*'] after:text-destructive after:ml-0.5">
                       Status
                     </Label>
@@ -251,27 +252,11 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="dob" className="text-sm font-medium">Date of Birth</Label>
                     <Input type="date" {...register("dob")} className="rounded-lg bg-background/50 border-input-border focus-visible:ring-primary/20" />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gender" className="text-sm font-medium">Gender</Label>
-                    <Select onValueChange={(value) => setValue("gender", value)}>
-                      <SelectTrigger className="rounded-lg bg-background/50 border-input-border">
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl shadow-xl border-border/50">
-                        <SelectItem value="male">Male</SelectItem>
-                        <SelectItem value="female">Female</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="birth_month" className="text-sm font-medium">Birth Month</Label>
                     <Select onValueChange={(value) => setValue("birth_month", parseInt(value))}>
@@ -302,6 +287,31 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="gender" className="text-sm font-medium">Gender</Label>
+                    <Select onValueChange={(value) => setValue("gender", value)}>
+                      <SelectTrigger className="rounded-lg bg-background/50 border-input-border">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl shadow-xl border-border/50">
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="joined_date" className="text-sm font-medium">Date Joined</Label>
+                    <Input type="date" {...register("joined_date")} className="rounded-lg bg-background/50 border-input-border focus-visible:ring-primary/20" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="skills" className="text-sm font-medium">Skills / Talents</Label>
+                  <Input {...register("skills")} placeholder="e.g. Singing, Playing instrument, Teaching..." className="rounded-lg bg-background/50 border-input-border focus-visible:ring-primary/20" />
                 </div>
               </TabsContent>
 
@@ -346,6 +356,11 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                     <Input {...register("zip")} className="rounded-lg bg-background/50 border-input-border focus-visible:ring-primary/20" />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="plus_code" className="text-sm font-medium">Plus Code (Google Maps)</Label>
+                  <Input {...register("plus_code")} placeholder="e.g. 7FG6V8VR+2G" className="rounded-lg bg-background/50 border-input-border focus-visible:ring-primary/20" />
+                </div>
               </TabsContent>
 
               <TabsContent value="units" className="space-y-8 mt-0 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -356,7 +371,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       <Badge variant="outline" className="rounded-full bg-muted/30 text-[10px] uppercase tracking-wider">Departmental</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">Select functional units such as departments, teams, or specialty groups.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
                       {functionalUnits.map((unit) => (
                         <div key={unit._id} className="flex items-center space-x-3 p-2.5 hover:bg-background/80 rounded-lg transition-all border border-transparent hover:border-border/50 group">
                           <Checkbox
@@ -371,7 +386,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                         </div>
                       ))}
                       {functionalUnits.length === 0 && (
-                        <div className="col-span-2 text-center py-6 text-muted-foreground italic text-sm">
+                        <div className="col-span-full text-center py-6 text-muted-foreground italic text-sm">
                           No functional units available.
                         </div>
                       )}
@@ -384,7 +399,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                       <Badge variant="outline" className="rounded-full bg-muted/30 text-[10px] uppercase tracking-wider">Geographic</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">Select administrative or geographic units for organizational structuring.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-48 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
                       {adminUnits.map((unit) => (
                         <div key={unit._id} className="flex items-center space-x-3 p-2.5 hover:bg-background/80 rounded-lg transition-all border border-transparent hover:border-border/50 group">
                           <Checkbox
@@ -399,7 +414,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                         </div>
                       ))}
                       {adminUnits.length === 0 && (
-                        <div className="col-span-2 text-center py-6 text-muted-foreground italic text-sm">
+                        <div className="col-span-full text-center py-6 text-muted-foreground italic text-sm">
                           No administrative units available.
                         </div>
                       )}

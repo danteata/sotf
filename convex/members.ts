@@ -186,6 +186,8 @@ export const create = mutation({
         plus_code: v.optional(v.string()),
         avatar_url: v.optional(v.string()),
         user_id: v.optional(v.id("users")),
+        joined_date: v.optional(v.string()),
+        skills: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         await requireOrgAdmin(ctx);
@@ -358,6 +360,8 @@ export const update = mutation({
             plus_code: v.optional(v.string()),
             avatar_url: v.optional(v.string()),
             user_id: v.optional(v.id("users")),
+            joined_date: v.optional(v.string()),
+            skills: v.optional(v.string()),
         }),
         unit_ids: v.optional(v.array(v.id("units"))), // All unit assignments
     },

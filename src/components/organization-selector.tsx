@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Badge } from '@/components/ui/badge'
 import { useOrganization } from '@/hooks/use-organization'
+import { cn } from '@/lib/utils'
 
 interface OrganizationSelectorProps {
   className?: string
@@ -120,9 +121,6 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
   )
 }
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ')
-}
 
 // Compact version
 export function OrganizationSelectorCompact({ className }: OrganizationSelectorProps) {

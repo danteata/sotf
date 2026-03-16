@@ -121,6 +121,12 @@ export function MemberProfileDialog({
                       <span className="font-bold text-slate-900">{member.title}</span>
                     </div>
                   )}
+                  {(member as any).skills && (
+                    <div className="flex flex-col text-sm">
+                      <span className="text-slate-500">Skills / Talents</span>
+                      <span className="font-bold text-slate-900">{(member as any).skills}</span>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -218,7 +224,8 @@ export function MemberProfileDialog({
                         {member.address ? (
                           <>
                             {member.address}<br />
-                            {member.city}, {member.state} {member.zip}
+                            {member.city}, {member.state} {member.zip}<br />
+                            {member.country}
                           </>
                         ) : 'No address on file'}
                       </p>

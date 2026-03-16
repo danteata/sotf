@@ -66,6 +66,7 @@ const memberSchema = z.object({
   country: z.string().optional(),
   plus_code: z.string().optional(),
   avatar: z.string().optional(),
+  skills: z.string().optional(),
 })
 
 type MemberFormValues = z.infer<typeof memberSchema>
@@ -166,6 +167,7 @@ export function MemberEditDialog({
         plus_code: member.plus_code || "",
         unit_ids: currentUnitIds,
         avatar: member.avatar_url || member.avatar || "",
+        skills: (member as any).skills || "",
       });
     }
   }, [open, member, form]);
@@ -208,6 +210,7 @@ export function MemberEditDialog({
           latitude: latLng?.lat,
           longitude: latLng?.lng,
           avatar_url: data.avatar,
+          skills: data.skills,
         },
         unit_ids: data.unit_ids ? data.unit_ids.map(id => id as any) : [],
       });
@@ -401,6 +404,20 @@ export function MemberEditDialog({
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control as any}
+                    name="skills"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Skills / Talents</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="e.g. Singing, Playing instrument, Teaching..." className="rounded-xl border-slate-200" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                 </TabsContent>
 

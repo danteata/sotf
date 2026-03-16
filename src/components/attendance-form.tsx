@@ -343,7 +343,7 @@ export function AttendanceForm({
                         <TableCell className="py-4">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-10 w-10 rounded-xl border-2 border-background shadow-sm">
-                              <AvatarImage src={member.avatar_url} alt={member.name} />
+                              <AvatarImage src={member.avatar_url || member.avatar} alt={member.name} />
                               <AvatarFallback className="bg-muted text-muted-foreground text-xs">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">

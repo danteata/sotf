@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { isSuperAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
+import { isSuperAdmin, requireUser, resolveOrgId, getUserSafe, normalizeOrgId } from "./auth";
 
 // Internal helper to get managed member IDs
 async function getScopedMemberIds(ctx: any) {
@@ -10,7 +10,15 @@ async function getScopedMemberIds(ctx: any) {
     if (!user) return new Set<Id<"members">>(); // Return empty set if user doesn't exist
     if (isSuperAdmin(user)) return "all";
 
-    const orgId = await resolveOrgId(ctx);
+    // Check if user has organization_id set
+    const userOrg = normalizeOrgId(ctx, user.organization_id);
+    if (!userOrg) {
+        // User exists but no organization - return empty set for now
+        // This can happen during invitation flow before org is fully set
+        return new Set<Id<"members">>();
+    }
+
+    const orgId = userOrg;
 
     if (user.role === 'admin' || user.role === 'organization_admin') {
         const orgMembers = await ctx.db
@@ -55,7 +63,29 @@ export const getDashboardData = query({
 
         const scopedIds = await getScopedMemberIds(ctx);
         if (scopedIds === null) return null;
-        const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
+
+        // Check if user has organization - if not, return empty data
+        const userOrg = normalizeOrgId(ctx, user.organization_id);
+        if (!userOrg && !isSuperAdmin(user)) {
+            // User exists but no organization yet - return empty dashboard
+            return {
+                stats: {
+                    totalMembers: 0,
+                    scopedMembersCount: 0,
+                    newMembersThisMonthCount: 0,
+                    weeklyAttendance: 0,
+                    attendanceChange: 0,
+                    activeUnitsCount: 0,
+                    upcomingEventsCount: 0,
+                    nextEventName: 'No upcoming events',
+                },
+                upcomingEvents: [],
+                birthdayMembers: [],
+                financialTransactions: [],
+            };
+        }
+
+        const orgId = isSuperAdmin(user) ? null : userOrg;
 
         const now = new Date();
         const todayStr = now.toISOString().split('T')[0];
@@ -177,11 +207,16 @@ export const getDashboardData = query({
 export const getAttendanceTrends = query({
     args: { weeks: v.optional(v.number()) },
     handler: async (ctx, args) => {
-        const user = await requireUser(ctx);
+        const user = await getUserSafe(ctx);
+        if (!user) return [];
+        if (!isSuperAdmin(user) && !normalizeOrgId(ctx, user.organization_id)) {
+            return []; // User has no organization yet
+        }
+
         const weeks = args.weeks ?? 12;
         const scopedIds = await getScopedMemberIds(ctx);
         if (scopedIds === null) return [];
-        const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
+        const orgId = isSuperAdmin(user) ? null : normalizeOrgId(ctx, user.organization_id);
 
         const endDate = new Date();
         const startDate = new Date();

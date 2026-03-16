@@ -132,6 +132,8 @@ export default defineSchema({
         plus_code: v.optional(v.string()),
         avatar_url: v.optional(v.string()),
         user_id: v.optional(v.id("users")),
+        joined_date: v.optional(v.string()),
+        skills: v.optional(v.string()),
     })
         .index("by_org", ["organization_id"])
         .index("by_email", ["email"])
