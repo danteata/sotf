@@ -15,18 +15,19 @@ export function UserSync() {
             const tokenFromUrl = searchParams.get('token') || undefined;
             let tokenFromStorage: string | undefined;
             try {
+                if (tokenFromUrl) {
+                    localStorage.setItem("pending_invitation_token", tokenFromUrl);
+                }
                 tokenFromStorage = localStorage.getItem("pending_invitation_token") || undefined;
             } catch {
                 tokenFromStorage = undefined;
             }
             const invitationToken = tokenFromUrl || tokenFromStorage;
-            storeUser({ invitationToken }).then(() => {
-                if (tokenFromStorage) {
-                    try {
-                        localStorage.removeItem("pending_invitation_token");
-                    } catch {
-                        // ignore
-                    }
+            storeUser({ invitationToken }).finally(() => {
+                try {
+                    localStorage.removeItem("pending_invitation_token");
+                } catch {
+                    // ignore
                 }
             });
         }

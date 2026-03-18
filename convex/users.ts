@@ -50,8 +50,9 @@ export const store = mutation({
 
         if (user !== null) {
             // Update name/email if changed, but preserve organization_id and role
-            if (user.name !== identity.name || user.email !== identity.email) {
-                await ctx.db.patch(user._id, { name: identity.name, email: identity.email });
+            const resolvedName = identity.name || identity.nickname || identity.email || "Member";
+            if (user.name !== resolvedName || user.email !== identity.email) {
+                await ctx.db.patch(user._id, { name: resolvedName, email: identity.email });
             }
 
             // If user already exists but has no organization, attempt to apply invitation
@@ -105,9 +106,10 @@ export const store = mutation({
             console.log(`Found pending invitation, applying role: ${role}, org: ${organization_id}`);
         }
 
+        const resolvedName = identity.name || identity.nickname || identity.email || "Member";
         const userId = await ctx.db.insert("users", {
             clerk_user_id: identity.subject,
-            name: identity.name,
+            name: resolvedName,
             email: identity.email,
             role: role,
             organization_id: organization_id,

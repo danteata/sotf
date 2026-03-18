@@ -59,11 +59,18 @@ async function resolveManagedMemberIds(ctx: any) {
         return new Set(orgMembers.map((m: any) => m._id));
     }
 
-    // Find linked member
-    const member = await ctx.db
+    // Find linked member by user_id first, then fallback to email
+    let member = await ctx.db
         .query("members")
-        .withIndex("by_email", (q: any) => q.eq("email", user.email))
+        .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
         .first();
+
+    if (!member && user.email) {
+        member = await ctx.db
+            .query("members")
+            .withIndex("by_email", (q: any) => q.eq("email", user.email))
+            .first();
+    }
 
     if (!member) return new Set<Id<"members">>();
 
@@ -144,6 +151,285 @@ export const getAll = query({
 
         // Enrich with details (this might be slow for N+1, but fine for MVP)
         return await Promise.all(members.map(async (m) => formatMember(ctx, m)));
+    },
+});
+
+// Debug: resolve current user's linked member and managed scope
+export const debugCurrentUser = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await getUserSafe(ctx);
+        if (!user) return null;
+
+        let member = await ctx.db
+            .query("members")
+            .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
+            .first();
+
+        if (!member && user.email) {
+            member = await ctx.db
+                .query("members")
+                .withIndex("by_email", (q: any) => q.eq("email", user.email))
+                .first();
+        }
+
+        let ledUnits: Doc<"units">[] = [];
+        if (member) {
+            ledUnits = await ctx.db
+                .query("units")
+                .filter((q: any) => q.eq(q.field("leader_id"), member!._id))
+                .collect();
+        }
+
+        const managedIds = await resolveManagedMemberIds(ctx);
+        const managedMemberIds =
+            managedIds === "all"
+                ? ["all"]
+                : managedIds
+                    ? Array.from(managedIds)
+                    : [];
+
+        const ledUnitsWithCounts = await Promise.all(
+            ledUnits.map(async (u) => {
+                const relations = await ctx.db
+                    .query("member_units")
+                    .withIndex("by_unit", (q: any) => q.eq("unit_id", u._id))
+                    .collect();
+                const members = await Promise.all(relations.map(r => ctx.db.get(r.member_id)));
+                const existingMemberIds = members.filter(Boolean).map(m => (m as Doc<"members">)._id);
+                const missingMemberIds = relations
+                    .map(r => r.member_id)
+                    .filter(id => !existingMemberIds.includes(id));
+                return {
+                    id: u._id,
+                    name: u.name,
+                    memberCount: relations.length,
+                    existingMemberCount: existingMemberIds.length,
+                    missingMemberIds: missingMemberIds.slice(0, 10),
+                };
+            })
+        );
+
+        return {
+            user: {
+                id: user._id,
+                role: user.role,
+                email: user.email,
+                name: user.name,
+                organization_id: user.organization_id,
+            },
+            member: member
+                ? {
+                    id: member._id,
+                    name: member.name,
+                    email: member.email,
+                    organization_id: member.organization_id,
+                }
+                : null,
+            ledUnits: ledUnitsWithCounts,
+            managedMemberIds,
+        };
+    },
+});
+
+// Cleanup orphaned member_units rows (where member no longer exists)
+export const cleanupOrphanMemberUnits = mutation({
+    args: { organization_id: v.optional(v.id("organizations")) },
+    handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        if (!orgId) throw new Error("Organization not set");
+
+        const units = await ctx.db
+            .query("units")
+            .withIndex("by_org", (q: any) => q.eq("organization_id", orgId))
+            .collect();
+
+        let removed = 0;
+        for (const unit of units) {
+            const relations = await ctx.db
+                .query("member_units")
+                .withIndex("by_unit", (q: any) => q.eq("unit_id", unit._id))
+                .collect();
+            for (const rel of relations) {
+                const member = await ctx.db.get(rel.member_id);
+                if (!member) {
+                    await ctx.db.delete(rel._id);
+                    removed += 1;
+                }
+            }
+        }
+
+        return { removed };
+    },
+});
+
+// Merge duplicate members by first name + phone (most recent wins, missing fields filled)
+export const mergeDuplicatesByNamePhone = mutation({
+    args: { organization_id: v.optional(v.id("organizations")) },
+    handler: async (ctx, args) => {
+        await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        if (!orgId) throw new Error("Organization not set");
+
+        const members = await ctx.db
+            .query("members")
+            .withIndex("by_org", (q: any) => q.eq("organization_id", orgId))
+            .collect();
+
+        const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "");
+        const normalizeFirst = (name?: string | null) => (name || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+        const isEmpty = (v: any) => v === undefined || v === null || v === "";
+
+        const groups = new Map<string, Doc<"members">[]>();
+        for (const m of members) {
+            const phone = normalizePhone(m.phone);
+            const first = normalizeFirst(m.name);
+            if (!phone || !first) continue;
+            const key = `${first}|${phone}`;
+            const bucket = groups.get(key) ?? [];
+            bucket.push(m);
+            groups.set(key, bucket);
+        }
+
+        let mergedGroups = 0;
+        let removed = 0;
+
+        for (const group of groups.values()) {
+            if (group.length < 2) continue;
+            mergedGroups += 1;
+
+            const sorted = group.sort((a, b) => b._creationTime - a._creationTime);
+            const primary = sorted[0];
+            const duplicates = sorted.slice(1);
+
+            for (const dup of duplicates) {
+                const updates: Record<string, any> = {};
+                const fields: (keyof Doc<"members">)[] = [
+                    "name",
+                    "email",
+                    "phone",
+                    "status",
+                    "dob",
+                    "birth_month",
+                    "birth_day",
+                    "gender",
+                    "marital_status",
+                    "anniversary",
+                    "address",
+                    "city",
+                    "state",
+                    "zip",
+                    "country",
+                    "latitude",
+                    "longitude",
+                    "plus_code",
+                    "avatar_url",
+                    "user_id",
+                    "joined_date",
+                    "skills",
+                ];
+
+                for (const f of fields) {
+                    // If primary is missing and dup has value, fill it
+                    if (isEmpty((primary as any)[f]) && !isEmpty((dup as any)[f])) {
+                        updates[f as string] = (dup as any)[f];
+                    }
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    await ctx.db.patch(primary._id, updates);
+                }
+
+                // Merge member_units
+                const dupUnits = await ctx.db
+                    .query("member_units")
+                    .withIndex("by_member", (q: any) => q.eq("member_id", dup._id))
+                    .collect();
+                for (const mu of dupUnits) {
+                    const existing = await ctx.db
+                        .query("member_units")
+                        .withIndex("by_member_unit", (q: any) => q.eq("member_id", primary._id).eq("unit_id", mu.unit_id))
+                        .first();
+                    if (!existing) {
+                        await ctx.db.insert("member_units", {
+                            member_id: primary._id,
+                            unit_id: mu.unit_id,
+                            joined_date: mu.joined_date,
+                            role: mu.role,
+                            is_active: mu.is_active,
+                        });
+                    }
+                    await ctx.db.delete(mu._id);
+                }
+
+                // Merge member_labels
+                const dupLabels = await ctx.db
+                    .query("member_labels")
+                    .withIndex("by_member", (q: any) => q.eq("member_id", dup._id))
+                    .collect();
+                for (const ml of dupLabels) {
+                    const existing = await ctx.db
+                        .query("member_labels")
+                        .withIndex("by_member", (q: any) => q.eq("member_id", primary._id))
+                        .filter((q: any) => q.eq(q.field("label_id"), ml.label_id))
+                        .first();
+                    if (!existing) {
+                        await ctx.db.insert("member_labels", {
+                            member_id: primary._id,
+                            label_id: ml.label_id,
+                            assigned_by: ml.assigned_by,
+                            assigned_by_name: ml.assigned_by_name,
+                        });
+                    }
+                    await ctx.db.delete(ml._id);
+                }
+
+                // Merge member_attendance
+                const dupAttendance = await ctx.db
+                    .query("member_attendance")
+                    .withIndex("by_member", (q: any) => q.eq("member_id", dup._id))
+                    .collect();
+                for (const ma of dupAttendance) {
+                    const existing = await ctx.db
+                        .query("member_attendance")
+                        .withIndex("by_member", (q: any) => q.eq("member_id", primary._id))
+                        .filter((q: any) => q.eq(q.field("attendance_id"), ma.attendance_id))
+                        .first();
+                    if (!existing) {
+                        await ctx.db.insert("member_attendance", {
+                            member_id: primary._id,
+                            attendance_id: ma.attendance_id,
+                        });
+                    }
+                    await ctx.db.delete(ma._id);
+                }
+
+                // Update invitations
+                const dupInvites = await ctx.db
+                    .query("invitations")
+                    .filter((q: any) => q.eq(q.field("member_id"), dup._id))
+                    .collect();
+                for (const inv of dupInvites) {
+                    await ctx.db.patch(inv._id, { member_id: primary._id });
+                }
+
+                // Update financial transactions
+                const dupTransactions = await ctx.db
+                    .query("financial_transactions")
+                    .filter((q: any) => q.eq(q.field("member_id"), dup._id))
+                    .collect();
+                for (const ft of dupTransactions) {
+                    await ctx.db.patch(ft._id, { member_id: primary._id, member_name: primary.name });
+                }
+
+                // Delete duplicate member
+                await ctx.db.delete(dup._id);
+                removed += 1;
+            }
+        }
+
+        return { mergedGroups, removed };
     },
 });
 
@@ -606,6 +892,27 @@ export const remove = mutation({
             .collect();
 
         await Promise.all(attendance.map(r => ctx.db.delete(r._id)));
+
+        // Delete member labels
+        const labels = await ctx.db
+            .query("member_labels")
+            .withIndex("by_member", q => q.eq("member_id", args.id))
+            .collect();
+        await Promise.all(labels.map(r => ctx.db.delete(r._id)));
+
+        // Unlink member from invitations
+        const invites = await ctx.db
+            .query("invitations")
+            .filter((q: any) => q.eq(q.field("member_id"), args.id))
+            .collect();
+        await Promise.all(invites.map(i => ctx.db.patch(i._id, { member_id: undefined })));
+
+        // Unlink from financial transactions
+        const transactions = await ctx.db
+            .query("financial_transactions")
+            .filter((q: any) => q.eq(q.field("member_id"), args.id))
+            .collect();
+        await Promise.all(transactions.map(t => ctx.db.patch(t._id, { member_id: undefined, member_name: undefined })));
 
         // Delete member
         await ctx.db.delete(args.id);

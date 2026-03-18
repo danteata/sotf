@@ -139,6 +139,12 @@ export function UserManagement() {
     return matchesSearch && matchesRole
   })
 
+  const getLeaderUnitsForUser = (user: any) => {
+    const member = members.find(m => m.email === user.email)
+    if (!member) return []
+    return allUnits.filter((u: any) => u.leader_id === member._id)
+  }
+
   if (!isAdmin) {
     return (
       <div className="container p-4 md:p-6">
@@ -231,6 +237,7 @@ export function UserManagement() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Units</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -239,7 +246,7 @@ export function UserManagement() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2"></div>
                           Loading users...
@@ -249,7 +256,7 @@ export function UserManagement() {
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="h-24 text-center text-muted-foreground"
                       >
                         No users found
@@ -257,6 +264,9 @@ export function UserManagement() {
                     </TableRow>
                   ) : (
                     filteredUsers.map((user) => (
+                      (() => {
+                        const leaderUnits = getLeaderUnitsForUser(user)
+                        return (
                       <TableRow key={user._id}>
                         <TableCell className="font-medium">
                           {user.name}
@@ -284,6 +294,19 @@ export function UserManagement() {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          {leaderUnits.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {leaderUnits.map((unit: any) => (
+                                <Badge key={unit._id} variant="outline" className="text-xs">
+                                  {unit.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <Badge
                             variant={user.active ? 'default' : 'secondary'}
                           >
@@ -303,6 +326,8 @@ export function UserManagement() {
                           </Button>
                         </TableCell>
                       </TableRow>
+                        )
+                      })()
                     ))
                   )}
                 </TableBody>

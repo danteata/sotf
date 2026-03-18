@@ -96,12 +96,13 @@ export const accept = mutation({
             .withIndex("by_clerk_id", q => q.eq("clerk_user_id", identity.subject))
             .first();
 
+        const resolvedName = identity.name || identity.nickname || identity.email || "Member";
         if (!user) {
             // Create user if they don't exist (new signup via invitation)
             const userId = await ctx.db.insert("users", {
                 clerk_user_id: identity.subject,
                 email: identity.email,
-                name: identity.name,
+                name: resolvedName,
                 role: invitation.intended_role,
                 organization_id: invitation.organization_id as any,
                 active: true,

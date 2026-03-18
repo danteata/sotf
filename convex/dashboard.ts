@@ -28,11 +28,18 @@ async function getScopedMemberIds(ctx: any) {
         return new Set(orgMembers.map((m: any) => m._id));
     }
 
-    // Find linked member
-    const member = await ctx.db
+    // Find linked member by user_id first, then fallback to email
+    let member = await ctx.db
         .query("members")
-        .withIndex("by_email", (q: any) => q.eq("email", user.email))
+        .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
         .first();
+
+    if (!member && user.email) {
+        member = await ctx.db
+            .query("members")
+            .withIndex("by_email", (q: any) => q.eq("email", user.email))
+            .first();
+    }
 
     if (!member) return new Set<Id<"members">>();
 
@@ -176,6 +183,22 @@ export const getDashboardData = query({
             unitsQuery = unitsQuery.filter(q => q.eq(q.field("organization_id"), orgId));
         }
         const activeUnits = await unitsQuery.collect();
+        let ledUnitsCount: number | null = null;
+        if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
+            const member = await ctx.db
+                .query("members")
+                .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
+                .first();
+            if (member) {
+                const ledUnits = await ctx.db
+                    .query("units")
+                    .filter((q: any) => q.eq(q.field("leader_id"), member._id))
+                    .collect();
+                ledUnitsCount = ledUnits.length;
+            } else {
+                ledUnitsCount = 0;
+            }
+        }
 
         // 5. Birthdays - return all active members for frontend filtering
         return {
@@ -185,7 +208,7 @@ export const getDashboardData = query({
                 newMembersThisMonthCount,
                 weeklyAttendance,
                 attendanceChange: Math.round(attendanceChange * 10) / 10,
-                activeUnitsCount: activeUnits.length,
+                activeUnitsCount: ledUnitsCount !== null ? ledUnitsCount : activeUnits.length,
                 upcomingEventsCount: upcomingEvents.length,
                 nextEventName: upcomingEvents.length > 0 ? upcomingEvents[0].title : 'No upcoming events',
             },

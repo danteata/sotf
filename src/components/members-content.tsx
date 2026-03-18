@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { Download, Filter, Plus, Search, Upload, Users, Building2, Tag } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
-import { useQuery } from "convex/react"
+import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Member } from "@/types/database"
 import { cn } from "@/lib/utils"
 import { useOrganization } from "@/hooks/use-organization"
+import { useUserRole } from "@/hooks/use-user-role"
+import { useToast } from "@/hooks/use-toast"
 
 interface MembersContentProps {
   initialMembers: Member[]
@@ -31,6 +33,9 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   const { organization } = useOrganization()
   const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
   const labelsData = useQuery(api.labels.list, {});
+  const mergeDuplicates = useMutation(api.members.mergeDuplicatesByNamePhone)
+  const { isAdmin } = useUserRole()
+  const { toast } = useToast()
 
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]
@@ -100,6 +105,31 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
             <Upload className="mr-2 h-4 w-4" />
             Bulk Upload
           </Button>
+          {isAdmin && organization?._id && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!window.confirm("Merge duplicates by first name + phone? This cannot be undone.")) return
+                try {
+                  const result = await mergeDuplicates({ organization_id: organization._id })
+                  toast({
+                    title: "Deduplication complete",
+                    description: `Merged ${result.mergedGroups} groups, removed ${result.removed} duplicates.`,
+                  })
+                } catch (err: any) {
+                  toast({
+                    title: "Deduplication failed",
+                    description: err.message || "Unable to merge duplicates.",
+                    variant: "destructive",
+                  })
+                }
+              }}
+              className="shadow-sm hover:shadow-md transition-all rounded-lg"
+            >
+              Merge Duplicates
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={() => setIsAddMemberOpen(true)}

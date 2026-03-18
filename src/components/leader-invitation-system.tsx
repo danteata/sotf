@@ -77,6 +77,7 @@ export function LeaderInvitationSystem() {
   // Get current user to check if super_admin
   const currentUser = useQuery(api.users.current);
   const isSuperAdmin = currentUser?.role === "super_admin";
+  const isOrgAdmin = currentUser?.role === "organization_admin" || currentUser?.role === "admin";
 
   // For super_admins, get all organizations and allow selection
   const allOrganizations = useQuery(api.organizations.list, isSuperAdmin ? undefined : "skip");
@@ -88,11 +89,23 @@ export function LeaderInvitationSystem() {
     : organization;
 
   // Convex Queries
-  const members = useQuery(api.members.getAll, {}) || []
-  const unitsData = useQuery(api.units.listByOrg, activeOrganization?._id ? { organization_id: activeOrganization._id } : "skip");
+  const members = useQuery(
+    api.members.getAll,
+    activeOrganization?._id ? { organization_id: activeOrganization._id } : "skip"
+  ) || []
+  const unitsData = useQuery(
+    api.units.listByOrg,
+    activeOrganization?._id ? { organization_id: activeOrganization._id } : "skip"
+  );
   const allUnits = unitsData || [];
   const users = useQuery(api.users.list) || []
-  const invitations = useQuery(api.invitations.list, {}) || []
+  const invitations = useQuery(
+    api.invitations.list,
+    activeOrganization?._id ? { organization_id: activeOrganization._id } : "skip"
+  ) || []
+  const scopedUsers = activeOrganization?._id
+    ? users.filter((u: any) => u.organization_id === activeOrganization._id)
+    : users;
 
   // Convex Mutations
   const createInvitation = useMutation(api.invitations.create)
@@ -124,6 +137,19 @@ export function LeaderInvitationSystem() {
 
   const isLoading = members.length === 0 && allUnits.length === 0;
 
+  if (currentUser && !isSuperAdmin && !isOrgAdmin) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Unit Leader Invitation System</CardTitle>
+          <CardDescription>
+            You don&apos;t have permission to invite leaders.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+    )
+  }
+
   // Derive Potential Leaders from state
   const potentialLeaders: PotentialLeader[] = members
     .filter((member: any) => {
@@ -134,7 +160,7 @@ export function LeaderInvitationSystem() {
     .map((member: any) => {
       const ledUnits = allUnits.filter((u: any) => u.leader_id === member._id);
       const invitation = invitations.find((i: any) => i.member_id === member._id || i.email === member.email);
-      const hasAccount = users.some((u: any) => u.email === member.email);
+      const hasAccount = scopedUsers.some((u: any) => u.email === member.email);
 
       return {
         id: member._id,
@@ -223,12 +249,15 @@ export function LeaderInvitationSystem() {
 
   const generateInvitationLink = async (leaderId: string) => {
     const leader = potentialLeaders.find(l => l.id === leaderId);
-    if (!leader || !leader.email) return;
+    if (!leader) return;
 
     try {
       const role = 'unit_admin';
+      const email = leader.email && leader.email.trim().length > 0
+        ? leader.email
+        : `invite+${leader.id}@placeholder.local`;
       const result = await createInvitation({
-        email: leader.email,
+        email,
         member_id: leader.id as Id<"members">,
         intended_role: role,
         intended_units: leader.led_unit_ids as Id<"units">[],
@@ -238,6 +267,12 @@ export function LeaderInvitationSystem() {
       const link = `${window.location.origin}/accept-invitation?token=${result.token}`;
       setGeneratedLink(link);
       setIsInviteLinkDialogOpen(true);
+      if (!leader.email) {
+        toast({
+          title: "Missing email",
+          description: "This leader has no email on file. The invite link was generated; please share it directly.",
+        });
+      }
     } catch (err: any) {
       console.error('Generate invitation link error:', err);
       toast({

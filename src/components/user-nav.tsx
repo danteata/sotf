@@ -81,7 +81,14 @@ export function UserNav() {
         </DropdownMenuGroup>
         <DropdownMenuSeparator className="bg-border/30" />
         <DropdownMenuItem
-          onClick={() => signOut(() => navigate("/"))}
+          onClick={() => {
+            try {
+              localStorage.removeItem("pending_invitation_token")
+            } catch {
+              // ignore
+            }
+            signOut(() => navigate("/"))
+          }}
           className="text-destructive focus:text-destructive cursor-pointer hover:bg-destructive/10 focus:bg-destructive/10 rounded-lg"
         >
           Log out

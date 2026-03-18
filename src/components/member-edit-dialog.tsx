@@ -43,7 +43,7 @@ import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileUploader } from "@/components/file-uploader"
-import { Upload, X, Shield, Crown } from "lucide-react"
+import { Upload, X, Crown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const memberSchema = z.object({
@@ -625,10 +625,10 @@ export function MemberEditDialog({
                   />
 
                   {/* Units Led Section */}
-                  <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4">
+                  <div className="border border-slate-100 rounded-2xl p-4 bg-white">
                     <div className="flex items-center gap-2 mb-3">
-                      <Crown className="h-4 w-4 text-purple-600" />
-                      <h4 className="text-[10px] text-purple-600 tracking-wider">Units Led</h4>
+                      <Crown className="h-4 w-4 text-slate-600" />
+                      <h4 className="text-xs font-semibold text-slate-700">Units Led</h4>
                     </div>
                     <div className="space-y-2 max-h-[150px] overflow-y-auto">
                       {availableUnits.filter(u => {
@@ -649,36 +649,26 @@ export function MemberEditDialog({
                             return u.leader_id === memberId;
                           })
                           .map(unit => (
-                            <div key={unit.id} className="flex items-center gap-3 p-2 bg-white rounded-lg border border-purple-100">
+                            <div key={unit.id} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg border border-slate-100">
                               <div className="flex-1">
                                 <p className="text-sm text-slate-900">{unit.name}</p>
                                 <p className="text-[10px] text-slate-400">{unit.type}</p>
                               </div>
-                              <Badge className="bg-purple-600 text-white text-[10px]">Leader</Badge>
+                              <Badge variant="secondary" className="text-[10px]">Leader</Badge>
                             </div>
                           ))
                       ) : (
-                        <p className="text-sm text-purple-400 italic py-2">This member is not leading any units.</p>
+                        <p className="text-sm text-slate-400 py-2">No units led</p>
                       )}
                     </div>
-                    <p className="text-[10px] text-purple-400 mt-3 italic">
-                      To assign this member as leader of a unit, go to Unit Management.
+                    <p className="text-[10px] text-slate-400 mt-3">
+                      Leadership assignments are managed in Unit Management.
                     </p>
                   </div>
                 </TabsContent>
 
-                <TabsContent value="labels" className="space-y-6 mt-0">
-                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-amber-900 text-[11px] flex items-start gap-3">
-                    <Shield className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
-                    <div>
-                      <p className="uppercase tracking-wider mb-1 text-amber-700">TAGGING_SYSTEM_OVERRIDE</p>
-                      <p className="font-medium text-amber-800/80 leading-relaxed font-sans">
-                        Labels categorize entities for rapid retrieval. Changes are committed to the encrypted registry in real-time.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="border border-slate-100 rounded-2xl p-5 bg-slate-50/30 shadow-none ring-1 ring-slate-100/50">
-                    <h4 className="text-[10px] text-slate-400 tracking-widest mb-4">Registry Controls</h4>
+                <TabsContent value="labels" className="space-y-4 mt-0">
+                  <div className="border border-slate-100 rounded-2xl p-5 bg-white">
                     <LabelSelector
                       memberId={(member as any)._id || (member as any).id || ''}
                       variant="full"

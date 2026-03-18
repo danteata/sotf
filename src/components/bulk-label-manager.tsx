@@ -35,12 +35,14 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
     }) || []
 
     const bulkMutation = useMutation(api.labels.bulk)
+    const createLabel = useMutation(api.labels.create)
 
     const [selectedLabels, setSelectedLabels] = useState<any[]>([])
     const [operation, setOperation] = useState<'add' | 'remove' | 'replace'>('add')
     const [notes, setNotes] = useState('')
     const [saving, setSaving] = useState(false)
     const [searchValue, setSearchValue] = useState("")
+    const [creatingLabel, setCreatingLabel] = useState(false)
 
     const handleLabelToggle = (label: any) => {
         const isSelected = selectedLabels.some(l => l._id === label._id)
@@ -77,9 +79,11 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
         }
     }
 
+    const normalizedSearch = searchValue.trim().toLowerCase()
     const filteredLabels = availableLabels.filter(label =>
-        label.name.toLowerCase().includes(searchValue.toLowerCase())
+        label.name.toLowerCase().includes(normalizedSearch)
     )
+    const hasExactMatch = availableLabels.some(label => label.name.toLowerCase() === normalizedSearch)
 
     const groupedLabels = filteredLabels.reduce((acc, label) => {
         const category = label.category || 'other'
@@ -89,195 +93,117 @@ export function BulkLabelManager({ selectedMembers, onComplete, onCancel }: Bulk
     }, {} as Record<string, any[]>)
 
     return (
-        <div className="space-y-8 flex flex-col h-full">
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row items-center gap-6 p-8 bg-slate-50/50 border border-slate-100 rounded-[32px] w-full">
-                <div className="h-16 w-16 bg-slate-900 text-white flex items-center justify-center rounded-2xl shrink-0 shadow-soft">
-                    <Users className="h-8 w-8" />
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h3 className="text-lg font-semibold">Apply Labels</h3>
+                    <p className="text-xs text-muted-foreground">Selected members: {selectedMembers.length}</p>
                 </div>
-                <div className="space-y-1 text-center md:text-left flex-1 min-w-0">
-                    <h3 className="text-2xl font-bold tracking-tight text-slate-900 truncate">Mass Classification</h3>
-                    <p className="text-slate-500 text-sm flex items-center gap-2 justify-center md:justify-start">
-                        <Tag className="h-3.5 w-3.5 text-slate-400" /> Targeted update for {selectedMembers.length} members
-                    </p>
+                <div className="w-full sm:w-48">
+                    <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
+                        <SelectTrigger className="h-9">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="add">Add</SelectItem>
+                            <SelectItem value="remove">Remove</SelectItem>
+                            <SelectItem value="replace">Replace</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
+            </div>
 
-                <div className="flex flex-wrap gap-1.5 justify-center md:justify-end flex-[2] overflow-y-auto max-h-32 p-1">
-                    {selectedMembers.slice(0, 15).map((member) => (
-                        <Badge key={member._id} variant="secondary" className="bg-white border border-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-lg shadow-sm">
-                            {member.name}
+            <div className="flex items-center gap-2 border rounded-md px-3 py-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                    placeholder="Search labels..."
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[320px] overflow-y-auto border rounded-md p-2">
+                {filteredLabels.length === 0 ? (
+                    <div className="text-sm text-muted-foreground p-4">No matching labels</div>
+                ) : (
+                    filteredLabels.map((label: any) => {
+                        const isSelected = selectedLabels.some(l => l._id === label._id)
+                        return (
+                            <button
+                                key={label._id}
+                                onClick={() => handleLabelToggle(label)}
+                                className="text-left"
+                            >
+                                <Badge
+                                    variant={isSelected ? "default" : "secondary"}
+                                    className={cn(
+                                        "w-full justify-between gap-2 px-3 py-2 text-sm",
+                                        isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
+                                    )}
+                                >
+                                    <span className="inline-flex items-center gap-2">
+                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: label.color }} />
+                                        {label.name}
+                                    </span>
+                                    {isSelected && <Check className="h-4 w-4" />}
+                                </Badge>
+                            </button>
+                        )
+                    })
+                )}
+                {normalizedSearch.length > 0 && !hasExactMatch && (
+                    <button
+                        onClick={async () => {
+                            setCreatingLabel(true)
+                            try {
+                                await createLabel({
+                                    name: searchValue.trim(),
+                                    color: "#3B82F6",
+                                    category: "custom",
+                                    is_system_label: false,
+                                    organization_id: context?.organization?._id as Id<"organizations">,
+                                    created_by: user?.clerk_user_id,
+                                    created_by_name: user?.name,
+                                })
+                                toast({ title: "Label created" })
+                            } catch (err: any) {
+                                toast({
+                                    title: "Create failed",
+                                    description: err.message || "Unable to create label.",
+                                    variant: "destructive",
+                                })
+                            } finally {
+                                setCreatingLabel(false)
+                            }
+                        }}
+                        disabled={creatingLabel}
+                        className="flex items-center gap-2 p-2 rounded-md border border-dashed text-left text-sm"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Create “{searchValue.trim()}”
+                    </button>
+                )}
+            </div>
+
+            {selectedLabels.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {selectedLabels.map((label) => (
+                        <Badge key={label._id} variant="secondary" className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: label.color }} />
+                            {label.name}
+                            <X className="w-3 h-3 cursor-pointer" onClick={() => handleLabelToggle(label)} />
                         </Badge>
                     ))}
-                    {selectedMembers.length > 15 && (
-                        <Badge className="bg-slate-100 text-slate-500 text-[10px] border-0 rounded-lg">
-                            +{selectedMembers.length - 15} More
-                        </Badge>
-                    )}
                 </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 flex-1 overflow-hidden">
-                {/* Left Column: Configuration */}
-                <div className="lg:col-span-2 space-y-8 overflow-y-auto pr-2 custom-scrollbar">
-                    <div className="space-y-4">
-                        <UILabel className="text-[10px] uppercase font-black text-slate-400 tracking-wider pl-1">Configuration Strategy</UILabel>
-                        <Select value={operation} onValueChange={(value: any) => setOperation(value)}>
-                            <SelectTrigger className="h-14 border-slate-200 rounded-xl bg-white focus:ring-slate-900 text-base">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="border border-border/50 rounded-xl shadow-soft-2xl">
-                                <SelectItem value="add" className="font-bold text-sm py-3 rounded-lg focus:bg-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <Plus className="h-4 w-4 text-emerald-500" /> Append New Labels
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="remove" className="font-bold text-sm py-3 rounded-lg focus:bg-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <Trash2 className="h-4 w-4 text-rose-500" /> Remove Specific Labels
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="replace" className="font-bold text-sm py-3 rounded-lg focus:bg-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <Tag className="h-4 w-4 text-slate-400" /> Override All Labels
-                                    </div>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <div className={cn(
-                            "p-5 border rounded-2xl text-sm flex items-start gap-4 leading-relaxed shadow-sm",
-                            operation === 'add' ? "bg-emerald-50 border-emerald-100 text-emerald-800" :
-                                operation === 'remove' ? "bg-rose-50 border-rose-100 text-rose-800" : "bg-slate-50 border-slate-100 text-slate-600"
-                        )}>
-                            <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
-                            <span>
-                                {operation === 'add' && 'Labels will be integrated with existing data. System avoids duplicates automatically.'}
-                                {operation === 'remove' && 'Selected labels will be detached from all members in the current selection.'}
-                                {operation === 'replace' && 'Caution: This will purge existing member labels before applying the new selection.'}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-3">
-                        <UILabel className="text-[10px] uppercase font-black text-slate-400 tracking-wider pl-1">Documentation Notes</UILabel>
-                        <Textarea
-                            placeholder="Provide rationale for this mass update..."
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            className="rounded-xl border-slate-200 text-base resize-none bg-white focus:ring-slate-900 min-h-[160px] p-4"
-                        />
-                    </div>
-                </div>
-
-                {/* Right Column: Inventory Selection */}
-                <div className="lg:col-span-3 flex flex-col border border-border/50 rounded-[32px] overflow-hidden bg-slate-50/30 h-full shadow-soft">
-                    <div className="p-4 border-b border-border/50 bg-white/50 backdrop-blur-sm flex items-center gap-3">
-                        <Search className="h-5 w-5 text-slate-400" />
-                        <Input
-                            placeholder="Filter Taxonomy..."
-                            value={searchValue}
-                            onChange={(e) => setSearchValue(e.target.value)}
-                            className="border-0 shadow-none focus-visible:ring-0 text-sm p-0 bg-transparent h-auto"
-                        />
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                        {Object.keys(groupedLabels).length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center opacity-40 text-center space-y-2 py-12">
-                                <Info className="h-10 w-10 text-slate-300" />
-                                <p className="font-bold text-sm text-slate-400">No matching labels found</p>
-                            </div>
-                        ) : (
-                            Object.entries(groupedLabels).map(([category, labels]) => (
-                                <div key={category} className="space-y-4">
-                                    <h4 className="font-black text-[10px] tracking-widest pl-1 text-slate-400">
-                                        {category}
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {labels.map((label) => {
-                                            const isSelected = selectedLabels.some(l => l._id === label._id)
-                                            return (
-                                                <div
-                                                    key={label._id}
-                                                    className={cn(
-                                                        "flex items-center gap-4 p-5 rounded-2xl border transition-all cursor-pointer group",
-                                                        isSelected
-                                                            ? "border-slate-900 bg-slate-900 text-white shadow-soft"
-                                                            : "border-border/10 bg-white hover:border-slate-300 hover:shadow-md"
-                                                    )}
-                                                    onClick={() => handleLabelToggle(label)}
-                                                >
-                                                    <div className={cn(
-                                                        "w-6 h-6 border flex items-center justify-center rounded-lg transition-colors",
-                                                        isSelected ? "bg-white text-slate-900 border-white" : "bg-slate-50 border-slate-200"
-                                                    )}>
-                                                        {isSelected && <Check className="h-3.5 w-3.5 stroke-[4px]" />}
-                                                    </div>
-                                                    <div
-                                                        className="w-4 h-4 rounded-full shrink-0 border border-black/5"
-                                                        style={{ backgroundColor: label.color }}
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="font-bold text-sm truncate">{label.name}</div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                    {selectedLabels.length > 0 && (
-                        <div className="p-5 bg-slate-900 text-white animate-in slide-in-from-bottom duration-300">
-                            <div className="text-[10px] tracking-wider mb-4 flex justify-between items-center text-slate-400">
-                                <span className="flex items-center gap-2">
-                                    <Tag className="h-3 w-3 text-slate-500" /> Active Payload ({selectedLabels.length})
-                                </span>
-                                <button onClick={() => setSelectedLabels([])} className="hover:text-white underline underline-offset-4 transition-colors">Clear All</button>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {selectedLabels.map((label) => (
-                                    <Badge
-                                        key={label._id}
-                                        className="bg-slate-800 text-white text-[10px] border border-slate-700 hover:bg-slate-700 transition-colors cursor-default py-1 px-2.5 rounded-lg flex items-center gap-2"
-                                    >
-                                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: label.color }} />
-                                        {label.name}
-                                        <X className="w-3 h-3 ml-1 hover:text-slate-300 cursor-pointer" onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleLabelToggle(label);
-                                        }} />
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Global Actions */}
-            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-slate-100">
-                <Button variant="ghost" onClick={onCancel} disabled={saving} className="h-12 px-8 text-slate-500 rounded-xl">
-                    Cancel Operation
+            <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={onCancel} disabled={saving}>
+                    Cancel
                 </Button>
-                <Button
-                    onClick={handleBulkOperation}
-                    disabled={saving || selectedLabels.length === 0}
-                    className="h-12 px-10 bg-slate-900 text-white hover:bg-slate-800 shadow-soft-xl rounded-xl transition-all min-w-[240px]"
-                >
-                    {saving ? (
-                        <div className="flex items-center gap-3">
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                            Applying Changes...
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <Check className="h-5 w-5 stroke-[3px]" />
-                            Update {selectedMembers.length} Members
-                        </div>
-                    )}
+                <Button onClick={handleBulkOperation} disabled={saving || selectedLabels.length === 0}>
+                    {saving ? "Applying..." : `Update ${selectedMembers.length}`}
                 </Button>
             </div>
         </div>
@@ -299,31 +225,16 @@ export function BulkLabelDialog({ selectedMembers, trigger }: {
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-6xl h-[90vh] p-0 border border-border/50 shadow-soft-2xl rounded-[40px] overflow-hidden">
-                <div className="flex flex-col h-full bg-white">
-                    <DialogHeader className="p-10 pb-6 shrink-0 space-y-2">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-slate-900 rounded-2xl shadow-soft">
-                                <Tag className="h-7 w-7 text-white" />
-                            </div>
-                            <div>
-                                <DialogTitle className="text-3xl tracking-tight text-slate-900">
-                                    Bulk Classification
-                                </DialogTitle>
-                                <DialogDescription className="font-medium text-slate-500 text-sm">
-                                    Apply taxonomy updates across multiple member profiles simultaneously
-                                </DialogDescription>
-                            </div>
-                        </div>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-y-auto p-10 pt-4 px-12">
-                        <BulkLabelManager
-                            selectedMembers={selectedMembers}
-                            onComplete={() => setOpen(false)}
-                            onCancel={() => setOpen(false)}
-                        />
-                    </div>
-                </div>
+            <DialogContent className="sm:max-w-3xl p-6">
+                <DialogHeader className="space-y-1">
+                    <DialogTitle>Labels</DialogTitle>
+                    <DialogDescription>Apply labels to selected members</DialogDescription>
+                </DialogHeader>
+                <BulkLabelManager
+                    selectedMembers={selectedMembers}
+                    onComplete={() => setOpen(false)}
+                    onCancel={() => setOpen(false)}
+                />
             </DialogContent>
         </Dialog>
     )

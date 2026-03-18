@@ -62,7 +62,7 @@ export const create = mutation({
         created_by_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        await requireUser(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         return await ctx.db.insert("labels", {
             ...args,
@@ -125,7 +125,7 @@ export const toggleMemberLabel = mutation({
         assigned_by_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        await requireUser(ctx);
         const member = await ctx.db.get(args.member_id);
         const label = await ctx.db.get(args.label_id);
         if (!member || !label) throw new Error("Member or label not found");
@@ -186,7 +186,7 @@ export const bulk = mutation({
         notes: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        await requireUser(ctx);
         for (const memberId of args.member_ids) {
             const member = await ctx.db.get(memberId);
             if (member?.organization_id) {
