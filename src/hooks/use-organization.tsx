@@ -85,7 +85,6 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     if (organizationId) {
       await switchOrgMutation({ organization_id: organizationId });
     }
-    console.log("Switching to", organizationId);
   }, [switchOrgMutation])
 
   const refreshContext = useCallback(async () => {

@@ -1,29 +1,37 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { useConvexAuth } from "convex/react";
 import { AuthLoadingWrapper } from "@/components/auth-loading-wrapper";
 import { UserSync } from "@/components/user-sync";
 
-// Pages
 import HomePage from "@/pages/Home";
-import DashboardPage from "@/pages/Dashboard";
 import SignInPage from "@/pages/auth/SignIn";
 import SignUpPage from "@/pages/auth/SignUp";
 import InvitePage from "@/pages/auth/Invite";
 import AcceptInvitationPage from "@/pages/auth/AcceptInvitation";
-import MembersPage from "@/pages/members/Members";
-import EventsPage from "@/pages/events/Events";
-import FinancialPage from "@/pages/financial/Financial";
-import AdminDashboardPage from "@/pages/admin/AdminDashboard";
-import UserManagementPage from "@/pages/admin/UserManagement";
-import LabelManagementPage from "@/pages/admin/LabelManagement";
 
-import OrganizationPage from "@/pages/organization/Organization";
-import SettingsPage from "@/pages/settings/Settings";
-import ProfilePage from "@/pages/profile/Profile";
-import AttendancePage from "@/pages/attendance/Attendance";
-import MapPage from "@/pages/map/Map";
-import ReportsPage from "@/pages/reports/Reports";
+const DashboardPage = lazy(() => import("@/pages/Dashboard"));
+const MembersPage = lazy(() => import("@/pages/members/Members"));
+const EventsPage = lazy(() => import("@/pages/events/Events"));
+const FinancialPage = lazy(() => import("@/pages/financial/Financial"));
+const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboard"));
+const UserManagementPage = lazy(() => import("@/pages/admin/UserManagement"));
+const LabelManagementPage = lazy(() => import("@/pages/admin/LabelManagement"));
+const OrganizationPage = lazy(() => import("@/pages/organization/Organization"));
+const SettingsPage = lazy(() => import("@/pages/settings/Settings"));
+const ProfilePage = lazy(() => import("@/pages/profile/Profile"));
+const AttendancePage = lazy(() => import("@/pages/attendance/Attendance"));
+const MapPage = lazy(() => import("@/pages/map/Map"));
+const ReportsPage = lazy(() => import("@/pages/reports/Reports"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  );
+}
 
 function Protected({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useConvexAuth();
@@ -45,128 +53,154 @@ function Protected({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-    return (
-        <BrowserRouter>
-            <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<HomePage />} />
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<HomePage />} />
 
-                {/* Auth Routes */}
-                <Route path="/sign-in/*" element={<SignInPage />} />
-                <Route path="/sign-up/*" element={<SignUpPage />} />
-                <Route path="/invite/:token" element={<InvitePage />} />
-                <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+        {/* Auth Routes */}
+        <Route path="/sign-in/*" element={<SignInPage />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
+        <Route path="/invite/:token" element={<InvitePage />} />
+        <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
 
-                {/* Protected Routes */}
-                <Route
-                    path="/dashboard"
-                    element={
-                        <Protected>
-                            <DashboardPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/members"
-                    element={
-                        <Protected>
-                            <MembersPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/events"
-                    element={
-                        <Protected>
-                            <EventsPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/financial"
-                    element={
-                        <Protected>
-                            <FinancialPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/admin"
-                    element={
-                        <Protected>
-                            <AdminDashboardPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/user-management"
-                    element={
-                        <Protected>
-                            <UserManagementPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/labels"
-                    element={
-                        <Protected>
-                            <LabelManagementPage />
-                        </Protected>
-                    }
-                />
+        {/* Protected Routes */}
+        <Route
+          path="/dashboard"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <DashboardPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/members"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <MembersPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/events"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <EventsPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/financial"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <FinancialPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <AdminDashboardPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/user-management"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <UserManagementPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/labels"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <LabelManagementPage />
+              </Suspense>
+            </Protected>
+          }
+        />
 
-                <Route
-                    path="/organization"
-                    element={
-                        <Protected>
-                            <OrganizationPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/settings"
-                    element={
-                        <Protected>
-                            <SettingsPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/profile"
-                    element={
-                        <Protected>
-                            <ProfilePage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/attendance"
-                    element={
-                        <Protected>
-                            <AttendancePage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/map"
-                    element={
-                        <Protected>
-                            <MapPage />
-                        </Protected>
-                    }
-                />
-                <Route
-                    path="/reports"
-                    element={
-                        <Protected>
-                            <ReportsPage />
-                        </Protected>
-                    }
-                />
+        <Route
+          path="/organization"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <OrganizationPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <SettingsPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <ProfilePage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <AttendancePage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/map"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <MapPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <ReportsPage />
+              </Suspense>
+            </Protected>
+          }
+        />
 
-                {/* Catch-all redirect */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-        </BrowserRouter>
-    );
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }

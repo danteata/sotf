@@ -38,8 +38,7 @@ interface MapViewProps {
 }
 
 export default function MapView({ members }: MapViewProps) {
-    console.log('Members in MapView:', members);
-    const { isLoaded } = useJsApiLoader({
+  const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
     })

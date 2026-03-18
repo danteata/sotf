@@ -868,6 +868,39 @@ export const bulkAddToUnit = mutation({
     },
 });
 
+// Bulk update member status
+export const bulkUpdateStatus = mutation({
+    args: {
+        member_ids: v.array(v.id("members")),
+        status: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const allowedStatuses = new Set(["active", "inactive", "visitor"]);
+        if (!allowedStatuses.has(args.status)) {
+            throw new Error("Invalid status");
+        }
+
+        const managedIds = await resolveManagedMemberIds(ctx);
+        if (managedIds !== "all") {
+            if (!managedIds || managedIds.size === 0) {
+                throw new Error("Forbidden");
+            }
+            const unauthorized = args.member_ids.filter(id => !managedIds.has(id));
+            if (unauthorized.length > 0) {
+                throw new Error("Forbidden");
+            }
+        }
+
+        const members = await Promise.all(args.member_ids.map(id => ctx.db.get(id)));
+        const missing = members.filter(m => !m).length;
+        if (missing > 0) throw new Error("Member not found");
+
+        await Promise.all(args.member_ids.map(id => ctx.db.patch(id, { status: args.status })));
+
+        return { updated: args.member_ids.length };
+    },
+});
+
 // Delete member
 export const remove = mutation({
     args: { id: v.id("members") },

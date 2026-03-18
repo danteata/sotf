@@ -66,9 +66,9 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(member =>
-        member.name.toLowerCase().includes(query) ||
-        member.email.toLowerCase().includes(query) ||
-        (member.phone && member.phone.toLowerCase().includes(query))
+        (member.name?.toLowerCase().includes(query) ?? false) ||
+        (member.email?.toLowerCase().includes(query) ?? false) ||
+        (member.phone?.toLowerCase().includes(query) ?? false)
       )
     }
     return filtered;

@@ -14,14 +14,12 @@ export async function convertPlusCodeToLatLng(plusCode: string): Promise<{ lat: 
     const response = await fetch(url);
     const data = await response.json();
 
-    if (data.status === 'OK') {
-      const location = data.results[0].geometry.location;
-      console.log('Converted plus code:', plusCode, 'to:', location);
-      return { lat: location.lat, lng: location.lng };
-    } else {
-      console.error('Geocoding API error:', data.status, data.error_message);
-      return null;
-    }
+if (data.status === 'OK') {
+    const location = data.results[0].geometry.location;
+    return { lat: location.lat, lng: location.lng };
+  }
+  console.error('Geocoding API error:', data.status, data.error_message);
+  return null;
   } catch (error) {
     console.error('Error fetching from Geocoding API:', error);
     return null;

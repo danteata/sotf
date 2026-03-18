@@ -254,10 +254,9 @@ export function AttendanceContent() {
           if (!open) setEditingMetadata(null)
         }}
         summary={editingMetadata}
-        onSave={async (summaryData: any) => {
-          console.log("Saving service metadata", summaryData);
-          setShowMetadataDialog(false);
-        }}
+onSave={async (_summaryData: unknown) => {
+      setShowMetadataDialog(false);
+    }}
         events={[]}
         members={members.map(m => ({ id: m.id, name: m.name, units: m.unit_names || [] }))}
       />
