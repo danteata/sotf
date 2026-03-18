@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
+import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, isSuperAdmin } from "./auth";
 
 // Helper to format member with details (typed)
 async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
@@ -897,8 +897,155 @@ export const bulkUpdateStatus = mutation({
 
         await Promise.all(args.member_ids.map(id => ctx.db.patch(id, { status: args.status })));
 
-        return { updated: args.member_ids.length };
-    },
+return { updated: args.member_ids.length };
+  },
+});
+
+export const getInsights = query({
+  args: { organization_id: v.optional(v.id("organizations")) },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+    
+    const members = orgId
+      ? await ctx.db.query("members").withIndex("by_org", (q: any) => q.eq("organization_id", orgId)).collect()
+      : await ctx.db.query("members").collect();
+    
+    const memberAttendanceRecords = await ctx.db.query("member_attendance").collect();
+    const attendanceRecords = await ctx.db.query("attendance").collect();
+    
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    
+    const activeMembers = members.filter(m => m.status === 'active');
+    const inactiveMembers = members.filter(m => m.status === 'inactive');
+    const visitors = members.filter(m => m.status === 'visitor');
+    
+    const recentAttendances = attendanceRecords.filter(a => {
+      const date = new Date(a.date);
+      return date >= thirtyDaysAgo && date <= now;
+    });
+    
+    const memberRecentAttendance = new Map<string, number>();
+    memberAttendanceRecords.forEach(ma => {
+      const attendance = attendanceRecords.find(a => a._id === ma.attendance_id);
+      if (attendance) {
+        const date = new Date(attendance.date);
+        if (date >= thirtyDaysAgo) {
+          const count = memberRecentAttendance.get(ma.member_id) || 0;
+          memberRecentAttendance.set(ma.member_id, count + 1);
+        }
+      }
+    });
+    
+    const attendedLast30Days = activeMembers.filter(m => memberRecentAttendance.has(m._id)).length;
+    
+    const retentionData = [];
+    for (let i = 11; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+      const monthStr = monthStart.toISOString().substring(0, 7);
+      
+      const monthAttendances = attendanceRecords.filter(a => a.date.startsWith(monthStr));
+      const monthMemberAttendance = memberAttendanceRecords.filter(ma => {
+        const att = attendanceRecords.find(a => a._id === ma.attendance_id);
+        return att && att.date.startsWith(monthStr);
+      });
+      
+      const uniqueAttendees = new Set(monthMemberAttendance.map(ma => ma.member_id)).size;
+      const totalAttendance = monthAttendances.reduce((sum, a) => sum + a.count, 0);
+      const avgAttendance = monthAttendances.length > 0 ? Math.round(totalAttendance / monthAttendances.length) : 0;
+      
+      retentionData.push({
+        month: monthStart.toLocaleDateString('en-US', { month: 'short' }),
+        uniqueAttendees,
+        totalAttendance,
+        avgAttendance
+      });
+    }
+    
+    const inactiveThreshold = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const inactiveThresholdStr = formatDate(inactiveThreshold);
+    
+    const potentiallyInactive = activeMembers.filter(m => {
+      const memberAtt = memberAttendanceRecords.filter(ma => ma.member_id === m._id);
+      const recentAtt = memberAtt.filter(ma => {
+        const att = attendanceRecords.find(a => a._id === ma.attendance_id);
+        return att && att.date >= inactiveThresholdStr;
+      });
+      return recentAtt.length === 0;
+    });
+    
+    const newMembersThisMonth = members.filter(m => {
+      if (!m.joined_date) return false;
+      const joined = new Date(m.joined_date);
+      return joined.getMonth() === now.getMonth() && joined.getFullYear() === now.getFullYear();
+    }).length;
+    
+    const newMembersLastMonth = members.filter(m => {
+      if (!m.joined_date) return false;
+      const joined = new Date(m.joined_date);
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+      return joined.getMonth() === lastMonth.getMonth() && joined.getFullYear() === lastMonth.getFullYear();
+    }).length;
+    
+    const genderBreakdown = {
+      male: activeMembers.filter(m => m.gender === 'male').length,
+      female: activeMembers.filter(m => m.gender === 'female').length,
+      unspecified: activeMembers.filter(m => !m.gender).length
+    };
+    
+    const ageGroups = { under18: 0, '18-30': 0, '31-50': 0, '51-70': 0, over70: 0, unspecified: 0 };
+    activeMembers.forEach(m => {
+      if (!m.dob) {
+        ageGroups.unspecified++;
+        return;
+      }
+      const birthDate = new Date(m.dob);
+      const age = now.getFullYear() - birthDate.getFullYear();
+      if (age < 18) ageGroups.under18++;
+      else if (age < 31) ageGroups['18-30']++;
+      else if (age < 51) ageGroups['31-50']++;
+      else if (age < 71) ageGroups['51-70']++;
+      else ageGroups.over70++;
+    });
+    
+    const attendanceTrend = retentionData.slice(-4);
+    const trendingUp = attendanceTrend.length >= 2 && 
+      attendanceTrend[attendanceTrend.length - 1].avgAttendance > attendanceTrend[0].avgAttendance;
+    
+    return {
+      overview: {
+        totalMembers: members.length,
+        activeMembers: activeMembers.length,
+        inactiveMembers: inactiveMembers.length,
+        visitors: visitors.length,
+        newMembersThisMonth,
+        newMembersLastMonth,
+        attendedLast30Days,
+        engagementRate: activeMembers.length > 0 ? Math.round((attendedLast30Days / activeMembers.length) * 100) : 0,
+        retentionRate: retentionData.length >= 2 && retentionData[0].uniqueAttendees > 0
+          ? Math.round((retentionData[retentionData.length - 1].uniqueAttendees / retentionData[0].uniqueAttendees) * 100)
+          : 100,
+        trendingUp
+      },
+      retentionData,
+      potentiallyInactive: potentiallyInactive.map(m => ({
+        id: m._id,
+        name: m.name,
+        lastSeen: null,
+        unit_names: []
+      })).slice(0, 10),
+      demographics: {
+        gender: genderBreakdown,
+        ageGroups
+      }
+    };
+  },
 });
 
 // Delete member
