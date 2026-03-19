@@ -44,7 +44,7 @@ export function WelcomeBanner() {
             <Church className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl">Welcome to Makarios Church Management System</h2>
+            <h2 className="text-xl">Welcome to Floc Church Management System</h2>
             <p className="text-muted-foreground">This is a demo version. Set up Clerk to enable authentication.</p>
           </div>
         </div>
@@ -91,7 +91,7 @@ export function WelcomeBanner() {
           <Church className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl">Welcome to Makarios Church Management System</h2>
+          <h2 className="text-xl">Welcome to Floc Church Management System</h2>
           <p className="text-muted-foreground">Sign in to access all features and manage your church community</p>
         </div>
       </div>

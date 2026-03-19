@@ -1,6 +1,6 @@
-# Makarios Church Management System
+# Floc Church Management System
 
-A comprehensive church management system built with Vite + React + Convex, specifically designed for Makarios Church.
+A comprehensive church management system built with Vite + React + Convex.
 
 ## Features
 
@@ -44,8 +44,8 @@ The application is structured with a modern React architecture using TypeScript 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/makarios-church-management.git
-   cd makarios-church-management
+   git clone https://github.com/danteata/sotf.git
+   cd sotf
    ```
 
 2. Install dependencies:

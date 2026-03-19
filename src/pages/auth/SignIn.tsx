@@ -21,7 +21,7 @@ function SignInContent() {
             <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
                 <div className="mb-8 flex items-center gap-2">
                     <Church className="h-8 w-8 text-primary" />
-                    <h1 className="text-2xl">Makarios Church</h1>
+                    <h1 className="text-2xl">Floc</h1>
                 </div>
 
                 <Card className="mx-auto w-full max-w-md">
@@ -61,7 +61,7 @@ function SignInContent() {
         <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
             <div className="mb-8 flex items-center gap-2">
                 <Church className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl">Makarios Church</h1>
+                <h1 className="text-2xl">Floc</h1>
             </div>
             <SignIn
                 appearance={{
@@ -86,7 +86,7 @@ export default function SignInPage() {
             <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30">
                 <div className="mb-8 flex items-center gap-2">
                     <Church className="h-8 w-8 text-primary" />
-                    <h1 className="text-2xl">Makarios Church</h1>
+                    <h1 className="text-2xl">Floc</h1>
                 </div>
                 <div className="animate-pulse">Loading...</div>
             </div>
