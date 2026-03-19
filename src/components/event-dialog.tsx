@@ -240,16 +240,13 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0 rounded-lg shadow-soft-lg" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
-                          initialFocus
-                          className="rounded-md border shadow-sm"
-                        />
+                  <Calendar
+                    mode="single"
+                    selected={field.value}
+                    onSelect={field.onChange}
+                    initialFocus
+                    className="rounded-md border shadow-sm"
+                  />
                       </PopoverContent>
                     </Popover>
                     <FormMessage />
