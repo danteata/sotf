@@ -37,6 +37,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Shield, Users, Edit, UserPlus } from 'lucide-react'
 import { useUserRole } from '@/hooks/use-user-role'
+import { useOrganization } from "@/hooks/use-organization"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useTerminology } from '@/hooks/use-terminology'
@@ -47,13 +48,20 @@ import { Id } from "../../convex/_generated/dataModel"
 export function UserManagement() {
   const { isAdmin } = useUserRole()
   const { terminology } = useTerminology()
+  const { organization } = useOrganization()
   const [activeTab, setActiveTab] = useState<'users' | 'invitations'>('users')
 
   const usersData = useQuery(api.users.list);
 
-  // Use units table for leadership assignment
-  const unitsData = useQuery(api.units.list, {});
-  const membersData = useQuery(api.members.getAll, {});
+  // Use units.listByOrg with the active organization, same as Invite Leaders tab
+  const unitsData = useQuery(
+    api.units.listByOrg,
+    organization?._id ? { organization_id: organization._id } : "skip"
+  );
+  const membersData = useQuery(
+    api.members.getAll,
+    organization?._id ? { organization_id: organization._id } : "skip"
+  );
 
   const updateRole = useMutation(api.users.updateRole);
   const updateUnit = useMutation(api.units.update);
@@ -79,8 +87,8 @@ export function UserManagement() {
     setEditingUser(user)
     setSelectedRole(user.role as UserRole)
 
-    // Find member by email
-    const member = members.find(m => m.email === user.email);
+    // Find member by user_id foreign key
+    const member = members.find(m => m.user_id === user._id);
     const memberId = member?._id;
 
     // Load member's current unit leaderships
@@ -101,8 +109,8 @@ export function UserManagement() {
       // Update user role
       await updateRole({ id: editingUser._id, role: selectedRole });
 
-      // Find member ID
-      const member = members.find(m => m.email === editingUser.email);
+      // Find member ID by email and organization
+      const member = members.find(m => m.email === editingUser.email && m.organization_id === editingUser.organization_id);
       const memberId = member?._id;
 
       if (memberId) {
@@ -140,7 +148,7 @@ export function UserManagement() {
   })
 
   const getLeaderUnitsForUser = (user: any) => {
-    const member = members.find(m => m.email === user.email)
+    const member = members.find(m => m.user_id === user._id)
     if (!member) return []
     return allUnits.filter((u: any) => u.leader_id === member._id)
   }
