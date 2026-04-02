@@ -760,6 +760,21 @@ export const update = mutation({
             throw new Error("Forbidden");
         }
 
+        // Get the current member data for audit log
+        const currentMember = await ctx.db.get(id);
+        if (!currentMember) throw new Error("Member not found");
+
+        // Track what changed for audit log
+        const changedFields: Record<string, { before: any; after: any }> = {};
+        for (const [key, value] of Object.entries(updates)) {
+            if (value !== undefined && (currentMember as any)[key] !== value) {
+                changedFields[key] = {
+                    before: (currentMember as any)[key],
+                    after: value
+                };
+            }
+        }
+
         await ctx.db.patch(id, updates);
 
         // Update unit assignments if provided (replace all)
@@ -785,6 +800,23 @@ export const update = mutation({
 
         const member = await ctx.db.get(id);
         if (!member) throw new Error("Member not found");
+
+        // Log audit event for member update
+        const user = await getUserSafe(ctx);
+        if (user && Object.keys(changedFields).length > 0) {
+            await ctx.runMutation(api.audit.logEvent, {
+                action: "member.updated",
+                entity_type: "member",
+                entity_id: id,
+                entity_name: member.name,
+                performed_by: user.clerk_user_id,
+                performed_by_name: user.name || user.email || "Unknown",
+                performed_by_role: user.role,
+                organization_id: member.organization_id,
+                changes: changedFields,
+            });
+        }
+
         return await formatMember(ctx, member);
     },
 });
@@ -1071,6 +1103,10 @@ export const remove = mutation({
             throw new Error("Forbidden");
         }
 
+        // Get member data before deletion for audit log
+        const member = await ctx.db.get(args.id);
+        if (!member) throw new Error("Member not found");
+
         // Delete member unit assignments
         const existingUnits = await ctx.db
             .query("member_units")
@@ -1107,6 +1143,28 @@ export const remove = mutation({
             .filter((q: any) => q.eq(q.field("member_id"), args.id))
             .collect();
         await Promise.all(transactions.map(t => ctx.db.patch(t._id, { member_id: undefined, member_name: undefined })));
+
+        // Log audit event for member deletion
+        const user = await getUserSafe(ctx);
+        if (user) {
+            await ctx.runMutation(api.audit.logEvent, {
+                action: "member.deleted",
+                entity_type: "member",
+                entity_id: args.id,
+                entity_name: member.name,
+                performed_by: user.clerk_user_id,
+                performed_by_name: user.name || user.email || "Unknown",
+                performed_by_role: user.role,
+                organization_id: member.organization_id,
+                changes: {
+                    deleted_member: {
+                        name: member.name,
+                        email: member.email,
+                        status: member.status
+                    }
+                },
+            });
+        }
 
         // Delete member
         await ctx.db.delete(args.id);

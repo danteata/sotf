@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
+import { api } from "./_generated/api";
 
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
@@ -84,12 +85,33 @@ export const create = mutation({
         active: v.boolean(),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
-        return await ctx.db.insert("events", {
+        const eventId = await ctx.db.insert("events", {
             ...args,
             organization_id: orgId ?? args.organization_id,
         });
+
+        // Log audit event
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "event.created",
+            entity_type: "event",
+            entity_id: eventId,
+            entity_name: args.title,
+            performed_by: user._id,
+            performed_by_name: user.name || "Unknown",
+            performed_by_role: user.role,
+            organization_id: orgId ?? args.organization_id,
+            changes: {
+                title: args.title,
+                date: args.date,
+                time: args.time,
+                location: args.location,
+                description: args.description,
+            },
+        });
+
+        return eventId;
     },
 });
 
@@ -107,25 +129,84 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
         const event = await ctx.db.get(args.id);
         if (!event) throw new Error("Event not found");
         if (event.organization_id) {
             await requireOrgAccess(ctx, event.organization_id);
         }
+
+        // Capture changes for audit
+        const changes: Record<string, any> = {};
+        if (args.updates.title !== undefined && args.updates.title !== event.title) {
+            changes.title = { from: event.title, to: args.updates.title };
+        }
+        if (args.updates.date !== undefined && args.updates.date !== event.date) {
+            changes.date = { from: event.date, to: args.updates.date };
+        }
+        if (args.updates.time !== undefined && args.updates.time !== event.time) {
+            changes.time = { from: event.time, to: args.updates.time };
+        }
+        if (args.updates.location !== undefined && args.updates.location !== event.location) {
+            changes.location = { from: event.location, to: args.updates.location };
+        }
+        if (args.updates.description !== undefined && args.updates.description !== event.description) {
+            changes.description = { from: event.description, to: args.updates.description };
+        }
+        if (args.updates.active !== undefined && args.updates.active !== event.active) {
+            changes.active = { from: event.active, to: args.updates.active };
+        }
+
         await ctx.db.patch(args.id, args.updates);
+
+        // Log audit event if there were changes
+        if (Object.keys(changes).length > 0) {
+            await ctx.runMutation(api.audit.logEvent, {
+                action: "event.updated",
+                entity_type: "event",
+                entity_id: args.id,
+                entity_name: event.title,
+                performed_by: user._id,
+                performed_by_name: user.name || "Unknown",
+                performed_by_role: user.role,
+                organization_id: event.organization_id,
+                changes,
+            });
+        }
     },
 });
 
 export const remove = mutation({
     args: { id: v.id("events") },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
         const event = await ctx.db.get(args.id);
         if (!event) throw new Error("Event not found");
         if (event.organization_id) {
             await requireOrgAccess(ctx, event.organization_id);
         }
+
+        // Log audit event before deletion
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "event.deleted",
+            entity_type: "event",
+            entity_id: args.id,
+            entity_name: event.title,
+            performed_by: user._id,
+            performed_by_name: user.name || "Unknown",
+            performed_by_role: user.role,
+            organization_id: event.organization_id,
+            changes: {
+                deleted_event: {
+                    title: event.title,
+                    date: event.date,
+                    time: event.time,
+                    location: event.location,
+                    description: event.description,
+                }
+            },
+        });
+
         await ctx.db.delete(args.id);
     },
 });

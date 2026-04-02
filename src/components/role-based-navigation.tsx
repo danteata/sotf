@@ -111,7 +111,7 @@ export function RoleBasedNavigation() {
     if (isLoading) return false
 
     // Show items based on role
-    if (isAdmin) return item.roles.includes("admin")
+    if (isAdmin) return item.roles.includes("admin") || item.roles.includes("super_admin")
 
     // Check for specific role access
     if (role && item.roles.includes(role)) return true

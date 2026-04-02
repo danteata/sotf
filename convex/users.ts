@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
 import { Id } from "./_generated/dataModel";
+import { api } from "./_generated/api";
 
 export const store = mutation({
     args: { invitationToken: v.optional(v.string()) },
@@ -298,7 +299,27 @@ export const updateRole = mutation({
             if (args.role === "super_admin") throw new Error("Forbidden");
         }
 
+        const previousRole = target.role;
         await ctx.db.patch(args.id, { role: args.role });
+
+        // Audit log for role change
+        const normalizedOrgId = target.organization_id ? ctx.db.normalizeId("organizations", target.organization_id) : null;
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "user.role_changed",
+            entity_type: "user",
+            entity_id: args.id,
+            entity_name: target.name || target.email,
+            performed_by: user.clerk_user_id,
+            performed_by_name: user.name || user.email || "Unknown",
+            performed_by_role: user.role,
+            organization_id: normalizedOrgId || undefined,
+            changes: {
+                role: {
+                    before: previousRole,
+                    after: args.role
+                }
+            },
+        });
     }
 });
 

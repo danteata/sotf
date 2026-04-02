@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
+import { api } from "./_generated/api";
 
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
@@ -62,13 +63,28 @@ export const create = mutation({
         created_by_name: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        await requireUser(ctx);
+        const user = await requireUser(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
-        return await ctx.db.insert("labels", {
+        const labelId = await ctx.db.insert("labels", {
             ...args,
             organization_id: orgId ?? args.organization_id,
             is_active: true,
         });
+
+        // Audit log
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "label.created",
+            entity_type: "label",
+            entity_id: labelId,
+            entity_name: args.name,
+            performed_by: user._id,
+            performed_by_name: user.name || "Unknown",
+            performed_by_role: user.role,
+            organization_id: orgId ?? args.organization_id,
+            changes: { name: args.name, color: args.color, category: args.category },
+        });
+
+        return labelId;
     },
 });
 
@@ -84,20 +100,54 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Label not found");
         if (existing.organization_id) {
             await requireOrgAccess(ctx, existing.organization_id);
         }
+
+        // Track changes
+        const changes: Record<string, { before: any; after: any }> = {};
+        if (args.updates.name && args.updates.name !== existing.name) {
+            changes.name = { before: existing.name, after: args.updates.name };
+        }
+        if (args.updates.color && args.updates.color !== existing.color) {
+            changes.color = { before: existing.color, after: args.updates.color };
+        }
+        if (args.updates.description !== undefined && args.updates.description !== existing.description) {
+            changes.description = { before: existing.description, after: args.updates.description };
+        }
+        if (args.updates.category !== undefined && args.updates.category !== existing.category) {
+            changes.category = { before: existing.category, after: args.updates.category };
+        }
+        if (args.updates.is_active !== undefined && args.updates.is_active !== existing.is_active) {
+            changes.is_active = { before: existing.is_active, after: args.updates.is_active };
+        }
+
         await ctx.db.patch(args.id, args.updates);
+
+        // Audit log
+        if (Object.keys(changes).length > 0) {
+            await ctx.runMutation(api.audit.logEvent, {
+                action: "label.updated",
+                entity_type: "label",
+                entity_id: args.id,
+                entity_name: existing.name,
+                performed_by: user._id,
+                performed_by_name: user.name || "Unknown",
+                performed_by_role: user.role,
+                organization_id: existing.organization_id,
+                changes,
+            });
+        }
     },
 });
 
 export const remove = mutation({
     args: { id: v.id("labels") },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Label not found");
         if (existing.organization_id) {
@@ -112,6 +162,19 @@ export const remove = mutation({
         for (const link of links) {
             await ctx.db.delete(link._id);
         }
+
+        // Audit log
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "label.deleted",
+            entity_type: "label",
+            entity_id: args.id,
+            entity_name: existing.name,
+            performed_by: user._id,
+            performed_by_name: user.name || "Unknown",
+            performed_by_role: user.role,
+            organization_id: existing.organization_id,
+            changes: { deleted: existing.name, color: existing.color },
+        });
 
         await ctx.db.delete(args.id);
     },
