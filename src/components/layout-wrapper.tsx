@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react"
+import { type ReactNode, useState, useEffect } from "react"
 import {
   Bell,
   Menu,
@@ -22,26 +22,44 @@ interface LayoutWrapperProps {
 
 export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const { isSignedIn, isLoaded } = useUser()
 
   const isClerkConfigured =
     typeof import.meta.env.VITE_CLERK_PUBLISHABLE_KEY === "string" &&
     import.meta.env.VITE_CLERK_PUBLISHABLE_KEY !== "your_publishable_key"
 
+  // Track mobile state and close sidebar when resizing to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1024
+      setIsMobile(mobile)
+      if (!mobile) {
+        setSidebarOpen(false)
+      }
+    }
+
+    // Set initial state
+    handleResize()
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <OrganizationProvider>
       <div className="flex h-screen bg-background gradient-mesh">
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
+        {/* Mobile sidebar overlay - only render on mobile */}
+        {sidebarOpen && isMobile && (
           <div
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity"
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar - solid background, not affected by blur */}
         <div className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 glass-sidebar border-r border-sidebar-border transform transition-all duration-300 ease-out lg:translate-x-0 lg:static lg:inset-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-all duration-300 ease-out lg:translate-x-0 lg:static lg:inset-0",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
           {/* Logo */}
