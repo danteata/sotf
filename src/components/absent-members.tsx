@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { toast } from "sonner"
 
 export function AbsentMembers() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -188,7 +189,47 @@ export function AbsentMembers() {
               </SelectContent>
             </Select>
           </div>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (absentMembers.length === 0) {
+                toast.error("No absent members to export")
+                return
+              }
+
+              // Create CSV content
+              const headers = ["Name", "Email", "Phone", "Status", "Last Attendance", "Consecutive Absences", "Units"]
+              const csvContent = [
+                headers.join(","),
+                ...absentMembers.map((member: any) => {
+                  const absences = selectedDate ? calculateConsecutiveAbsences(member.id, selectedDate) : 0
+                  return [
+                    `"${member.name}"`,
+                    `"${member.email || ''}"`,
+                    `"${member.phone || ''}"`,
+                    `"${member.status}"`,
+                    `"${member.lastAttendance ? format(new Date(member.lastAttendance), "MMM dd, yyyy") : 'N/A'}"`,
+                    absences,
+                    `"${member.unit_names?.join('; ') || 'None'}"`
+                  ].join(",")
+                })
+              ].join("\n")
+
+              // Download CSV
+              const blob = new Blob([csvContent], { type: "text/csv" })
+              const url = window.URL.createObjectURL(blob)
+              const a = document.createElement("a")
+              a.href = url
+              a.download = `absent-members-${eventType}-${format(selectedDate || new Date(), "yyyy-MM-dd")}.csv`
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              window.URL.revokeObjectURL(url)
+
+              toast.success("Export completed!")
+            }}
+          >
             <Download className="mr-2 h-4 w-4" />
             Export List
           </Button>

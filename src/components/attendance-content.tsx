@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3 } from "lucide-react"
+import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,6 +14,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useUserRole, useManagedMembers, useAccessibleUnits } from "@/hooks/use-user-role"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function AttendanceContent() {
   const { isAdmin } = useUserRole();
@@ -21,6 +27,7 @@ export function AttendanceContent() {
   const { ministries, isLoading: filtersLoading } = useAccessibleUnits();
 
   const stats = useQuery(api.attendance.getStats);
+  const attendanceRecords = useQuery(api.attendance.listWithDetails);
   const loading = stats === undefined || filtersLoading || membersLoading;
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -35,6 +42,42 @@ export function AttendanceContent() {
     setIsRefreshing(true)
     // Convex automatically refreshes, but we can simulate a delay or trigger a background task if needed
     setTimeout(() => setIsRefreshing(false), 500);
+  }
+
+  const handleExportAttendance = async (attendanceId: string) => {
+    try {
+      // This would need to be implemented as a Convex function
+      // For now, we'll use a simple approach with the existing data
+      const record = attendanceRecords?.find((r: any) => r._id === attendanceId)
+      if (!record) {
+        console.error("Attendance record not found")
+        return
+      }
+
+      // Create simple CSV with available data
+      const headers = ["Date", "Event Type", "Attendance Count"]
+      const csvContent = [
+        headers.join(","),
+        [
+          `"${record.date}"`,
+          `"${record.event_type_label || "Attendance"}"`,
+          record.count
+        ].join(",")
+      ].join("\n")
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: "text/csv" })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `attendance-${record.date}-${record.event_type_label || "record"}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Export failed:", error)
+    }
   }
 
   return (
@@ -57,10 +100,35 @@ export function AttendanceContent() {
             <RefreshCw className={`mr-2 h-3.5 w-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             {isRefreshing ? 'Syncing...' : 'Refresh'}
           </Button>
-          <Button variant="outline" size="sm" className="h-8">
-            <Download className="mr-2 h-3.5 w-3.5" />
-            Export
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8">
+                <Download className="mr-2 h-3.5 w-3.5" />
+                Export
+                <ChevronDown className="ml-2 h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              {attendanceRecords && attendanceRecords.length > 0 ? (
+                attendanceRecords.slice(0, 10).map((record: any) => (
+                  <DropdownMenuItem
+                    key={record._id}
+                    onClick={() => handleExportAttendance(record._id)}
+                    className="flex flex-col items-start gap-1 p-3"
+                  >
+                    <div className="font-medium">{record.event_type_label || "Attendance Record"}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {record.date} • {record.count} attendees
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem disabled>
+                  No attendance records found
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -254,9 +322,9 @@ export function AttendanceContent() {
           if (!open) setEditingMetadata(null)
         }}
         summary={editingMetadata}
-onSave={async (_summaryData: unknown) => {
-      setShowMetadataDialog(false);
-    }}
+        onSave={async (_summaryData: unknown) => {
+          setShowMetadataDialog(false);
+        }}
         events={[]}
         members={members.map(m => ({ id: m.id, name: m.name, units: m.unit_names || [] }))}
       />

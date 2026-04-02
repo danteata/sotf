@@ -462,3 +462,73 @@ export const getMemberSummary = query({
         };
     },
 });
+
+// Get attendance with member details for export
+export const getAttendanceForExport = query({
+    args: { attendanceId: v.id("attendance") },
+    handler: async (ctx, args) => {
+        const attendance = await ctx.db.get(args.attendanceId);
+        if (!attendance) throw new Error("Attendance not found");
+
+        if (attendance.organization_id) {
+            await requireOrgAccess(ctx, attendance.organization_id);
+        }
+
+        // Get event type details
+        const eventType = attendance.event_type_id
+            ? await ctx.db.get(attendance.event_type_id)
+            : null;
+
+        // Get event details if linked
+        const event = attendance.event_id
+            ? await ctx.db.get(attendance.event_id)
+            : null;
+
+        // Get all member attendance records
+        const memberAttendance = await ctx.db
+            .query("member_attendance")
+            .withIndex("by_attendance", q => q.eq("attendance_id", args.attendanceId))
+            .collect();
+
+        // Get member details with their info
+        const attendees = await Promise.all(
+            memberAttendance.map(async (ma) => {
+                const member = await ctx.db.get(ma.member_id);
+                if (!member) return null;
+
+                // Get member units
+                const memberUnits = await ctx.db
+                    .query("member_units")
+                    .withIndex("by_member", (q) => q.eq("member_id", member._id))
+                    .collect();
+
+                const unitNames: string[] = [];
+                for (const mu of memberUnits) {
+                    const unit = await ctx.db.get(mu.unit_id);
+                    if (unit) unitNames.push(unit.name);
+                }
+
+                return {
+                    name: member.name,
+                    email: member.email || "",
+                    phone: member.phone || "",
+                    status: member.status,
+                    units: unitNames.join(", "),
+                    gender: member.gender || "",
+                    dob: member.dob || "",
+                };
+            })
+        );
+
+        return {
+            attendance: {
+                date: attendance.date,
+                event_type: eventType?.label || "Unknown",
+                count: attendance.count,
+                notes: attendance.notes || "",
+                event_title: event?.title || "",
+            },
+            attendees: attendees.filter(Boolean),
+        };
+    },
+});
