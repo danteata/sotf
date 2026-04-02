@@ -88,16 +88,16 @@ export function UserManagement() {
     setSelectedRole(user.role as UserRole)
 
     // Find member by user_id foreign key
-    const member = members.find(m => m.user_id === user._id);
-    const memberId = member?._id;
+    const member = members.find(m => m.user_id === user._id)
+    const memberId = member?._id
 
     // Load member's current unit leaderships
     const currentUnits = memberId
       ? allUnits.filter((u: any) => u.leader_id === memberId).map((u: any) => u._id)
-      : [];
+      : []
 
-    setSelectedUnits(currentUnits);
-    setOriginalUnits(currentUnits);
+    setSelectedUnits(currentUnits)
+    setOriginalUnits(currentUnits)
 
     setIsDialogOpen(true)
   }
@@ -107,24 +107,25 @@ export function UserManagement() {
 
     try {
       // Update user role
-      await updateRole({ id: editingUser._id, role: selectedRole });
+      await updateRole({ id: editingUser._id, role: selectedRole })
 
-      // Find member ID by email and organization
-      const member = members.find(m => m.email === editingUser.email && m.organization_id === editingUser.organization_id);
-      const memberId = member?._id;
+      // Find member by user_id foreign key
+      const member = members.find(m => m.user_id === editingUser._id)
+      const memberId = member?._id
 
       if (memberId) {
+        const memberIdTyped = memberId as Id<"members">
         // Handle Unit Leadership Changes
-        const addedUnits = selectedUnits.filter(id => !originalUnits.includes(id));
+        const addedUnits = selectedUnits.filter(id => !originalUnits.includes(id))
         for (const uId of addedUnits) {
-          await updateUnit({ id: uId as Id<"units">, updates: { leader_id: memberId } });
+          await updateUnit({ id: uId as Id<"units">, updates: { leader_id: memberIdTyped } })
         }
 
-        const removedUnits = originalUnits.filter(id => !selectedUnits.includes(id));
+        const removedUnits = originalUnits.filter(id => !selectedUnits.includes(id))
         for (const uId of removedUnits) {
-          const unit = allUnits.find((u: any) => u._id === uId);
-          if (unit?.leader_id === memberId) {
-            await updateUnit({ id: uId as Id<"units">, updates: { leader_id: undefined } });
+          const unit = allUnits.find((u: any) => u._id === uId)
+          if (unit?.leader_id === memberIdTyped) {
+            await updateUnit({ id: uId as Id<"units">, updates: { leader_id: undefined } })
           }
         }
       }
@@ -279,7 +280,7 @@ export function UserManagement() {
                         <TableCell className="font-medium">
                           {user.name}
                         </TableCell>
-                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.email || '-'}</TableCell>
                         <TableCell>
                           <Badge
                             variant={

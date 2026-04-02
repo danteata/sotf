@@ -18,12 +18,61 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { useOrganization } from "@/hooks/use-organization"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
 import { Settings, Shield, Layout, Sparkles, Save, RotateCcw } from "lucide-react"
+
+const LEVEL_TYPE_TERMINOLOGY: Record<string, Record<string, { singular: string; plural: string }>> = {
+  '1': {
+    denomination: { singular: 'Denomination', plural: 'Denominations' },
+    network: { singular: 'Network', plural: 'Networks' },
+    organization: { singular: 'Organization', plural: 'Organizations' },
+    franchise: { singular: 'Franchise', plural: 'Franchises' },
+    chain: { singular: 'Chain', plural: 'Chains' },
+    federation: { singular: 'Federation', plural: 'Federations' },
+    custom: { singular: '', plural: '' },
+  },
+  '2': {
+    ministry: { singular: 'Ministry', plural: 'Ministries' },
+    department: { singular: 'Department', plural: 'Departments' },
+    division: { singular: 'Division', plural: 'Divisions' },
+    branch: { singular: 'Branch', plural: 'Branches' },
+    region: { singular: 'Region', plural: 'Regions' },
+    district: { singular: 'District', plural: 'Districts' },
+    chapter: { singular: 'Chapter', plural: 'Chapters' },
+    custom: { singular: '', plural: '' },
+  },
+  '3': {
+    group: { singular: 'Group', plural: 'Groups' },
+    team: { singular: 'Team', plural: 'Teams' },
+    unit: { singular: 'Unit', plural: 'Units' },
+    squad: { singular: 'Squad', plural: 'Squads' },
+    cell: { singular: 'Cell', plural: 'Cells' },
+    class: { singular: 'Class', plural: 'Classes' },
+    section: { singular: 'Section', plural: 'Sections' },
+    custom: { singular: '', plural: '' },
+  },
+  '4': {
+    subgroup: { singular: 'Sub-group', plural: 'Sub-groups' },
+    subunit: { singular: 'Sub-unit', plural: 'Sub-units' },
+    team: { singular: 'Team', plural: 'Teams' },
+    pair: { singular: 'Pair', plural: 'Pairs' },
+    cohort: { singular: 'Cohort', plural: 'Cohorts' },
+    custom: { singular: '', plural: '' },
+  },
+}
+
+type LevelType = 'denomination' | 'network' | 'organization' | 'franchise' | 'chain' | 'federation' | 'ministry' | 'department' | 'division' | 'branch' | 'region' | 'district' | 'chapter' | 'group' | 'team' | 'unit' | 'squad' | 'cell' | 'class' | 'section' | 'subgroup' | 'subunit' | 'pair' | 'cohort' | 'custom'
 
 const settingsSchema = z.object({
   // General settings (Stored in app_config)
@@ -61,6 +110,41 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
     level4_singular: 'Sub-Unit',
     level4_plural: 'Sub-Units',
   })
+  
+  // Level type selections (used to derive terminology)
+  const [levelTypes, setLevelTypes] = useState({
+    level1: 'organization' as LevelType,
+    level2: 'division' as LevelType,
+    level3: 'unit' as LevelType,
+    level4: 'subunit' as LevelType,
+  })
+
+  const handleLevelTypeChange = (level: '1' | '2' | '3' | '4', type: LevelType) => {
+    const levelKey = `level${level}` as keyof typeof levelTypes
+    setLevelTypes(prev => ({ ...prev, [levelKey]: type }))
+    
+    if (type !== 'custom' && LEVEL_TYPE_TERMINOLOGY[level]?.[type]) {
+      const terminology = LEVEL_TYPE_TERMINOLOGY[level][type]
+      const singularKey = `level${level}_singular` as keyof typeof orgTerms
+      const pluralKey = `level${level}_plural` as keyof typeof orgTerms
+      setOrgTerms(prev => ({
+        ...prev,
+        [singularKey]: terminology.singular,
+        [pluralKey]: terminology.plural,
+      }))
+    }
+  }
+
+  const detectLevelTypeFromTerm = (singular: string, level: '1' | '2' | '3' | '4'): LevelType => {
+    const types = LEVEL_TYPE_TERMINOLOGY[level]
+    if (!types) return 'custom'
+    for (const [type, terms] of Object.entries(types)) {
+      if (terms.singular.toLowerCase() === singular.toLowerCase()) {
+        return type as LevelType
+      }
+    }
+    return 'custom'
+  }
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -86,18 +170,25 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
       })
     }
 
-    if (currentOrg) {
-      setOrgTerms({
-        level1_singular: currentOrg.level1_singular || 'Organization',
-        level1_plural: currentOrg.level1_plural || 'Organizations',
-        level2_singular: currentOrg.level2_singular || 'Division',
-        level2_plural: currentOrg.level2_plural || 'Divisions',
-        level3_singular: currentOrg.level3_singular || 'Unit',
-        level3_plural: currentOrg.level3_plural || 'Units',
-        level4_singular: currentOrg.level4_singular || 'Sub-Unit',
-        level4_plural: currentOrg.level4_plural || 'Sub-Units',
-      })
-    }
+  if (currentOrg) {
+    setOrgTerms({
+      level1_singular: currentOrg.level1_singular || 'Organization',
+      level1_plural: currentOrg.level1_plural || 'Organizations',
+      level2_singular: currentOrg.level2_singular || 'Division',
+      level2_plural: currentOrg.level2_plural || 'Divisions',
+      level3_singular: currentOrg.level3_singular || 'Unit',
+      level3_plural: currentOrg.level3_plural || 'Units',
+      level4_singular: currentOrg.level4_singular || 'Sub-Unit',
+      level4_plural: currentOrg.level4_plural || 'Sub-Units',
+    })
+    // Detect level types from existing terminology
+    setLevelTypes({
+      level1: detectLevelTypeFromTerm(currentOrg.level1_singular || 'Organization', '1'),
+      level2: detectLevelTypeFromTerm(currentOrg.level2_singular || 'Division', '2'),
+      level3: detectLevelTypeFromTerm(currentOrg.level3_singular || 'Unit', '3'),
+      level4: detectLevelTypeFromTerm(currentOrg.level4_singular || 'Sub-Unit', '4'),
+    })
+  }
   }, [open, terminologyConfigs, generalConfigs, currentOrg, form])
 
   const onSubmit = async (data: SettingsFormData) => {
@@ -147,6 +238,12 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
       level3_plural: 'Units',
       level4_singular: 'Sub-Unit',
       level4_plural: 'Sub-Units',
+    })
+    setLevelTypes({
+      level1: 'organization',
+      level2: 'division',
+      level3: 'unit',
+      level4: 'subunit',
     })
   }
 
@@ -200,69 +297,104 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
               </form>
             </TabsContent>
 
-            <TabsContent value="organization" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <Card className="border border-border/50 shadow-sm bg-accent/5">
-                <CardHeader className="border-b border-border/50 px-6 py-4">
-                  <CardTitle className="text-sm font-semibold tracking-wide">Hierarchy Preview</CardTitle>
+        <TabsContent value="organization" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <Card className="border border-border/50 shadow-sm bg-accent/5">
+            <CardHeader className="border-b border-border/50 px-6 py-4">
+              <CardTitle className="text-sm font-semibold tracking-wide">Hierarchy Preview</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex flex-wrap gap-3">
+                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-primary/20 text-primary">1. {orgTerms.level1_singular}</Badge>
+                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">2. {orgTerms.level2_singular}</Badge>
+                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">3. {orgTerms.level3_singular}</Badge>
+                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">4. {orgTerms.level4_singular}</Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {[1, 2, 3, 4].map((level) => {
+            const levelKey = `level${level}` as keyof typeof levelTypes
+            const types = LEVEL_TYPE_TERMINOLOGY[String(level) as '1' | '2' | '3' | '4']
+            const singularKey = `level${level}_singular` as keyof typeof orgTerms
+            const pluralKey = `level${level}_plural` as keyof typeof orgTerms
+            const isCustom = levelTypes[levelKey] === 'custom'
+            
+            return (
+              <Card key={level} className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
+                <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    Level {level}: {orgTerms[singularKey]}
+                  </CardTitle>
+                  <CardDescription>Define how this level is named</CardDescription>
                 </CardHeader>
-                <CardContent className="p-6">
-                  <div className="flex flex-wrap gap-3">
-                    <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-primary/20 text-primary">1. {orgTerms.level1_singular}</Badge>
-                    <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">2. {orgTerms.level2_singular}</Badge>
-                    <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">3. {orgTerms.level3_singular}</Badge>
-                    <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">4. {orgTerms.level4_singular}</Badge>
+                <CardContent className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground tracking-wide">Type Preset</Label>
+                      <Select
+                        value={levelTypes[levelKey]}
+                        onValueChange={(value) => handleLevelTypeChange(String(level) as '1' | '2' | '3' | '4', value as LevelType)}
+                      >
+                        <SelectTrigger className="bg-background/50 h-11">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(types).map(([type, terms]) => (
+                            <SelectItem key={type} value={type}>
+                              {type === 'custom' ? 'Custom (manual entry)' : terms.singular}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground tracking-wide">&nbsp;</Label>
+                      <p className="text-xs text-muted-foreground pt-2">
+                        {isCustom 
+                          ? "Enter custom terminology below" 
+                          : `Auto-fills: ${types[levelTypes[levelKey] as keyof typeof types]?.singular} / ${types[levelTypes[levelKey] as keyof typeof types]?.plural}`}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground tracking-wide">Singular</Label>
+                      <Input 
+                        value={orgTerms[singularKey]} 
+                        onChange={(e) => {
+                          setOrgTerms({ ...orgTerms, [singularKey]: e.target.value })
+                          setLevelTypes({ ...levelTypes, [levelKey]: 'custom' })
+                        }} 
+                        className="bg-background/50 h-11" 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground tracking-wide">Plural</Label>
+                      <Input 
+                        value={orgTerms[pluralKey]} 
+                        onChange={(e) => {
+                          setOrgTerms({ ...orgTerms, [pluralKey]: e.target.value })
+                          setLevelTypes({ ...levelTypes, [levelKey]: 'custom' })
+                        }} 
+                        className="bg-background/50 h-11" 
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+            )
+          })}
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 1 Singular</Label>
-                    <Input value={orgTerms.level1_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level1_singular: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 2 Singular</Label>
-                    <Input value={orgTerms.level2_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level2_singular: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 3 Singular</Label>
-                    <Input value={orgTerms.level3_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level3_singular: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 4 Singular</Label>
-                    <Input value={orgTerms.level4_singular} onChange={(e) => setOrgTerms({ ...orgTerms, level4_singular: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 1 Plural</Label>
-                    <Input value={orgTerms.level1_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level1_plural: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 2 Plural</Label>
-                    <Input value={orgTerms.level2_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level2_plural: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 3 Plural</Label>
-                    <Input value={orgTerms.level3_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level3_plural: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground tracking-wide">Level 4 Plural</Label>
-                    <Input value={orgTerms.level4_plural} onChange={(e) => setOrgTerms({ ...orgTerms, level4_plural: e.target.value })} className="bg-background/50 h-11" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-4 border-t">
-                <Button onClick={handleSaveOrgTerminology} disabled={isLoading} className="flex-1 h-12 shadow-soft hover:shadow-lg transition-all">
-                  <Save className="mr-2 h-4 w-4" /> Save Structure
-                </Button>
-                <Button variant="outline" onClick={handleResetOrgTerminology} className="shadow-sm h-12">
-                  <RotateCcw className="mr-2 h-4 w-4" /> Reset
-                </Button>
-              </div>
-            </TabsContent>
+          <div className="flex gap-4 pt-4 border-t">
+            <Button onClick={handleSaveOrgTerminology} disabled={isLoading} className="flex-1 h-12 shadow-soft hover:shadow-lg transition-all">
+              <Save className="mr-2 h-4 w-4" /> Save Structure
+            </Button>
+            <Button variant="outline" onClick={handleResetOrgTerminology} className="shadow-sm h-12">
+              <RotateCcw className="mr-2 h-4 w-4" /> Reset
+            </Button>
+          </div>
+        </TabsContent>
 
             <TabsContent value="general" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <Card className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
