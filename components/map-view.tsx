@@ -38,12 +38,13 @@ interface MapViewProps {
 }
 
 export default function MapView({ members }: MapViewProps) {
-  const { isLoaded } = useJsApiLoader({
+    const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
         googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ""
     })
 
     const [hoveredMember, setHoveredMember] = useState<Member | null>(null)
+    const [selectedMember, setSelectedMember] = useState<Member | null>(null)
     const [isMapLoaded, setIsMapLoaded] = useState(false)
     const [isInfoWindowHovered, setIsInfoWindowHovered] = useState(false)
     const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -87,6 +88,23 @@ export default function MapView({ members }: MapViewProps) {
         }, 150) // 150ms delay
     }, [])
 
+    const handleMarkerClick = useCallback((member: Member) => {
+        // For mobile: toggle selection on click
+        if (selectedMember?.id === member.id) {
+            setSelectedMember(null)
+        } else {
+            setSelectedMember(member)
+        }
+        // Also set as hovered for consistency
+        setHoveredMember(member)
+    }, [selectedMember])
+
+    const handleMapClick = useCallback(() => {
+        // Close InfoWindow when clicking on map (mobile)
+        setSelectedMember(null)
+        setHoveredMember(null)
+    }, [])
+
     // Cleanup timeout on unmount
     React.useEffect(() => {
         return () => {
@@ -102,6 +120,7 @@ export default function MapView({ members }: MapViewProps) {
             center={center}
             zoom={10}
             onLoad={handleMapLoad}
+            onClick={handleMapClick}
         >
             {members.map((member) => {
                 if (member.latitude && member.longitude) {
@@ -112,26 +131,37 @@ export default function MapView({ members }: MapViewProps) {
                             icon={isMapLoaded ? createCustomMarkerIcon() : undefined}
                             onMouseOver={() => handleMarkerMouseOver(member)}
                             onMouseOut={handleMarkerMouseOut}
+                            onClick={() => handleMarkerClick(member)}
                         />
                     )
                 }
                 return null
             })}
 
-            {hoveredMember && hoveredMember.latitude && hoveredMember.longitude && (
-                <InfoWindow
-                    position={{ lat: hoveredMember.latitude, lng: hoveredMember.longitude }}
-                >
-                    <div
-                        className="p-2"
-                        onMouseOver={handleInfoWindowMouseOver}
-                        onMouseOut={handleInfoWindowMouseOut}
-                    >
-                        <h4 className="font-semibold text-gray-900">{hoveredMember.name}</h4>
-                        <p className="text-sm text-gray-600">{hoveredMember.phone}</p>
-                    </div>
-                </InfoWindow>
-            )}
+            {(() => {
+                const displayMember = hoveredMember || selectedMember
+                if (displayMember && displayMember.latitude && displayMember.longitude) {
+                    return (
+                        <InfoWindow
+                            position={{ lat: displayMember.latitude, lng: displayMember.longitude }}
+                            onCloseClick={() => {
+                                setSelectedMember(null)
+                                setHoveredMember(null)
+                            }}
+                        >
+                            <div
+                                className="p-2"
+                                onMouseOver={handleInfoWindowMouseOver}
+                                onMouseOut={handleInfoWindowMouseOut}
+                            >
+                                <h4 className="font-semibold text-gray-900">{displayMember.name}</h4>
+                                <p className="text-sm text-gray-600">{displayMember.phone}</p>
+                            </div>
+                        </InfoWindow>
+                    )
+                }
+                return null
+            })()}
         </GoogleMap>
     ) : <></>
 }
