@@ -11,3 +11,7 @@ memory-bank/
 /.clerk/
 dist/
 tsconfig.tsbuildinfo
+.agents
+.claude
+.kilocode
+.augment

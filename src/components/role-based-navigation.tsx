@@ -16,7 +16,8 @@ import {
   Shield,
   Heart,
   DollarSign,
-  Building2
+  Building2,
+  ClipboardList
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
@@ -95,6 +96,13 @@ export function RoleBasedNavigation() {
       href: "/admin",
       icon: Settings,
       roles: ["admin"]
+    },
+    {
+      title: "Audit Trail",
+      href: "/audit-trail",
+      icon: ClipboardList,
+      badge: "Super Admin",
+      roles: ["super_admin"]
     }
   ]
 

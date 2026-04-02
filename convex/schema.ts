@@ -287,4 +287,27 @@ export default defineSchema({
         recorded_by_name: v.string(),
         organization_id: v.optional(v.id("organizations")),
     }).index("by_org", ["organization_id"]).index("by_date", ["service_date"]),
+
+    // Audit trail for tracking important actions
+    audit_logs: defineTable({
+        action: v.string(), // e.g., 'member.created', 'user.role_changed', 'financial.transaction_added'
+        entity_type: v.string(), // e.g., 'member', 'user', 'event', 'financial_transaction'
+        entity_id: v.optional(v.string()), // ID of the affected entity
+        entity_name: v.optional(v.string()), // Name/description of the affected entity
+        performed_by: v.string(), // clerk_user_id of who performed the action
+        performed_by_name: v.string(), // Name of who performed the action
+        performed_by_role: v.string(), // Role of who performed the action
+        organization_id: v.optional(v.id("organizations")),
+        // Details about the change
+        changes: v.optional(v.any()), // JSON object with before/after values
+        metadata: v.optional(v.any()), // Additional context (IP, user agent, etc.)
+        ip_address: v.optional(v.string()),
+        timestamp: v.string(), // ISO timestamp
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_action", ["action"])
+        .index("by_entity", ["entity_type", "entity_id"])
+        .index("by_performer", ["performed_by"])
+        .index("by_timestamp", ["timestamp"])
+        .index("by_org_timestamp", ["organization_id", "timestamp"]),
 });

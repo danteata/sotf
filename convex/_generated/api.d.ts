@@ -10,6 +10,7 @@
 
 import type * as app_config from "../app_config.js";
 import type * as attendance from "../attendance.js";
+import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
 import type * as dashboard from "../dashboard.js";
 import type * as event_types from "../event_types.js";
@@ -32,6 +33,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   app_config: typeof app_config;
   attendance: typeof attendance;
+  audit: typeof audit;
   auth: typeof auth;
   dashboard: typeof dashboard;
   event_types: typeof event_types;

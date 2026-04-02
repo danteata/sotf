@@ -24,6 +24,7 @@ const ProfilePage = lazy(() => import("@/pages/profile/Profile"));
 const AttendancePage = lazy(() => import("@/pages/attendance/Attendance"));
 const MapPage = lazy(() => import("@/pages/map/Map"));
 const ReportsPage = lazy(() => import("@/pages/reports/Reports"));
+const AuditTrailPage = lazy(() => import("@/pages/admin/AuditTrail"));
 
 function PageLoader() {
   return (
@@ -34,22 +35,22 @@ function PageLoader() {
 }
 
 function Protected({ children }: { children: React.ReactNode }) {
-    const { isAuthenticated, isLoading } = useConvexAuth();
+  const { isAuthenticated, isLoading } = useConvexAuth();
 
-    if (isLoading) {
-        return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
-    }
+  if (isLoading) {
+    return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
+  }
 
-    if (!isAuthenticated) {
-        return <Navigate to="/sign-in" replace />;
-    }
+  if (!isAuthenticated) {
+    return <Navigate to="/sign-in" replace />;
+  }
 
-    return (
-        <>
-            <UserSync />
-            {children}
-        </>
-    );
+  return (
+    <>
+      <UserSync />
+      {children}
+    </>
+  );
 }
 
 export default function App() {
@@ -193,6 +194,16 @@ export default function App() {
             <Protected>
               <Suspense fallback={<PageLoader />}>
                 <ReportsPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/audit-trail"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <AuditTrailPage />
               </Suspense>
             </Protected>
           }
