@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api'
 import { Member } from '../src/types/database'
+import { ExternalLink } from 'lucide-react'
 
 const containerStyle = {
     width: '100%',
@@ -105,6 +106,19 @@ export default function MapView({ members }: MapViewProps) {
         setHoveredMember(null)
     }, [])
 
+    const getMapsUrl = useCallback((lat: number, lng: number, name: string) => {
+        // Google Maps URL that works on both iOS and Android
+        return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}&query_place_id=${encodeURIComponent(name)}`
+    }, [])
+
+    const handleOpenInMaps = useCallback((e: React.MouseEvent, member: Member) => {
+        e.stopPropagation()
+        if (member.latitude && member.longitude) {
+            const url = getMapsUrl(member.latitude, member.longitude, member.name)
+            window.open(url, '_blank', 'noopener,noreferrer')
+        }
+    }, [getMapsUrl])
+
     // Cleanup timeout on unmount
     React.useEffect(() => {
         return () => {
@@ -150,12 +164,21 @@ export default function MapView({ members }: MapViewProps) {
                             }}
                         >
                             <div
-                                className="p-2"
+                                className="p-3 min-w-[180px]"
                                 onMouseOver={handleInfoWindowMouseOver}
                                 onMouseOut={handleInfoWindowMouseOut}
                             >
-                                <h4 className="font-semibold text-gray-900">{displayMember.name}</h4>
-                                <p className="text-sm text-gray-600">{displayMember.phone}</p>
+                                <h4 className="font-semibold text-gray-900 mb-1">{displayMember.name}</h4>
+                                {displayMember.phone && (
+                                    <p className="text-sm text-gray-600 mb-2">{displayMember.phone}</p>
+                                )}
+                                <button
+                                    onClick={(e) => handleOpenInMaps(e, displayMember)}
+                                    className="flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    Open in Maps
+                                </button>
                             </div>
                         </InfoWindow>
                     )
