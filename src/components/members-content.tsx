@@ -110,19 +110,13 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
               variant="outline"
               size="sm"
               onClick={async () => {
-                if (!window.confirm("Merge duplicates by first name + phone? This cannot be undone.")) return
+                if (!window.confirm("Merge duplicates by name + phone? This will merge members with matching first & last names. If a member has a real phone number, phones must also match. This cannot be undone.")) return
                 try {
                   const result = await mergeDuplicates({ organization_id: organization._id })
-                  toast({
-                    title: "Deduplication complete",
-                    description: `Merged ${result.mergedGroups} groups, removed ${result.removed} duplicates.`,
-                  })
+                  alert(`✅ Deduplication Complete!\n\n📊 Groups merged: ${result.mergedGroups}\n🗑️ Duplicates removed: ${result.removed}\n\nThe member list has been updated.`)
+                  window.location.reload() // Refresh to show updated data
                 } catch (err: any) {
-                  toast({
-                    title: "Deduplication failed",
-                    description: err.message || "Unable to merge duplicates.",
-                    variant: "destructive",
-                  })
+                  alert(`❌ Deduplication Failed\n\n${err.message || "Unable to merge duplicates."}`)
                 }
               }}
               className="shadow-sm hover:shadow-md transition-all rounded-lg"

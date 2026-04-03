@@ -23,9 +23,9 @@ export function AbsentMembers() {
   const [eventType, setEventType] = useState("")
   const [absenceFilter, setAbsenceFilter] = useState("all")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [selectedUnit, setSelectedUnit] = useState("")
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
 
-  // Convex Queries
   // Convex Queries
   const membersData = useQuery(api.members.getAll, {}) || []
   const allMembers = useMemo(() => membersData.map((m: any) => ({
@@ -34,6 +34,18 @@ export function AbsentMembers() {
     _id: m._id
   })), [membersData])
   const attendanceRecords = useQuery(api.attendance.listWithMembers) || []
+  const unitsData = useQuery(api.units.list, {}) || []
+
+  // Get unique unit names from members
+  const availableUnits = useMemo(() => {
+    const unitSet = new Set<string>()
+    allMembers.forEach((member: any) => {
+      if (member.unit_names && member.unit_names.length > 0) {
+        member.unit_names.forEach((unit: string) => unitSet.add(unit))
+      }
+    })
+    return Array.from(unitSet).sort()
+  }, [allMembers])
 
   const loading = membersData === undefined || attendanceRecords === undefined;
 
@@ -114,6 +126,13 @@ export function AbsentMembers() {
       })
     }
 
+    // Apply unit filter
+    if (selectedUnit && selectedUnit !== "all") {
+      filteredMembers = filteredMembers.filter(
+        (member: any) => member.unit_names?.includes(selectedUnit)
+      )
+    }
+
     // Apply search filter
     if (searchQuery) {
       filteredMembers = filteredMembers.filter(
@@ -124,7 +143,7 @@ export function AbsentMembers() {
     }
 
     return filteredMembers
-  }, [selectedAttendanceRecord, selectedDate, allMembers, absenceFilter, searchQuery, eventType, attendanceRecords])
+  }, [selectedAttendanceRecord, selectedDate, allMembers, absenceFilter, searchQuery, eventType, attendanceRecords, selectedUnit])
 
   return (
     <div className="space-y-4">
@@ -186,6 +205,20 @@ export function AbsentMembers() {
                 <SelectItem value="2+">2+ Consecutive</SelectItem>
                 <SelectItem value="3+">3+ Consecutive</SelectItem>
                 <SelectItem value="5+">5+ Consecutive</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by unit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Units</SelectItem>
+                {availableUnits.map((unit: string) => (
+                  <SelectItem key={unit} value={unit}>
+                    {unit}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

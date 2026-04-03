@@ -105,6 +105,7 @@ export default defineSchema({
 
     members: defineTable({
         name: v.string(),
+        other_names: v.optional(v.string()), // Additional names when multiple names provided
         email: v.optional(v.string()),
         phone: v.optional(v.string()),
         status: v.string(), // 'active', 'inactive', 'visitor'
@@ -134,6 +135,9 @@ export default defineSchema({
         user_id: v.optional(v.id("users")),
         joined_date: v.optional(v.string()),
         skills: v.optional(v.string()),
+        // Timestamps
+        created_at: v.optional(v.string()), // ISO timestamp
+        updated_at: v.optional(v.string()), // ISO timestamp
     })
         .index("by_org", ["organization_id"])
         .index("by_email", ["email"])

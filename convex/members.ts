@@ -265,7 +265,7 @@ export const cleanupOrphanMemberUnits = mutation({
     },
 });
 
-// Merge duplicate members by first name + phone (most recent wins, missing fields filled)
+// Merge duplicate members - hybrid approach based on phone availability
 export const mergeDuplicatesByNamePhone = mutation({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
@@ -280,27 +280,86 @@ export const mergeDuplicatesByNamePhone = mutation({
 
         const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "");
         const normalizeFirst = (name?: string | null) => (name || "").trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+        const normalizeLast = (name?: string | null) => {
+            const parts = (name || "").trim().split(/\s+/);
+            return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+        };
         const isEmpty = (v: any) => v === undefined || v === null || v === "";
+        const hasRealPhone = (phone?: string | null) => {
+            const normalized = normalizePhone(phone);
+            return normalized && normalized !== "0000000000";
+        };
 
+        // Hybrid grouping strategy:
+        // - If member has real phone: group by first + last + phone
+        // - If member has no real phone: group by first + last name only
+        // - If ANY member has no real phone, we use name-only matching for that group
         const groups = new Map<string, Doc<"members">[]>();
         for (const m of members) {
-            const phone = normalizePhone(m.phone);
             const first = normalizeFirst(m.name);
-            if (!phone || !first) continue;
-            const key = `${first}|${phone}`;
-            const bucket = groups.get(key) ?? [];
-            bucket.push(m);
-            groups.set(key, bucket);
+            const last = normalizeLast(m.name);
+            const phone = normalizePhone(m.phone);
+            if (!first || !last) continue;
+
+            // Always create a name-only key for potential merging
+            const nameKey = `name:${first}|${last}`;
+
+            if (hasRealPhone(m.phone)) {
+                // Has real phone - also create a phone-specific key
+                const phoneKey = `${first}|${last}|${phone}`;
+                const phoneBucket = groups.get(phoneKey) ?? [];
+                phoneBucket.push(m);
+                groups.set(phoneKey, phoneBucket);
+            }
+
+            // Always add to name-only group (for merging with members without phones)
+            const nameBucket = groups.get(nameKey) ?? [];
+            nameBucket.push(m);
+            groups.set(nameKey, nameBucket);
+        }
+
+        // Now merge groups: if a member appears in both name-only and phone-specific groups,
+        // prefer the phone-specific group (more confident match)
+        const finalGroups = new Map<string, Doc<"members">[]>();
+        for (const [key, group] of groups.entries()) {
+            if (key.startsWith("name:")) {
+                // Name-only group: only use if no phone-specific group exists for these members
+                const hasPhoneSpecificGroup = group.some(m => {
+                    if (!hasRealPhone(m.phone)) return false;
+                    const phoneKey = `${normalizeFirst(m.name)}|${normalizeLast(m.name)}|${normalizePhone(m.phone)}`;
+                    return groups.has(phoneKey) && groups.get(phoneKey)!.length > 1;
+                });
+                if (!hasPhoneSpecificGroup) {
+                    finalGroups.set(key, group);
+                }
+            } else {
+                // Phone-specific group: only use if it has multiple members
+                // (single-member phone groups are less confident than name-only groups)
+                if (group.length > 1) {
+                    finalGroups.set(key, group);
+                }
+            }
         }
 
         let mergedGroups = 0;
         let removed = 0;
 
-        for (const group of groups.values()) {
+        for (const group of finalGroups.values()) {
             if (group.length < 2) continue;
             mergedGroups += 1;
 
-            const sorted = group.sort((a, b) => b._creationTime - a._creationTime);
+            // Sort: prefer real phone over placeholder, then most recent
+            const sorted = group.sort((a, b) => {
+                const phoneA = normalizePhone(a.phone);
+                const phoneB = normalizePhone(b.phone);
+
+                // Prefer member with real phone over placeholder
+                if (hasRealPhone(a.phone) && !hasRealPhone(b.phone)) return -1;
+                if (!hasRealPhone(a.phone) && hasRealPhone(b.phone)) return 1;
+
+                // Both have real phones or both have placeholders - prefer most recent
+                return b._creationTime - a._creationTime;
+            });
             const primary = sorted[0];
             const duplicates = sorted.slice(1);
 
@@ -481,9 +540,12 @@ export const create = mutation({
         const orgId = await resolveOrgId(ctx, args.organization_id);
         const { unit_ids, ...memberData } = args;
 
+        const now = new Date().toISOString();
         const memberId = await ctx.db.insert("members", {
             ...memberData,
             organization_id: orgId ?? memberData.organization_id,
+            created_at: now,
+            updated_at: now,
         });
 
         // Add unit assignments if provided (many-to-many) - includes all generic units
@@ -522,6 +584,7 @@ export const createBulk = mutation({
     args: {
         members: v.array(v.object({
             name: v.string(),
+            other_names: v.optional(v.string()), // Additional names when multiple names provided
             first_name: v.optional(v.string()),
             last_name: v.optional(v.string()),
             email: v.optional(v.string()),
@@ -775,7 +838,9 @@ export const update = mutation({
             }
         }
 
-        await ctx.db.patch(id, updates);
+        // Add updated_at timestamp
+        const now = new Date().toISOString();
+        await ctx.db.patch(id, { ...updates, updated_at: now });
 
         // Update unit assignments if provided (replace all)
         if (unit_ids !== undefined) {

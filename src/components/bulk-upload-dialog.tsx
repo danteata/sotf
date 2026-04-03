@@ -37,6 +37,7 @@ type UploadStatus = "idle" | "uploading" | "validating" | "preview" | "success" 
 interface PreviewData {
   firstName: string
   lastName: string
+  otherNames?: string
   email: string
   rawUnits: { name: string, type: string }[]
   displayUnitNames: string[]
@@ -69,7 +70,22 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [targetUnitId, setTargetUnitId] = useState<string>("")
 
-  const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "")
+  const normalizePhone = (phone?: string | null) => {
+    let cleaned = (phone || "").replace(/\D/g, "")
+
+    // Remove country code prefix if present (+233 or 233)
+    if (cleaned.startsWith("233") && cleaned.length > 9) {
+      cleaned = cleaned.substring(3) // Remove '233' prefix
+    }
+
+    // If phone has exactly 9 digits, it's likely missing the leading '0'
+    if (cleaned.length === 9) {
+      return "0" + cleaned
+    }
+
+    return cleaned
+  }
+
   const extractFirstName = (fullName?: string | null) => (fullName || "").trim().split(/\s+/)[0]?.toLowerCase() ?? ""
 
   const existingMemberIndex = useMemo(() => {
@@ -96,7 +112,6 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
           return String(record[key]).trim()
         }
         const lowerKey = key.toLowerCase()
-        // Robust matching: exact, or ignoring underscores and spaces
         const recordKey = Object.keys(record).find(k => {
           const kLower = k.toLowerCase()
           return kLower === lowerKey ||
@@ -110,23 +125,18 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       return ""
     }
 
-    // --- EMAIL VALIDATION ---
     let email = getValue(["email", "e-mail", "mail"])
-
-    // --- PHONE VALIDATION ---
     const phone = getValue(["phone", "mobile", "cell", "telephone", "contact"])
     let cleanPhone = ""
     if (phone) {
       cleanPhone = normalizePhone(phone)
     }
 
-    // --- STATUS VALIDATION ---
     let status = getValue(["status", "member_status", "membership"]).toLowerCase()
     if (!["active", "inactive", "visitor"].includes(status)) {
       status = "active"
     }
 
-    // --- DATE OF BIRTH VALIDATION ---
     const dobValue = getValue(["dob", "date_of_birth", "birthday", "birth_date"])
     let dob = ""
     let birthMonth: number | undefined
@@ -139,7 +149,6 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         birthMonth = d.getMonth() + 1
         birthDay = d.getDate()
       } else {
-        // Try parsing DD-MM-YYYY or MM-DD-YYYY logic...
         const parts = dobValue.split(/[-/]/)
         if (parts.length === 3) {
           let y, m, day;
@@ -155,9 +164,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       }
     }
 
-    // If still no birth month/day, check separate columns
     if (!birthMonth || !birthDay) {
-      // Extended keys including user provided "Month of birth"
       const monthValue = getValue(["birthMonth", "month", "birth_month", "month of birth", "birth month"])
       const dayValue = getValue(["birthDay", "day", "birth_day", "day of the month", "day of month", "birth day"])
 
@@ -183,14 +190,19 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       }
     }
 
-    // --- NAME VALIDATION ---
-    // Extended keys for Full Name support if firstName/lastName not explicit
-    let firstName = getValue(["first name", "firstname", "firstName", "first_name", "given_name", "forename"])
-    let lastName = getValue(["last name", "lastname", "lastName", "last_name", "surname", "family_name"])
+    // Parse first name - handle multiple names by taking only the first one
+    const rawFirstName = getValue(["first name", "firstname", "firstName", "first_name", "given_name", "forename"])
+    const rawLastName = getValue(["last name", "lastname", "lastName", "last_name", "surname", "family_name"])
+
+    // Split first name if it contains multiple names (space-separated)
+    const nameParts = rawFirstName.trim().split(/\s+/)
+    let firstName = nameParts[0] || ""
+    const otherNames = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined
+
+    let lastName = rawLastName
 
     const fullName = getValue(["full name", "fullname", "name"])
     if ((!firstName || !lastName) && fullName) {
-      // Naive split
       const parts = fullName.trim().split(/\s+/)
       if (parts.length > 0) {
         if (!firstName) firstName = parts[0]
@@ -200,10 +212,8 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
     const errorsList: string[] = []
     if (!firstName) errorsList.push("First name is required")
-    if (!lastName) firstName && (lastName = ".") // If only first name, dot for last name to avoid block? or Error. Choosing to error for now but maybe user wants lenient. User provided "Full name" column example.
     if (!lastName) errorsList.push("Last name is required")
 
-    // --- AUTO-GENERATE EMAIL ---
     if (!email && firstName && lastName && organization?.name) {
       const cleanOrg = organization.name.toLowerCase().replace(/[^a-z0-9]/g, '')
       const cleanFirst = firstName.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -211,30 +221,24 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       email = `${cleanFirst}.${cleanLast}@${cleanOrg}.com`
     }
 
-
-    // --- UNITS VALIDATION (Dynamic) ---
     const rawUnits: { name: string, type: string }[] = []
 
-    // 1. Regions
     const regionInput = getValue(["region", "zone", "area", "territory"])
     if (regionInput) {
-      // simple check for multi-value? usually region is single but handle split just in case
       regionInput.split(/[,;&]/).forEach(r => {
         const name = r.trim()
         if (name) rawUnits.push({ name, type: 'geographic' })
       })
     }
 
-    // 2. Ministries
     const ministryInput = getValue(["ministries", "ministry", "department", "group", "basonta"])
     if (ministryInput) {
       ministryInput.split(/[,;&]/).forEach(m => {
         const name = m.trim()
-        if (name) rawUnits.push({ name, type: 'functional' }) // 'functional' for ministries
+        if (name) rawUnits.push({ name, type: 'functional' })
       })
     }
 
-    // 3. Generic Units
     const genericUnitsInput = getValue(["units", "unit", "groups", "teams"])
     if (genericUnitsInput) {
       genericUnitsInput.split(/[,;&]/).forEach(u => {
@@ -243,7 +247,6 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
       })
     }
 
-    // Unique by name
     const uniqueUnits = Array.from(new Map(rawUnits.map(item => [item.name, item])).values());
 
     const physicalAddress = getValue(["physical address", "address"])
@@ -258,6 +261,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     return {
       firstName,
       lastName,
+      otherNames,
       email,
       phone: cleanPhone,
       location,
@@ -340,9 +344,10 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
     setUploadStatus("uploading")
     try {
       const membersToInsert = validRecords.map(r => ({
-        name: `${r.firstName} ${r.lastName}`.trim(),
+        name: r.otherNames ? `${r.firstName} ${r.otherNames} ${r.lastName}`.trim() : `${r.firstName} ${r.lastName}`.trim(),
         first_name: r.firstName,
         last_name: r.lastName,
+        other_names: r.otherNames,
         email: r.email,
         phone: r.phone || "0000000000",
         status: r.status,
@@ -352,7 +357,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
         gender: r.gender,
         address: r.address || undefined,
         plus_code: r.plusCode || undefined,
-        units: r.rawUnits // Pass dynamic units to backend
+        units: r.rawUnits
       }))
 
       const result = await createBulk({
@@ -412,7 +417,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Bulk Upload Members</DialogTitle>
           <DialogDescription>Add or update members using CSV or Excel. Existing members are matched by first name + phone.</DialogDescription>
@@ -475,15 +480,26 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
               </p>
             </div>
 
-            <div className="border rounded-md max-h-[300px] overflow-auto text-xs">
+            <div className="border rounded-md max-h-[400px] overflow-auto text-xs">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead></TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Units (New & Existing)</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10 w-[40px]"></TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10 w-[80px]">Action</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">First Name</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Other Names</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Last Name</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Email</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Phone</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Status</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Gender</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Birthday</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Location</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Address</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">GPS/Plus Code</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Region</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10">Units/Groups</TableHead>
+                    <TableHead className="sticky top-0 bg-background z-10 w-[60px]">Errors</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -495,14 +511,37 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
                           {r.matchStatus === "update" ? "Update" : "Create"}
                         </Badge>
                       </TableCell>
-                      <TableCell>{r.firstName} {r.lastName}</TableCell>
-                      <TableCell>{r.email || "-"}</TableCell>
-                      <TableCell>{r.displayUnitNames.join(", ") || "-"}</TableCell>
+                      <TableCell className="font-medium">{r.firstName}</TableCell>
+                      <TableCell>{r.otherNames || "—"}</TableCell>
+                      <TableCell className="font-medium">{r.lastName}</TableCell>
+                      <TableCell>{r.email || "—"}</TableCell>
+                      <TableCell>{r.phone || "—"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={
+                          r.status === "active" ? "bg-green-50 text-green-700" :
+                            r.status === "inactive" ? "bg-gray-50 text-gray-700" :
+                              "bg-blue-50 text-blue-700"
+                        }>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{r.gender || "—"}</TableCell>
+                      <TableCell>{r.dob || "—"}</TableCell>
+                      <TableCell>{r.location || "—"}</TableCell>
+                      <TableCell className="max-w-[150px] truncate" title={r.address}>{r.address || "—"}</TableCell>
+                      <TableCell>{r.plusCode || "—"}</TableCell>
+                      <TableCell>{r.rawUnits.filter(u => u.type === 'geographic').map(u => u.name).join(", ") || "—"}</TableCell>
+                      <TableCell>{r.rawUnits.filter(u => u.type === 'functional').map(u => u.name).join(", ") || "—"}</TableCell>
+                      <TableCell>
+                        {r.errors ? (
+                          <span className="text-red-600" title={r.errors.join(", ")}>⚠️</span>
+                        ) : "—"}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {previewData.length > 50 && <p className="p-2 text-center text-muted-foreground italic">Showing first 50 rows only</p>}
+              {previewData.length > 50 && <p className="p-2 text-center text-muted-foreground italic">Showing first 50 of {previewData.length} rows</p>}
             </div>
           </div>
         )}
