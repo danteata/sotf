@@ -45,20 +45,20 @@ export function Overview({ className }: OverviewProps) {
             tickMargin={10}
           />
           <Tooltip
-            cursor={{ fill: 'oklch(var(--muted))', opacity: 0.4 }}
+            cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
             contentStyle={{
               borderRadius: '8px',
-              border: '1px solid oklch(var(--border))',
-              backgroundColor: 'oklch(var(--popover))',
-              color: 'oklch(var(--popover-foreground))',
+              border: '1px solid var(--border)',
+              backgroundColor: 'var(--popover)',
+              color: 'var(--popover-foreground)',
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               padding: '8px 12px',
             }}
-            labelStyle={{ color: 'oklch(var(--muted-foreground))', marginBottom: '4px' }}
+            labelStyle={{ color: 'var(--muted-foreground)', marginBottom: '4px' }}
           />
           <Bar
             dataKey="total"
-            fill="oklch(var(--primary))"
+            fill="var(--primary)"
             radius={[4, 4, 0, 0]}
             className="hover:opacity-80 transition-opacity"
             barSize={32}
