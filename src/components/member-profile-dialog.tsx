@@ -78,7 +78,14 @@ export function MemberProfileDialog({
             <div className="flex-1 pb-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h2 className="text-2xl text-slate-900 tracking-tight">{member.name}</h2>
-                <Badge variant={member.status === 'active' ? 'default' : 'secondary'} className="rounded-md text-[10px] py-0 px-2 tracking-wider">
+                <Badge
+                  variant="outline"
+                  className={`rounded-md text-[10px] py-0 px-2 tracking-wider capitalize ${
+                    member.status === 'active'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                      : 'bg-muted text-muted-foreground border-transparent'
+                  }`}
+                >
                   {member.status}
                 </Badge>
               </div>
@@ -132,7 +139,7 @@ export function MemberProfileDialog({
 
               <section>
                 <h3 className="text-xs text-slate-400 tracking-widest mb-3 flex items-center gap-2">
-                  <Shield className="h-3 w-3" /> CLASSIFICATION
+                  <Shield className="h-3 w-3" /> GROUPS
                 </h3>
                 <div className="space-y-4">
                   <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
@@ -151,13 +158,13 @@ export function MemberProfileDialog({
                   </div>
 
                   {ledUnits.length > 0 && (
-                    <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 shadow-sm">
-                      <p className="text-[10px] text-purple-400 mb-2 tracking-wider flex items-center gap-1">
+                    <div className="bg-primary/5 p-4 rounded-xl border border-primary/15 shadow-sm">
+                      <p className="text-[10px] text-primary/80 mb-2 tracking-wider flex items-center gap-1">
                         <Crown className="h-3 w-3" /> Units Led
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {ledUnits.map(unit => (
-                          <Badge key={unit._id} className="bg-purple-600 text-white border-purple-600 hover:bg-purple-700">
+                          <Badge key={unit._id} className="bg-primary text-primary-foreground border-primary hover:bg-primary/90">
                             {unit.name}
                           </Badge>
                         ))}
@@ -177,14 +184,14 @@ export function MemberProfileDialog({
             <div className="space-y-6">
               <section>
                 <h3 className="text-xs text-slate-400 tracking-widest mb-3 flex items-center gap-2">
-                  <Clock className="h-3 w-3" /> ANALYTICS summary
+                  <Clock className="h-3 w-3" /> ACTIVITY
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-slate-900 p-4 rounded-xl text-white shadow-soft">
                     <div className="text-2xl mb-1">
                       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : attendanceSummary?.total_attendance || 0}
                     </div>
-                    <div className="text-[9px] text-white/50 tracking-widest">Total Presence</div>
+                    <div className="text-[9px] text-white/50 tracking-widest">Times Present</div>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <div className="text-lg text-slate-900 mb-1 truncate">
@@ -206,7 +213,7 @@ export function MemberProfileDialog({
 
               <section>
                 <h3 className="text-xs text-slate-400 tracking-widest mb-3 flex items-center gap-2">
-                  <MapPin className="h-3 w-3" /> DISPATCH info
+                  <MapPin className="h-3 w-3" /> CONTACT
                 </h3>
                 <div className="space-y-3 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
                   <div className="flex items-start gap-3">

@@ -25,7 +25,7 @@ import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Upload, X, Check } from "lucide-react"
+import { X, Check, Image as ImageIcon } from "lucide-react"
 import { Checkbox } from "@radix-ui/react-checkbox"
 
 const memberSchema = z.object({
@@ -209,7 +209,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
       >
         <form onSubmit={onSubmitWrapper} className="flex flex-col h-full max-h-[90vh]">
           <DialogHeader className="p-6 pb-2">
-            <DialogTitle className="text-2xl font-bold tracking-tight text-gradient">Add New Member</DialogTitle>
+            <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">Add New Member</DialogTitle>
             <DialogDescription className="text-muted-foreground">
               Enter the member's information. All fields marked with <span className="text-destructive">*</span> are required.
             </DialogDescription>
@@ -396,20 +396,27 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold text-gradient">Functional Units</Label>
+                      <Label className="text-base font-semibold text-foreground">Functional Units</Label>
                       <Badge variant="outline" className="rounded-full bg-muted/30 text-[10px] uppercase tracking-wider">Departmental</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">Select functional units such as departments, teams, or specialty groups.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
                       {functionalUnits.map((unit) => (
-                        <div key={unit._id} className="flex items-center space-x-3 p-2.5 hover:bg-background/80 rounded-lg transition-all border border-transparent hover:border-border/50 group">
+                        <div
+                          key={unit._id}
+                          className={`flex items-center space-x-3 p-2.5 rounded-lg transition-colors border ${
+                            watch("unit_ids")?.includes(unit._id)
+                              ? 'bg-primary/5 border-primary/30'
+                              : 'border-transparent hover:bg-muted/60'
+                          }`}
+                        >
                           <Checkbox
                             id={`unit-${unit._id}`}
                             checked={watch("unit_ids")?.includes(unit._id) || false}
                             onCheckedChange={(checked) => handleUnitToggle(unit._id, !!checked)}
-                            className="h-4 w-4 rounded-md border-primary/50 data-[state=checked]:bg-primary"
+                            className="h-4 w-4 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
-                          <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1 group-hover:text-primary transition-colors">
+                          <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1">
                             {unit.name}
                           </label>
                         </div>
@@ -424,20 +431,27 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold text-gradient">Administrative Units</Label>
+                      <Label className="text-base font-semibold text-foreground">Administrative Units</Label>
                       <Badge variant="outline" className="rounded-full bg-muted/30 text-[10px] uppercase tracking-wider">Geographic</Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">Select administrative or geographic units for organizational structuring.</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
                       {adminUnits.map((unit) => (
-                        <div key={unit._id} className="flex items-center space-x-3 p-2.5 hover:bg-background/80 rounded-lg transition-all border border-transparent hover:border-border/50 group">
+                        <div
+                          key={unit._id}
+                          className={`flex items-center space-x-3 p-2.5 rounded-lg transition-colors border ${
+                            watch("unit_ids")?.includes(unit._id)
+                              ? 'bg-primary/5 border-primary/30'
+                              : 'border-transparent hover:bg-muted/60'
+                          }`}
+                        >
                           <Checkbox
                             id={`unit-${unit._id}`}
                             checked={watch("unit_ids")?.includes(unit._id) || false}
                             onCheckedChange={(checked) => handleUnitToggle(unit._id, !!checked)}
-                            className="h-4 w-4 rounded-md border-primary/50 data-[state=checked]:bg-primary"
+                            className="h-4 w-4 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                           />
-                          <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1 group-hover:text-primary transition-colors">
+                          <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1">
                             {unit.name}
                           </label>
                         </div>
@@ -471,11 +485,11 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
               <TabsContent value="photo" className="mt-0 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex flex-col items-center space-y-6 pt-4">
-                  <div className="relative group">
-                    <Avatar className="w-40 h-40 border-4 border-muted/50 rounded-3xl shadow-xl transition-transform group-hover:scale-105 duration-500">
+                  <div className="relative">
+                    <Avatar className="w-28 h-28 border border-border rounded-full">
                       <AvatarImage src={uploadedImageUrl || ""} className="object-cover" />
-                      <AvatarFallback className="bg-muted/30 rounded-3xl">
-                        <Upload className="w-10 h-10 text-muted-foreground/50" />
+                      <AvatarFallback className="bg-muted rounded-full">
+                        <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
                       </AvatarFallback>
                     </Avatar>
                     {uploadedImageUrl && (
@@ -483,7 +497,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                         variant="destructive"
                         size="icon"
                         onClick={removePhoto}
-                        className="absolute -top-2 -right-2 h-8 w-8 rounded-full shadow-lg hover:scale-110 transition-transform"
+                        className="absolute -top-1 -right-1 h-7 w-7 rounded-full shadow-sm"
                         title="Remove photo"
                       >
                         <X className="w-4 h-4" />
@@ -491,16 +505,11 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                     )}
                   </div>
 
-                  <div className="w-full max-w-sm space-y-4">
+                  <div className="w-full max-w-sm space-y-3">
                     <FileUploader onUploadComplete={handlePhotoUpload} />
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">
-                        Supported formats: <span className="font-semibold">JPG, PNG, GIF</span>.
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        Recommended size: 400x400px. Max size: 2MB.
-                      </p>
-                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      JPG or PNG, up to 4MB. Square images look best.
+                    </p>
                   </div>
                 </div>
               </TabsContent>

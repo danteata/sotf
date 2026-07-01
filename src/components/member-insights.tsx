@@ -193,23 +193,23 @@ export function MemberInsights() {
                         <stop offset="95%" stopColor="#5b21b6" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                     <XAxis
                       dataKey="name"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 11 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: 'oklch(var(--muted-foreground))', fontSize: 11 }}
+                      tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: 'oklch(var(--popover))',
+                        backgroundColor: 'var(--popover)',
                         borderRadius: '8px',
-                        border: '1px solid oklch(var(--border))',
+                        border: '1px solid var(--border)',
                         fontSize: '12px'
                       }}
                     />
