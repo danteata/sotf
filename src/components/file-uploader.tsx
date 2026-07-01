@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, X, Image as ImageIcon, Loader2, ShieldCheck, Zap } from "lucide-react";
+import { Upload, X, Image as ImageIcon, Loader2, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -31,8 +31,8 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
         // Validate file type
         if (!file.type.startsWith('image/')) {
             toast({
-                title: "INVALID_FORMAT",
-                description: "MISSION_ERROR: IMAGE_FILE_REQUIRED",
+                title: "Unsupported file",
+                description: "Please choose an image file (JPG, PNG or WebP).",
                 variant: "destructive",
             });
             return;
@@ -41,8 +41,8 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
         // Validate file size (4MB limit)
         if (file.size > 4 * 1024 * 1024) {
             toast({
-                title: "PAYLOAD_TOO_LARGE",
-                description: "MISSION_ERROR: 4MB_CEILING_EXCEEDED",
+                title: "File too large",
+                description: "Please choose an image under 4MB.",
                 variant: "destructive",
             });
             return;
@@ -61,47 +61,17 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
             });
 
             if (!result.ok) {
-                throw new Error("TRANSMISSION_FAILURE");
+                throw new Error("Upload failed");
             }
 
             const { storageId } = await result.json();
-
-            // 3. Get the public URL for the storageId
-            // We can't use useQuery here, but we can call a function or just construct it if we know the pattern
-            // Actually, best to have a mutation or a way to get it. 
-            // For now, let's assume we want to store the storageId in the future, 
-            // but for immediate display we can fetch the URL.
-
-            // Temporary measure: constructive approach if possible, but Convex URLs are signed or specific.
-            // Let's use a workaround: we'll call a server function to get the URL.
-            // Actually, I'll just refactor convex/files.ts to have a mutation for this if needed, 
-            // or better, just provide a helper.
-
-            // Constructive way (internal convex):
-            // const publicUrl = await ctx.storage.getUrl(storageId);
-
-            // I'll add a mutation to files.ts just for this purpose of getting the URL immediately.
-            // Wait, I can't call mutations to get data easily without it being a query.
-
-            // I'll just pass the storageId for now if possible, but the component expects URL.
-            // Let's assume the storageId IS the URL for now or we fetch it.
-
-            toast({
-                title: "ENCRYPTED_UPLOAD_COMPLETE",
-                description: "PAYLOAD_SECURED_IN_CONVEX_STORAGE",
-            });
-
-            // Since I need the URL string, I'll use a hacky way or just update files.ts
-            // Actually, I'll update the component to just use the storageId as the payload 
-            // and have a separate display logic.
-
-            // FOR NOW: I'll return the storageId as the "url" and update the display.
-            const url = storageId;
-            setImageUrl(url); // This won't show anything unless we resolve it.
-
-            // FOR NOW: I'll return the storageId as the "url" and update the display.
             const previewUrl = URL.createObjectURL(file);
             setImageUrl(previewUrl);
+
+            toast({
+                title: "Photo uploaded",
+                description: "Your image was saved.",
+            });
 
             if (onUploadComplete) {
                 onUploadComplete(storageId, previewUrl);
@@ -110,8 +80,8 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
         } catch (error: any) {
             console.error("Upload error:", error);
             toast({
-                title: "TRANSMISSION_FAILED",
-                description: error.message || "UPLINK_INTERRUPTED",
+                title: "Upload failed",
+                description: error.message || "Please try again.",
                 variant: "destructive",
             });
         } finally {
@@ -145,25 +115,13 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
 
     return (
         <div className="w-full space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-primary" />
-                    <span className="font-semibold text-xs tracking-tight text-slate-700">File Upload</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
-                    {/* <span className="font-medium text-[10px] text-muted-foreground">Cloud Secured</span> */}
-                </div>
-            </div>
-
             {/* Upload Area */}
             <div
                 className={`
-                    relative border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all duration-300
+                    relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200
                     ${isDragOver
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-muted-foreground/40 hover:bg-muted/40'
                     }
                     ${isUploading ? 'opacity-50 pointer-events-none' : ''}
                 `}
@@ -183,23 +141,23 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                 <div className="flex flex-col items-center space-y-4">
                     {isUploading ? (
                         <>
-                            <Loader2 className="h-10 w-10 animate-spin text-primary stroke-[2px]" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                             <div className="space-y-1">
-                                <p className="text-base text-slate-900">Uploading File...</p>
-                                <p className="text-xs text-muted-foreground">Connecting to storage...</p>
+                                <p className="text-sm font-medium text-foreground">Uploading…</p>
+                                <p className="text-xs text-muted-foreground">This will only take a moment.</p>
                             </div>
                         </>
                     ) : (
                         <>
-                            <div className="p-3 bg-slate-100 rounded-full group-hover:bg-primary/10 transition-colors">
-                                <Upload className={`h-8 w-8 ${isDragOver ? 'text-primary' : 'text-slate-500'} stroke-[2px]`} />
+                            <div className="p-3 bg-muted rounded-full transition-colors">
+                                <Upload className={`h-6 w-6 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
                             </div>
                             <div className="space-y-1">
-                                <p className="text-lg text-slate-900 tracking-tight">
-                                    {isDragOver ? 'Drop file here' : 'Click to upload'}
+                                <p className="text-sm font-medium text-foreground">
+                                    {isDragOver ? 'Drop image here' : 'Click to upload'}
                                 </p>
-                                <p className="text-sm text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
-                                    or drag and drop a JPG or PNG (max 4MB)
+                                <p className="text-xs text-muted-foreground">
+                                    or drag and drop — JPG or PNG, up to 4MB
                                 </p>
                             </div>
                         </>
@@ -207,8 +165,8 @@ export function FileUploader({ onUploadComplete, showPreview = false }: FileUplo
                 </div>
             </div>
 
-            {/* Preview Area */}
-            {imageUrl && (
+            {/* Preview Area (opt-in; parents usually show their own preview) */}
+            {showPreview && imageUrl && (
                 <div className="p-4 border border-border/50 bg-slate-50/50 rounded-xl relative shadow-sm animate-in zoom-in-95 duration-200">
                     <div className="flex items-center gap-2 mb-3">
                         <ImageIcon className="h-4 w-4 text-slate-500" />
