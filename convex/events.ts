@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
+import { requireWriteAccess } from "./scope";
 import { api } from "./_generated/api";
 
 export const list = query({
@@ -85,7 +86,7 @@ export const create = mutation({
         active: v.boolean(),
     },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        const user = await requireWriteAccess(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         const eventId = await ctx.db.insert("events", {
             ...args,
@@ -129,7 +130,7 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        const user = await requireWriteAccess(ctx);
         const event = await ctx.db.get(args.id);
         if (!event) throw new Error("Event not found");
         if (event.organization_id) {
@@ -179,7 +180,7 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("events") },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        const user = await requireWriteAccess(ctx);
         const event = await ctx.db.get(args.id);
         if (!event) throw new Error("Event not found");
         if (event.organization_id) {

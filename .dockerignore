@@ -1,1 +1,35 @@
+# Fly config (not needed in image)
 fly.toml
+
+# Dependencies (reinstalled inside the image via bun install)
+node_modules
+
+# Build output (produced inside the image via bun run build)
+dist
+.next
+exports
+
+# Version control / CI
+.git
+.github
+
+# Editor / OS / tooling cruft
+.vscode
+.idea
+.DS_Store
+*.log
+.clerk
+.kimchi
+.vercel
+
+# Local env & secrets (supplied to the build via `fly deploy --build-secret`)
+.env
+.env.local
+.env.*.local
+
+# Build metadata
+tsconfig.tsbuildinfo
+
+# Docker / container files
+Dockerfile
+.dockerignore

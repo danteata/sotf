@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, isSuperAdmin } from "./auth";
+import { getUnitIdsAdministeredBy } from "./unit_admins";
+import { requireWriteAccess, getAdministeredUnitIds } from "./scope";
 import { api } from "./_generated/api";
 
 // Helper to format member with details (typed)
@@ -42,7 +44,7 @@ async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
 }
 
 // Internal helper to get managed member IDs
-async function resolveManagedMemberIds(ctx: any) {
+export async function resolveManagedMemberIds(ctx: any) {
     const user = await getUserSafe(ctx);
 
     if (!user) return new Set<Id<"members">>(); // Return empty set if user doesn't exist
@@ -77,16 +79,14 @@ async function resolveManagedMemberIds(ctx: any) {
 
     let managedMemberIds = new Set<Id<"members">>();
 
-    // Generic Unit Leadership
+    // Generic Unit Leadership: scope covers every unit this member administers
+    // (primary leader or additional admin), sourced from unit_admins.
     if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
-        const ledUnits = await ctx.db
-            .query("units")
-            .filter((q: any) => q.eq(q.field("leader_id"), member._id))
-            .collect();
+        const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
 
-        for (const unit of ledUnits) {
+        for (const unitId of adminUnitIds) {
             const relations = await ctx.db.query("member_units")
-                .withIndex("by_unit", (q: any) => q.eq("unit_id", unit._id))
+                .withIndex("by_unit", (q: any) => q.eq("unit_id", unitId))
                 .collect();
             relations.forEach((r: any) => managedMemberIds.add(r.member_id));
         }
@@ -536,9 +536,21 @@ export const create = mutation({
         skills: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        const user = await requireWriteAccess(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         const { unit_ids, ...memberData } = args;
+
+        // Unit-level admins may only create members within units they administer.
+        const unitScope = await getAdministeredUnitIds(ctx);
+        if (unitScope !== "all") {
+            if (!unit_ids || unit_ids.length === 0) {
+                throw new Error("Forbidden: you can only add members to units you administer");
+            }
+            const outside = unit_ids.filter((uid) => !unitScope.has(uid));
+            if (outside.length > 0) {
+                throw new Error("Forbidden: one or more units are outside your scope");
+            }
+        }
 
         const now = new Date().toISOString();
         const memberId = await ctx.db.insert("members", {
@@ -936,10 +948,16 @@ export const bulkAddToUnit = mutation({
         unit_id: v.id("units"),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        await requireWriteAccess(ctx);
 
         const unit = await ctx.db.get(args.unit_id);
         if (!unit) throw new Error("Unit not found");
+
+        // Unit-level admins may only add members to units they administer.
+        const unitScope = await getAdministeredUnitIds(ctx);
+        if (unitScope !== "all" && !unitScope.has(args.unit_id)) {
+            throw new Error("Forbidden: unit is outside your scope");
+        }
 
         // Verify all members exist and belong to the same organization
         const members = await Promise.all(

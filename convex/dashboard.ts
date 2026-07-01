@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { isSuperAdmin, requireUser, resolveOrgId, getUserSafe, normalizeOrgId } from "./auth";
+import { getUnitIdsAdministeredBy } from "./unit_admins";
 
 // Internal helper to get managed member IDs
 async function getScopedMemberIds(ctx: any) {
@@ -45,16 +46,14 @@ async function getScopedMemberIds(ctx: any) {
 
     let managedMemberIds = new Set<Id<"members">>();
 
-    // Generic Unit Leadership
+    // Generic Unit Leadership: scope covers every unit this member administers
+    // (primary leader or additional admin), sourced from unit_admins.
     if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
-        const ledUnits = await ctx.db
-            .query("units")
-            .filter((q: any) => q.eq(q.field("leader_id"), member._id))
-            .collect();
+        const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
 
-        for (const unit of ledUnits) {
+        for (const unitId of adminUnitIds) {
             const relations = await ctx.db.query("member_units")
-                .withIndex("by_unit", (q: any) => q.eq("unit_id", unit._id))
+                .withIndex("by_unit", (q: any) => q.eq("unit_id", unitId))
                 .collect();
             relations.forEach((r: any) => managedMemberIds.add(r.member_id));
         }
@@ -190,11 +189,8 @@ export const getDashboardData = query({
                 .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
                 .first();
             if (member) {
-                const ledUnits = await ctx.db
-                    .query("units")
-                    .filter((q: any) => q.eq(q.field("leader_id"), member._id))
-                    .collect();
-                ledUnitsCount = ledUnits.length;
+                const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
+                ledUnitsCount = adminUnitIds.length;
             } else {
                 ledUnitsCount = 0;
             }

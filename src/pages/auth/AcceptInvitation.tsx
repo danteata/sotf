@@ -21,6 +21,7 @@ export default function AcceptInvitationPage() {
 
     // Convex Queries
     const invitation = useQuery(api.invitations.getByToken, { token })
+    const currentUser = useQuery(api.users.current)
     const acceptInvitationMutation = useMutation(api.invitations.accept)
     const { trackEvent } = useAnalytics()
 
@@ -48,8 +49,18 @@ export default function AcceptInvitationPage() {
         }
     }, [invitation, token])
 
+    // An invitation may be claimed by a brand-new / org-less account regardless
+    // of email (supports placeholder member emails), but must not be accepted by
+    // an already-established account (one that belongs to an org) whose email
+    // doesn't match — that mirrors the server-side guard in invitations.accept.
+    const invitedEmail = invitation?.email?.trim().toLowerCase()
+    const myEmail = clerkUser?.primaryEmailAddress?.emailAddress?.trim().toLowerCase()
+    const emailMismatch = Boolean(invitation && myEmail && invitedEmail && myEmail !== invitedEmail)
+    const isEstablishedAccount = Boolean(currentUser?.organization_id)
+    const blockAccept = emailMismatch && isEstablishedAccount
+
     const handleAccept = async () => {
-        if (!clerkUser || !invitation) return
+        if (!clerkUser || !invitation || blockAccept) return
 
         setIsAccepting(true)
         setError(null)
@@ -256,10 +267,24 @@ export default function AcceptInvitationPage() {
                             </div>
                         </div>
 
+                        {blockAccept && (
+                            <div className="p-3 rounded-lg border border-destructive/20 bg-destructive/10 space-y-1">
+                                <div className="flex items-center gap-2 text-destructive">
+                                    <ShieldAlert className="h-4 w-4" />
+                                    <span className="text-sm font-medium">This invitation isn't for this account</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    It was issued to <span className="font-medium">{invitation?.email}</span>, but you're
+                                    signed in as <span className="font-medium">{clerkUser?.primaryEmailAddress?.emailAddress}</span>.
+                                    Sign in with the invited email to accept it.
+                                </p>
+                            </div>
+                        )}
+
                         <div className="pt-2">
                             <Button
                                 onClick={handleAccept}
-                                disabled={isAccepting}
+                                disabled={isAccepting || blockAccept}
                                 className="w-full"
                                 size="lg"
                             >

@@ -21,6 +21,8 @@ import type * as invitations from "../invitations.js";
 import type * as labels from "../labels.js";
 import type * as members from "../members.js";
 import type * as organizations from "../organizations.js";
+import type * as scope from "../scope.js";
+import type * as unit_admins from "../unit_admins.js";
 import type * as units from "../units.js";
 import type * as users from "../users.js";
 
@@ -44,6 +46,8 @@ declare const fullApi: ApiFromModules<{
   labels: typeof labels;
   members: typeof members;
   organizations: typeof organizations;
+  scope: typeof scope;
+  unit_admins: typeof unit_admins;
   units: typeof units;
   users: typeof users;
 }>;

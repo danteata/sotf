@@ -45,7 +45,8 @@ import {
   Copy,
   Search,
   Users,
-  Loader2
+  Loader2,
+  XCircle
 } from 'lucide-react'
 import { useTerminology } from '@/hooks/use-terminology'
 import { useToast } from '@/hooks/use-toast'
@@ -112,6 +113,16 @@ export function LeaderInvitationSystem() {
 
   // Convex Mutations
   const createInvitation = useMutation(api.invitations.create)
+  const revokeInvitation = useMutation(api.invitations.revoke)
+
+  const handleRevokeInvitation = async (id: string) => {
+    try {
+      await revokeInvitation({ id: id as Id<"invitations"> })
+      toast({ title: "Invitation revoked", description: "The invitation link can no longer be used." })
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to revoke invitation.", variant: "destructive" })
+    }
+  }
 
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -162,8 +173,15 @@ export function LeaderInvitationSystem() {
     })
     .map((member: any) => {
       const ledUnits = allUnits.filter((u: any) => u.leader_id === member._id);
-      const invitation = invitations.find((i: any) => i.member_id === member._id || i.email === member.email);
-      const hasAccount = scopedUsers.some((u: any) => u.email === member.email);
+      const invitation = invitations.find((i: any) =>
+        i.member_id === member._id || (member.email && i.email === member.email)
+      );
+      // "Has account" is determined by the canonical member -> user link, not by
+      // email equality (members without an email would otherwise all match an
+      // emailless account and be falsely flagged as registered).
+      const hasAccount = member.user_id
+        ? scopedUsers.some((u: any) => u._id === member.user_id) || users.some((u: any) => u._id === member.user_id)
+        : false;
 
       return {
         id: member._id,
@@ -198,6 +216,10 @@ export function LeaderInvitationSystem() {
 
     return matchesSearch && matchesRole
   })
+
+  // Pending invitations (awaiting acceptance) that can still be revoked.
+  const unitNameById = new Map<string, string>(allUnits.map((u: any) => [u._id, u.name]))
+  const pendingInvitations = (invitations as any[]).filter((i) => i.status === 'pending')
 
   const handleSelectLeader = (leaderId: string) => {
     if (selectedLeaders.includes(leaderId)) {
@@ -602,6 +624,71 @@ export function LeaderInvitationSystem() {
         </CardContent>
       </Card>
 
+      {pendingInvitations.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Pending Invitations</CardTitle>
+            <CardDescription>
+              Invitations awaiting acceptance. Revoke one to invalidate its link.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Units</TableHead>
+                    <TableHead>Expires</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingInvitations.map((inv: any) => (
+                    <TableRow key={inv._id}>
+                      <TableCell className="font-medium">{inv.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          {inv.intended_role?.replace(/_/g, ' ')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {(inv.intended_units || []).length === 0 ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : (
+                            (inv.intended_units || []).map((uid: string) => (
+                              <Badge key={uid} variant="outline" className="text-xs">
+                                {unitNameById.get(uid) || 'Unknown unit'}
+                              </Badge>
+                            ))
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevokeInvitation(inv._id)}
+                          className="flex items-center gap-1 text-destructive hover:text-destructive"
+                        >
+                          <XCircle className="h-3 w-3" />
+                          Revoke
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Dialog
         open={isInviteLinkDialogOpen}
         onOpenChange={setIsInviteLinkDialogOpen}
@@ -897,6 +984,11 @@ export function LeaderInvitationSystem() {
                               <Badge variant="outline" className="ml-2">
                                 {u.type}
                               </Badge>
+                            )}
+                            {u.leader_id && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                Already led — will be added as co-admin
+                              </span>
                             )}
                           </div>
                         </div>

@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
-import { requireOrgAdmin, resolveOrgId, isOrgAdmin } from "./auth";
+import { requireOrgAdmin, requireOrgAccess, resolveOrgId, isOrgAdmin } from "./auth";
+import { addUnitAdminInternal } from "./unit_admins";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 
 export const create = mutation({
@@ -87,14 +89,25 @@ export const accept = mutation({
         if (invitation.status !== "pending") throw new Error("Invitation already used or revoked");
         if (invitation.expires_at && invitation.expires_at < Date.now()) throw new Error("Invitation expired");
 
-        // Note: We allow email mismatch to support placeholder emails in member records
-        // The user's actual email from their auth account will be used
-
         // Find or create user
         let user = await ctx.db
             .query("users")
             .withIndex("by_clerk_id", q => q.eq("clerk_user_id", identity.subject))
             .first();
+
+        // Security: an invitation may claim a brand-new account or one that has
+        // not yet joined any organization. It must NOT reassign the role/org of
+        // an already-established account unless its email matches the invited
+        // address — otherwise a signed-in admin could consume a link meant for
+        // someone else and have their own account downgraded.
+        const invitedEmail = invitation.email?.trim().toLowerCase();
+        const currentEmail = identity.email?.trim().toLowerCase();
+        const emailMatches = Boolean(invitedEmail && currentEmail && invitedEmail === currentEmail);
+        if (user && user.organization_id && !emailMatches) {
+            throw new Error(
+                "This invitation was issued to a different email address. Sign in with the invited email to accept it.",
+            );
+        }
 
         const resolvedName = identity.name || identity.nickname || identity.email || "Member";
         if (!user) {
@@ -146,14 +159,21 @@ export const accept = mutation({
                 email: identity.email || user.email // Use the user's actual email
             });
 
-            // Apply leadership if units provided
+            // Grant unit admin access if units provided. Additive: the invitee
+            // becomes an additional admin (or the primary leader if the unit has
+            // none) rather than displacing an existing leader.
             if (invitation.intended_units) {
                 for (const unitId of invitation.intended_units) {
                     const uId = ctx.db.normalizeId("units", unitId);
                     if (uId) {
                         const unit = await ctx.db.get(uId);
                         if (unit && unit.organization_id === invitation.organization_id) {
-                            await ctx.db.patch(uId, { leader_id: memberId });
+                            await addUnitAdminInternal(ctx, {
+                                unitId: uId,
+                                memberId,
+                                organizationId: invitation.organization_id,
+                                addedBy: invitation.invited_by,
+                            });
                         }
                     }
                 }
@@ -177,5 +197,35 @@ export const list = query({
             .withIndex("by_org", q => q.eq("organization_id", orgId))
             .order("desc")
             .collect();
+    }
+});
+
+// Revoke (cancel) a pending invitation so its link can no longer be accepted.
+export const revoke = mutation({
+    args: { id: v.id("invitations") },
+    handler: async (ctx, args) => {
+        const actor = await requireOrgAdmin(ctx);
+        const invitation = await ctx.db.get(args.id);
+        if (!invitation) throw new Error("Invitation not found");
+        await requireOrgAccess(ctx, invitation.organization_id);
+        if (invitation.status !== "pending") {
+            throw new Error("Only pending invitations can be revoked");
+        }
+
+        await ctx.db.patch(args.id, { status: "revoked" });
+
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "invitation.revoked",
+            entity_type: "invitation",
+            entity_id: args.id,
+            entity_name: invitation.email,
+            performed_by: actor.clerk_user_id,
+            performed_by_name: actor.name || actor.email || "Unknown",
+            performed_by_role: actor.role,
+            organization_id: invitation.organization_id,
+            changes: { status: { before: "pending", after: "revoked" } },
+        });
+
+        return true;
     }
 });

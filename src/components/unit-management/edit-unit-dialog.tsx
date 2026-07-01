@@ -20,6 +20,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { MemberCombobox } from '@/components/ui/member-combobox'
+import { UnitAdminsManager } from './unit-admins-manager'
 import { Loader2, Save, Layers } from 'lucide-react'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
@@ -205,6 +206,16 @@ export function EditUnitDialog({
                             disabled={updating}
                         />
                     </div>
+
+                    {unit && (
+                        <div className="pt-2 border-t border-border/50">
+                            <UnitAdminsManager
+                                unitId={unit._id}
+                                members={availableMembers}
+                                disabled={updating}
+                            />
+                        </div>
+                    )}
 
                     {/* Removed isTemplate checkbox as it's not in the new schema */}
                 </div>

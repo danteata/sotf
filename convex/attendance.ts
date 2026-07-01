@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, getUserSafe } from "./auth";
+import { requireWriteAccess } from "./scope";
+import { resolveManagedMemberIds } from "./members";
 
 export const listWithDetails = query({
     handler: async (ctx) => {
@@ -175,9 +177,18 @@ export const recordFullAttendance = mutation({
     },
     handler: async (ctx, args) => {
         const { date, event_type_id, event_id, notes, member_ids } = args;
-        await requireOrgAdmin(ctx);
+        await requireWriteAccess(ctx);
         const orgId = await resolveOrgId(ctx);
         if (!orgId) throw new Error("Organization not set");
+
+        // Unit-level admins may only mark members within their scope present.
+        const memberScope = await resolveManagedMemberIds(ctx);
+        if (memberScope !== "all") {
+            const outside = member_ids.filter((id) => !memberScope.has(id));
+            if (outside.length > 0) {
+                throw new Error("Forbidden: one or more members are outside your scope");
+            }
+        }
 
         // 1. Get Event Type
         const eventType = await ctx.db.get(event_type_id);

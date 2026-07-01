@@ -79,6 +79,64 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
 
   const totalMembers = filteredMembers.length
 
+  const handleExport = () => {
+    const headers = [
+      "Name",
+      "Email",
+      "Phone",
+      "Status",
+      "Units",
+      "Labels",
+      "Address",
+      "Date of Birth",
+      "Gender",
+      "Marital Status",
+      "Join Date",
+    ]
+
+    const escape = (val: unknown) => {
+      if (val === null || val === undefined) return ""
+      const str = String(val)
+      if (str.includes(",") || str.includes("\"") || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`
+      }
+      return str
+    }
+
+    const rows = filteredMembers.map((m: any) => [
+      m.name ?? "",
+      m.email ?? "",
+      m.phone ?? "",
+      m.status ?? "",
+      (m.unit_names || []).join("; "),
+      (m.labels || []).map((l: any) => l.name).join("; "),
+      m.address ?? "",
+      m.date_of_birth ?? "",
+      m.gender ?? "",
+      m.marital_status ?? "",
+      m.join_date ?? "",
+    ])
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(escape).join(","))
+      .join("\n")
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `members-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+
+    trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
+      report: "members",
+      row_count: filteredMembers.length,
+    })
+  }
+
   return (
     <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Header section */}
@@ -95,7 +153,12 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" className="shadow-sm hover:shadow-md transition-all rounded-lg">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="shadow-sm hover:shadow-md transition-all rounded-lg"
+          >
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>

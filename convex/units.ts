@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
+import { setPrimaryLeaderInternal } from "./unit_admins";
 
 // Utility functions for hierarchical operations
 export const buildPath = (parentPath: string, unitName: string): string => {
@@ -136,7 +137,7 @@ export const create = mutation({
         country: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const actor = await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         if (!orgId) throw new Error("Organization not set");
         // Get parent unit for path and depth calculation
@@ -156,12 +157,24 @@ export const create = mutation({
 
         const path = buildPath(parentPath, args.name);
 
-        return await ctx.db.insert("units", {
+        const unitId = await ctx.db.insert("units", {
             ...args,
             organization_id: orgId,
             depth,
             path,
         });
+
+        // Register the initial leader as the unit's primary admin.
+        if (args.leader_id) {
+            await setPrimaryLeaderInternal(ctx, {
+                unitId,
+                memberId: args.leader_id,
+                organizationId: orgId,
+                addedBy: actor.clerk_user_id,
+            });
+        }
+
+        return unitId;
     },
 });
 
@@ -187,7 +200,7 @@ export const update = mutation({
     },
     handler: async (ctx, args) => {
         const { id, updates } = args;
-        await requireOrgAdmin(ctx);
+        const actor = await requireOrgAdmin(ctx);
         const unit = await ctx.db.get(id);
         if (!unit) throw new Error("Unit not found");
         await requireOrgAccess(ctx, unit.organization_id);
@@ -197,7 +210,32 @@ export const update = mutation({
                 throw new Error("Parent unit org mismatch");
             }
         }
+
+        const leaderChanged = "leader_id" in updates && updates.leader_id !== unit.leader_id;
+
         await updateUnitWithPathRecalculation(ctx, id, updates);
+
+        // Keep unit_admins in sync when the primary leader changes.
+        if (leaderChanged) {
+            if (updates.leader_id) {
+                await setPrimaryLeaderInternal(ctx, {
+                    unitId: id,
+                    memberId: updates.leader_id,
+                    organizationId: unit.organization_id,
+                    addedBy: actor.clerk_user_id,
+                });
+            } else if (unit.leader_id) {
+                // Leader cleared: keep them as an assistant admin, drop primary.
+                const prev = await ctx.db
+                    .query("unit_admins")
+                    .withIndex("by_unit_member", (q) =>
+                        q.eq("unit_id", id).eq("member_id", unit.leader_id!),
+                    )
+                    .first();
+                if (prev) await ctx.db.patch(prev._id, { role: "admin" });
+            }
+        }
+
         return true;
     },
 });

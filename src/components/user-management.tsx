@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -35,7 +35,18 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Shield, Users, Edit, UserPlus } from 'lucide-react'
+import { Shield, Users, Edit, UserPlus, Trash2, UserX, UserCheck } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useToast } from '@/hooks/use-toast'
 import { useUserRole } from '@/hooks/use-user-role'
 import { useOrganization } from "@/hooks/use-organization"
 import { useQuery, useMutation } from "convex/react"
@@ -46,7 +57,8 @@ import type { UserRole } from '@/types/database'
 import { Id } from "../../convex/_generated/dataModel"
 
 export function UserManagement() {
-  const { isAdmin } = useUserRole()
+  const { isAdmin, user: currentUser } = useUserRole()
+  const { toast } = useToast()
   const { terminology } = useTerminology()
   const { organization } = useOrganization()
   const [activeTab, setActiveTab] = useState<'users' | 'invitations'>('users')
@@ -64,7 +76,10 @@ export function UserManagement() {
   );
 
   const updateRole = useMutation(api.users.updateRole);
-  const updateUnit = useMutation(api.units.update);
+  const addUnitAdmin = useMutation(api.unit_admins.addAdmin);
+  const removeUnitAdmin = useMutation(api.unit_admins.removeAdmin);
+  const setUserActive = useMutation(api.users.setActive);
+  const removeUser = useMutation(api.users.remove);
 
   const users = (usersData || []) as any[];
   const allUnits = (unitsData || []).map((m: any) => ({ ...m, id: m._id }));
@@ -76,12 +91,29 @@ export function UserManagement() {
   const [roleFilter, setRoleFilter] = useState('all')
   const [editingUser, setEditingUser] = useState<any | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [userToRemove, setUserToRemove] = useState<any | null>(null)
 
   // Form state for editing user
   const [selectedRole, setSelectedRole] = useState<UserRole>('member')
   const [selectedUnits, setSelectedUnits] = useState<string[]>([])
 
   const [originalUnits, setOriginalUnits] = useState<string[]>([]);
+  const [editingMemberId, setEditingMemberId] = useState<Id<"members"> | null>(null);
+
+  // Units the member being edited currently administers (primary or assistant).
+  const editingMemberAdminUnits = useQuery(
+    api.unit_admins.listByMember,
+    editingMemberId ? { member_id: editingMemberId } : "skip"
+  );
+
+  // Populate the unit selection once the member's admin units load.
+  useEffect(() => {
+    if (!isDialogOpen || !editingMemberId) return;
+    if (editingMemberAdminUnits === undefined) return;
+    const unitIds = editingMemberAdminUnits.map((r: any) => r.unit_id as string);
+    setSelectedUnits(unitIds);
+    setOriginalUnits(unitIds);
+  }, [editingMemberAdminUnits, isDialogOpen, editingMemberId]);
 
   const handleEditUser = (user: any) => {
     setEditingUser(user)
@@ -91,13 +123,11 @@ export function UserManagement() {
     const member = members.find(m => m.user_id === user._id)
     const memberId = member?._id
 
-    // Load member's current unit leaderships
-    const currentUnits = memberId
-      ? allUnits.filter((u: any) => u.leader_id === memberId).map((u: any) => u._id)
-      : []
-
-    setSelectedUnits(currentUnits)
-    setOriginalUnits(currentUnits)
+    // Reset selection; the effect above fills it in once the member's admin
+    // units load from unit_admins (covers primary + assistant admin roles).
+    setSelectedUnits([])
+    setOriginalUnits([])
+    setEditingMemberId((memberId as Id<"members">) || null)
 
     setIsDialogOpen(true)
   }
@@ -115,23 +145,22 @@ export function UserManagement() {
 
       if (memberId) {
         const memberIdTyped = memberId as Id<"members">
-        // Handle Unit Leadership Changes
+        // Grant/revoke unit admin access (additive — does not displace other
+        // admins). New admins become primary leader only if the unit has none.
         const addedUnits = selectedUnits.filter(id => !originalUnits.includes(id))
         for (const uId of addedUnits) {
-          await updateUnit({ id: uId as Id<"units">, updates: { leader_id: memberIdTyped } })
+          await addUnitAdmin({ unit_id: uId as Id<"units">, member_id: memberIdTyped })
         }
 
         const removedUnits = originalUnits.filter(id => !selectedUnits.includes(id))
         for (const uId of removedUnits) {
-          const unit = allUnits.find((u: any) => u._id === uId)
-          if (unit?.leader_id === memberIdTyped) {
-            await updateUnit({ id: uId as Id<"units">, updates: { leader_id: undefined } })
-          }
+          await removeUnitAdmin({ unit_id: uId as Id<"units">, member_id: memberIdTyped })
         }
       }
 
       setIsDialogOpen(false)
       setEditingUser(null)
+      setEditingMemberId(null)
     } catch (error) {
       console.error('Error saving user:', error)
     }
@@ -147,6 +176,35 @@ export function UserManagement() {
 
     return matchesSearch && matchesRole
   })
+
+  // Whether a user account is linked to a member profile.
+  const hasProfile = (user: any) => members.some(m => m.user_id === user._id)
+
+  // Org admins can't modify themselves or super admins (only a super admin can).
+  const canModifyUser = (user: any) =>
+    user._id !== currentUser?._id &&
+    (currentUser?.role === 'super_admin' || user.role !== 'super_admin')
+
+  const handleToggleActive = async (user: any) => {
+    try {
+      await setUserActive({ id: user._id, active: !user.active })
+      toast({ title: user.active ? 'User deactivated' : 'User reactivated' })
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+    }
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!userToRemove) return
+    try {
+      await removeUser({ id: userToRemove._id })
+      toast({ title: 'User removed', description: 'The account was removed; the member profile was kept.' })
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+    } finally {
+      setUserToRemove(null)
+    }
+  }
 
   const getLeaderUnitsForUser = (user: any) => {
     const member = members.find(m => m.user_id === user._id)
@@ -278,7 +336,14 @@ export function UserManagement() {
                         return (
                       <TableRow key={user._id}>
                         <TableCell className="font-medium">
-                          {user.name}
+                          <div className="flex items-center gap-2">
+                            <span>{user.name}</span>
+                            {!hasProfile(user) && (
+                              <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                                No profile
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>{user.email || '-'}</TableCell>
                         <TableCell>
@@ -326,13 +391,39 @@ export function UserManagement() {
                           {user._creationTime ? new Date(user._creationTime).toLocaleDateString() : 'N/A'}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditUser(user)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditUser(user)}
+                              title="Edit user"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggleActive(user)}
+                              disabled={!canModifyUser(user)}
+                              title={user.active ? 'Deactivate account' : 'Reactivate account'}
+                            >
+                              {user.active ? (
+                                <UserX className="h-4 w-4" />
+                              ) : (
+                                <UserCheck className="h-4 w-4 text-green-600" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setUserToRemove(user)}
+                              disabled={!canModifyUser(user)}
+                              title="Remove account"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                         )
@@ -343,6 +434,28 @@ export function UserManagement() {
               </Table>
             </div>
           </CardContent>
+
+          {/* Remove User Confirmation */}
+          <AlertDialog open={!!userToRemove} onOpenChange={(open) => { if (!open) setUserToRemove(null) }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove this user account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently removes <span className="font-medium">{userToRemove?.name || userToRemove?.email}</span>'s
+                  account and their app access. Their member profile (if any) is kept and simply unlinked. This can't be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmRemove}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Edit User Dialog */}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

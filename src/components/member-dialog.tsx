@@ -20,6 +20,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useOrganization } from "@/hooks/use-organization"
+import { useUserRole } from "@/hooks/use-user-role"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { Badge } from "@/components/ui/badge"
@@ -98,8 +99,16 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
 
   const createMember = useMutation(api.members.create);
 
-  const functionalUnits = unitsData?.filter(unit => unit.type === "functional" || unit.type === "ministry") || [];
-  const adminUnits = unitsData?.filter(unit => unit.type === "administrative" || unit.type === "geographic") || [];
+  // Unit-level admins can only assign members to units they administer; org
+  // admins may assign any unit. Mirrors the backend scope enforcement.
+  const { isAdmin, unitLeaderships } = useUserRole();
+  const restrictToScope = !isAdmin;
+  const allowedUnitIds = new Set((unitLeaderships || []).map((u: any) => u._id));
+  const inScope = (units: any[]) =>
+    restrictToScope ? units.filter(u => allowedUnitIds.has(u._id)) : units;
+
+  const functionalUnits = inScope(unitsData?.filter(unit => unit.type === "functional" || unit.type === "ministry") || []);
+  const adminUnits = inScope(unitsData?.filter(unit => unit.type === "administrative" || unit.type === "geographic") || []);
 
   // Handle photo upload completion
   const handlePhotoUpload = (url: string) => {
@@ -124,6 +133,15 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   };
 
   const onSubmit = async (data: MemberFormData) => {
+    // Non-org admins must place the member in a unit they manage.
+    if (restrictToScope && (!data.unit_ids || data.unit_ids.length === 0)) {
+      toast({
+        title: "Select a unit",
+        description: "You can only add members to units you manage. Please select at least one unit.",
+        variant: "destructive",
+      })
+      return
+    }
     setIsSubmitting(true)
     try {
       const normalizedPhone = (data.phone || "").replace(/\D/g, "")

@@ -1,7 +1,8 @@
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
+import { getUnitIdsAdministeredBy, addUnitAdminInternal } from "./unit_admins";
 import { Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
 
@@ -77,7 +78,12 @@ export const store = mutation({
                                 if (uId) {
                                     const unit = await ctx.db.get(uId);
                                     if (unit && unit.organization_id === invitation.organization_id) {
-                                        await ctx.db.patch(uId, { leader_id: invitation.member_id });
+                                        await addUnitAdminInternal(ctx, {
+                                            unitId: uId,
+                                            memberId: invitation.member_id,
+                                            organizationId: invitation.organization_id,
+                                            addedBy: invitation.invited_by,
+                                        });
                                     }
                                 }
                             }
@@ -133,7 +139,12 @@ export const store = mutation({
                         if (uId) {
                             const unit = await ctx.db.get(uId);
                             if (unit && unit.organization_id === invitation.organization_id) {
-                                await ctx.db.patch(uId, { leader_id: invitation.member_id });
+                                await addUnitAdminInternal(ctx, {
+                                    unitId: uId,
+                                    memberId: invitation.member_id,
+                                    organizationId: invitation.organization_id,
+                                    addedBy: invitation.invited_by,
+                                });
                             }
                         }
                     }
@@ -206,9 +217,10 @@ export const current = query({
         let unitLeaderships: any[] = [];
 
         if (member) {
-            // Find units led by this member
-            const allUnits = await ctx.db.query("units").collect();
-            unitLeaderships = allUnits.filter(u => u.leader_id === member._id);
+            // Units this member administers (primary leader or additional admin)
+            const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
+            const units = await Promise.all(adminUnitIds.map((id) => ctx.db.get(id)));
+            unitLeaderships = units.filter((u): u is NonNullable<typeof u> => u !== null);
         }
 
         return {
@@ -323,6 +335,79 @@ export const updateRole = mutation({
     }
 });
 
+// Deactivate or reactivate a user account (reversible). Deactivated users can
+// no longer use the app (requireUser rejects inactive accounts).
+export const setActive = mutation({
+    args: { id: v.id("users"), active: v.boolean() },
+    handler: async (ctx, args) => {
+        const actor = await requireOrgAdmin(ctx);
+        const target = await ctx.db.get(args.id);
+        if (!target) throw new Error("User not found");
+        if (target._id === actor._id) throw new Error("You cannot change your own account status");
+
+        if (actor.role !== "super_admin") {
+            const orgId = await resolveOrgId(ctx);
+            if (!orgId || target.organization_id !== orgId) throw new Error("Forbidden");
+            if (target.role === "super_admin") throw new Error("Forbidden");
+        }
+
+        await ctx.db.patch(args.id, { active: args.active });
+
+        await ctx.runMutation(api.audit.logEvent, {
+            action: args.active ? "user.reactivated" : "user.deactivated",
+            entity_type: "user",
+            entity_id: args.id,
+            entity_name: target.name || target.email,
+            performed_by: actor.clerk_user_id,
+            performed_by_name: actor.name || actor.email || "Unknown",
+            performed_by_role: actor.role,
+            organization_id: target.organization_id ? ctx.db.normalizeId("organizations", target.organization_id) || undefined : undefined,
+            changes: { active: { before: target.active, after: args.active } },
+        });
+    },
+});
+
+// Permanently remove a user account. The linked member profile (if any) is
+// unlinked but preserved, so church membership data isn't lost.
+export const remove = mutation({
+    args: { id: v.id("users") },
+    handler: async (ctx, args) => {
+        const actor = await requireOrgAdmin(ctx);
+        const target = await ctx.db.get(args.id);
+        if (!target) throw new Error("User not found");
+        if (target._id === actor._id) throw new Error("You cannot remove your own account");
+
+        if (actor.role !== "super_admin") {
+            const orgId = await resolveOrgId(ctx);
+            if (!orgId || target.organization_id !== orgId) throw new Error("Forbidden");
+            if (target.role === "super_admin") throw new Error("Forbidden");
+        }
+
+        // Unlink any member profiles that pointed at this account (keep the member).
+        const linkedMembers = await ctx.db
+            .query("members")
+            .withIndex("by_user_id", (q) => q.eq("user_id", args.id))
+            .collect();
+        for (const m of linkedMembers) {
+            await ctx.db.patch(m._id, { user_id: undefined });
+        }
+
+        await ctx.db.delete(args.id);
+
+        await ctx.runMutation(api.audit.logEvent, {
+            action: "user.removed",
+            entity_type: "user",
+            entity_id: args.id,
+            entity_name: target.name || target.email,
+            performed_by: actor.clerk_user_id,
+            performed_by_name: actor.name || actor.email || "Unknown",
+            performed_by_role: actor.role,
+            organization_id: target.organization_id ? ctx.db.normalizeId("organizations", target.organization_id) || undefined : undefined,
+            changes: { removed_user: { name: target.name, email: target.email, role: target.role } },
+        });
+    },
+});
+
 export const switchOrganization = mutation({
     args: { organization_id: v.string() },
     handler: async (ctx, args) => {
@@ -340,6 +425,38 @@ export const switchOrganization = mutation({
         await ctx.db.patch(user._id, {
             organization_id: orgId,
         });
+    },
+});
+
+// Maintenance-only: restore a user's role from the CLI when it was changed
+// incorrectly (e.g. an admin who accidentally consumed someone else's invite
+// link before the email guard existed). Internal — not exposed to clients.
+// Run: npx convex run users:adminRestoreRole '{"email":"you@example.com","role":"super_admin"}'
+export const adminRestoreRole = internalMutation({
+    args: {
+        email: v.optional(v.string()),
+        clerk_user_id: v.optional(v.string()),
+        role: v.string(),
+    },
+    handler: async (ctx, args) => {
+        let user = null;
+        if (args.clerk_user_id) {
+            const clerkId = args.clerk_user_id;
+            user = await ctx.db
+                .query("users")
+                .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", clerkId))
+                .first();
+        }
+        if (!user && args.email) {
+            const target = args.email.trim().toLowerCase();
+            const all = await ctx.db.query("users").collect();
+            user = all.find((u) => (u.email || "").trim().toLowerCase() === target) || null;
+        }
+        if (!user) throw new Error("User not found");
+
+        const before = user.role;
+        await ctx.db.patch(user._id, { role: args.role });
+        return { user_id: user._id, email: user.email, before, after: args.role };
     },
 });
 

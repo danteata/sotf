@@ -144,6 +144,22 @@ export default defineSchema({
         .index("by_org_status", ["organization_id", "status"])
         .index("by_user_id", ["user_id"]),
 
+    // Admins/leaders of a unit (many-to-many). Source of truth for unit-level
+    // admin access. Always contains the primary leader (role "leader") plus any
+    // number of additional admins (role "admin"). `units.leader_id` mirrors the
+    // primary leader for display/back-compat.
+    unit_admins: defineTable({
+        unit_id: v.id("units"),
+        member_id: v.id("members"),
+        organization_id: v.id("organizations"), // denormalized for scoping/cleanup
+        role: v.string(), // 'leader' (primary) | 'admin' (assistant)
+        added_by: v.optional(v.string()), // clerk_user_id of who granted access
+        is_active: v.boolean(),
+    })
+        .index("by_unit", ["unit_id"])
+        .index("by_member", ["member_id"])
+        .index("by_unit_member", ["unit_id", "member_id"]),
+
     // Many-to-many relationship between members and units
     member_units: defineTable({
         member_id: v.id("members"),
