@@ -44,6 +44,8 @@ import { useTerminology } from '@/hooks/use-terminology'
 import { useEventTypes } from '@/hooks/use-event-types'
 import { cn } from '@/lib/utils'
 import { useMutation, useQuery } from 'convex/react'
+import { useAnalytics } from '@/hooks/useAnalytics'
+import { AnalyticsEventType } from '@/services/analytics/types'
 import { api } from '../../convex/_generated/api'
 import { Id } from '../../convex/_generated/dataModel'
 
@@ -72,6 +74,7 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
   const { toast } = useToast()
   const { terminology } = useTerminology()
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
+  const { trackEvent } = useAnalytics()
 
   const currentOrg = useQuery(api.organizations.current)
   const createMutation = useMutation(api.events.create)
@@ -144,9 +147,17 @@ export function EventDialog({ open, onOpenChange, event, onSuccess }: EventDialo
           }
         })
         toast({ title: "Success", description: "Event updated" })
+        trackEvent(AnalyticsEventType.EVENT_UPDATED, {
+          event_id: event._id,
+          event_type: data.type,
+        })
       } else {
         await createMutation(eventData)
         toast({ title: "Success", description: "Event created" })
+        trackEvent(AnalyticsEventType.EVENT_CREATED, {
+          event_type: data.type,
+          has_description: !!data.description,
+        })
       }
 
       onOpenChange(false)

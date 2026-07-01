@@ -3,6 +3,8 @@
 import * as React from "react"
 import { Moon, Sun, Monitor } from "lucide-react"
 import { useTheme } from "@/components/theme-provider"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +16,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function ThemeToggle() {
-  const { setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
+  const { trackEvent } = useAnalytics()
+
+  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
+    setTheme(newTheme)
+    trackEvent(AnalyticsEventType.THEME_CHANGED, { theme: newTheme })
+  }
 
   return (
     <DropdownMenu>
@@ -26,16 +34,25 @@ export function ThemeToggle() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
+        <DropdownMenuItem
+          onClick={() => handleThemeChange("light")}
+          className={theme === "light" ? "bg-accent" : ""}
+        >
           <Sun className="mr-2 h-4 w-4" />
           <span>Light</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
+        <DropdownMenuItem
+          onClick={() => handleThemeChange("dark")}
+          className={theme === "dark" ? "bg-accent" : ""}
+        >
           <Moon className="mr-2 h-4 w-4" />
           <span>Dark</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => setTheme("system")}>
+        <DropdownMenuItem
+          onClick={() => handleThemeChange("system")}
+          className={theme === "system" ? "bg-accent" : ""}
+        >
           <Monitor className="mr-2 h-4 w-4" />
           <span>System</span>
         </DropdownMenuItem>

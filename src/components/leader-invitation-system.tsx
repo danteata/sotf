@@ -50,6 +50,8 @@ import {
 import { useTerminology } from '@/hooks/use-terminology'
 import { useToast } from '@/hooks/use-toast'
 import { useQuery, useMutation } from 'convex/react'
+import { useAnalytics } from '@/hooks/useAnalytics'
+import { AnalyticsEventType } from '@/services/analytics/types'
 import { api } from '../../convex/_generated/api'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Id } from '../../convex/_generated/dataModel'
@@ -87,6 +89,7 @@ export function LeaderInvitationSystem() {
   const activeOrganization = isSuperAdmin
     ? allOrganizations?.find(o => o._id === selectedOrgId) || allOrganizations?.[0]
     : organization;
+  const { trackEvent } = useAnalytics()
 
   // Convex Queries
   const members = useQuery(
@@ -228,6 +231,11 @@ export function LeaderInvitationSystem() {
           intended_role: role,
           intended_units: leader.led_unit_ids as Id<"units">[],
         });
+
+        trackEvent(AnalyticsEventType.MEMBER_INVITED, {
+          role,
+          delivery: 'email',
+        });
       }
 
       toast({
@@ -262,6 +270,11 @@ export function LeaderInvitationSystem() {
         intended_role: role,
         intended_units: leader.led_unit_ids as Id<"units">[],
         organization_id: activeOrganization?._id,
+      });
+
+      trackEvent(AnalyticsEventType.MEMBER_INVITED, {
+        role,
+        delivery: 'link',
       });
 
       const link = `${window.location.origin}/accept-invitation?token=${result.token}`;

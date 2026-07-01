@@ -4,6 +4,8 @@ import { useState, useMemo } from "react"
 import { Download, Filter, Plus, Search, Upload, Users, Building2, Tag } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery, useMutation } from "convex/react"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +25,7 @@ interface MembersContentProps {
 }
 
 export function MembersContent({ initialMembers }: MembersContentProps) {
+  const { trackEvent } = useAnalytics()
   const [statusFilter, setStatusFilter] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [unitFilter, setUnitFilter] = useState("all")

@@ -4,6 +4,8 @@ import { lazy, Suspense } from "react";
 import { useConvexAuth } from "convex/react";
 import { AuthLoadingWrapper } from "@/components/auth-loading-wrapper";
 import { UserSync } from "@/components/user-sync";
+import { PageViewTracker } from "@/providers/PageViewTracker";
+import { AuthAnalyticsBridge } from "@/providers/AuthAnalyticsBridge";
 
 import HomePage from "@/pages/Home";
 import SignInPage from "@/pages/auth/SignIn";
@@ -48,6 +50,7 @@ function Protected({ children }: { children: React.ReactNode }) {
   return (
     <>
       <UserSync />
+      <AuthAnalyticsBridge />
       {children}
     </>
   );
@@ -56,6 +59,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <PageViewTracker />
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />

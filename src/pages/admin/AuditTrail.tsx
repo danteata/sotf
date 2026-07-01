@@ -1,6 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { AnalyticsEventType } from "@/services/analytics/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +77,7 @@ interface AuditLog {
 }
 
 export default function AuditTrail() {
+    const { trackEvent } = useAnalytics();
     const [page, setPage] = useState(0);
     const [filters, setFilters] = useState({
         action: "",
@@ -87,6 +90,10 @@ export default function AuditTrail() {
     const [isDetailOpen, setIsDetailOpen] = useState(false);
 
     const limit = 20;
+
+    useEffect(() => {
+        trackEvent(AnalyticsEventType.AUDIT_TRAIL_VIEWED, {});
+    }, [trackEvent]);
 
     // Fetch audit logs
     const auditData = useQuery(api.audit.getAuditLogs, {
@@ -138,6 +145,10 @@ export default function AuditTrail() {
     const viewDetails = (log: AuditLog) => {
         setSelectedLog(log);
         setIsDetailOpen(true);
+        trackEvent(AnalyticsEventType.AUDIT_LOG_VIEWED, {
+            action: log.action,
+            entity_type: log.entity_type,
+        });
     };
 
     const exportToCSV = () => {
@@ -163,6 +174,11 @@ export default function AuditTrail() {
         a.href = url;
         a.download = `audit-trail-${format(new Date(), "yyyy-MM-dd")}.csv`;
         a.click();
+
+        trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
+            report: 'audit_trail',
+            row_count: auditData.logs.length,
+        });
     };
 
     return (

@@ -2,6 +2,8 @@
 import { useState } from "react"
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -21,6 +23,7 @@ import { useConvexAuth } from "convex/react"
 export function SetupOrganizationDialog() {
     const { organization, isLoading: isOrgLoading } = useOrganization()
     const createOrg = useMutation(api.organizations.create)
+    const { trackEvent } = useAnalytics()
     const [name, setName] = useState("")
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isOpen, setIsOpen] = useState(true)
@@ -45,6 +48,8 @@ export function SetupOrganizationDialog() {
         setIsSubmitting(true)
         try {
             await createOrg({ name })
+            trackEvent(AnalyticsEventType.ORGANIZATION_CREATED, { name_length: name.length })
+            trackEvent(AnalyticsEventType.ORGANIZATION_SETUP_COMPLETED, {})
             toast.success("Organization created successfully")
             setIsOpen(false)
             window.location.reload()

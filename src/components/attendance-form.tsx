@@ -19,6 +19,8 @@ import { Badge } from "./ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEventTypes } from "@/hooks/use-event-types"
 import { useQuery, useMutation } from "convex/react"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
 
@@ -42,6 +44,7 @@ export function AttendanceForm({
   const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast();
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
+  const { trackEvent } = useAnalytics();
 
   // Filters
   const [unitFilter, setUnitFilter] = useState("all")
@@ -153,6 +156,13 @@ export function AttendanceForm({
         event_id: selectedEventId !== "auto-create" ? (selectedEventId as Id<"events">) : undefined,
         notes,
         member_ids: selectedMembers as Id<"members">[],
+      });
+
+      trackEvent(AnalyticsEventType.ATTENDANCE_MARKED, {
+        date: formattedDate,
+        event_type_id: eventTypeId,
+        member_count: selectedMembers.length,
+        has_notes: !!notes,
       });
 
       toast({

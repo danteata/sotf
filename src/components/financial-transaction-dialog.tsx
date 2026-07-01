@@ -41,6 +41,8 @@ import { TRANSACTION_CATEGORIES, PAYMENT_METHODS } from '@/lib/financial-utils'
 import { useUser } from '@clerk/clerk-react'
 import { MemberCombobox } from '@/components/ui/member-combobox'
 import { useQuery, useMutation } from 'convex/react'
+import { useAnalytics } from '@/hooks/useAnalytics'
+import { AnalyticsEventType } from '@/services/analytics/types'
 import { api } from '../../convex/_generated/api'
 import { useOrganization } from '@/hooks/use-organization'
 import { toast } from 'sonner'
@@ -80,6 +82,7 @@ export function FinancialTransactionDialog({
 
     const createTransaction = useMutation(api.financial.createTransaction)
     const updateTransaction = useMutation(api.financial.updateTransaction)
+    const { trackEvent } = useAnalytics()
 
     // Data Fetching
     const members = useQuery(api.members.getAll,
@@ -187,9 +190,20 @@ export function FinancialTransactionDialog({
                     ...transactionPayload
                 })
                 toast.success('Transaction updated')
+                trackEvent(AnalyticsEventType.FINANCIAL_TRANSACTION_UPDATED, {
+                    type: data.type,
+                    category: data.category,
+                })
             } else {
                 await createTransaction(transactionPayload)
                 toast.success('Transaction recorded')
+                trackEvent(AnalyticsEventType.FINANCIAL_TRANSACTION_CREATED, {
+                    type: data.type,
+                    category: data.category,
+                    payment_method: data.payment_method,
+                    has_event: !!data.event_id,
+                    has_member: !!data.member_id,
+                })
             }
             onOpenChange(false)
         } catch (error) {

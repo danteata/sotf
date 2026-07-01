@@ -26,6 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { useOrganization } from "@/hooks/use-organization"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -91,6 +93,7 @@ interface SettingsDialogProps {
 export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+  const { trackEvent } = useAnalytics()
 
   const currentOrg = useQuery(api.organizations.current)
   const terminologyConfigs = useQuery(api.app_config.getByCategory, { category: 'terminology' })
@@ -158,6 +161,8 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
   useEffect(() => {
     if (!open) return
 
+    trackEvent(AnalyticsEventType.SETTINGS_OPENED, {})
+
     if (terminologyConfigs && generalConfigs) {
       const settingsObject: any = {}
       const allSettings = [...terminologyConfigs, ...generalConfigs]
@@ -201,6 +206,7 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
       })
 
       await Promise.all(promises)
+      trackEvent(AnalyticsEventType.SETTING_CHANGED, { scope: 'global', keys: Object.keys(data) })
       toast({ title: "Success", description: "Global settings updated" })
       onSuccess?.()
     } catch (error: any) {

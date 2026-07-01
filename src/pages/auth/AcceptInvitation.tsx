@@ -9,6 +9,8 @@ import { CheckCircle, AlertCircle, Loader2, UserCheck, ShieldAlert, Key, Mail, C
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { UserSync } from "@/components/user-sync"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 
 export default function AcceptInvitationPage() {
     const [searchParams] = useSearchParams()
@@ -20,6 +22,7 @@ export default function AcceptInvitationPage() {
     // Convex Queries
     const invitation = useQuery(api.invitations.getByToken, { token })
     const acceptInvitationMutation = useMutation(api.invitations.accept)
+    const { trackEvent } = useAnalytics()
 
     const [isAccepting, setIsAccepting] = useState(false)
     const [error, setError] = useState<string | null>(null)
@@ -58,6 +61,11 @@ export default function AcceptInvitationPage() {
             } catch {
                 // ignore
             }
+
+            trackEvent(AnalyticsEventType.INVITATION_ACCEPTED, {
+                role: invitation.intended_role,
+                has_member_link: !!invitation.member_id,
+            });
 
             // Redirect to appropriate dashboard after 3 seconds
             // Use window.location.href for a full page reload to ensure all queries refresh

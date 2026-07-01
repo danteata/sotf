@@ -16,9 +16,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { toast } from "sonner"
 
 export function AbsentMembers() {
+  const { trackEvent } = useAnalytics()
   const [searchQuery, setSearchQuery] = useState("")
   const [eventType, setEventType] = useState("")
   const [absenceFilter, setAbsenceFilter] = useState("all")
@@ -259,6 +262,12 @@ export function AbsentMembers() {
               a.click()
               document.body.removeChild(a)
               window.URL.revokeObjectURL(url)
+
+              trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
+                report: 'absent_members',
+                event_type: eventType,
+                unit_filter: selectedUnit || 'all',
+              });
 
               toast.success("Export completed!")
             }}

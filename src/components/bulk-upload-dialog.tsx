@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useMutation, useQuery } from "convex/react"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
 import { useOrganization } from "@/hooks/use-organization"
 import { Id } from "../../convex/_generated/dataModel"
@@ -62,6 +64,7 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
   const allUnitsQuery = useQuery(api.units.list, organization?._id ? {} : "skip")
   const allUnits = allUnitsQuery || []
   const existingMembers = useQuery(api.members.getAll, organization?._id ? { organization_id: organization._id } : "skip")
+  const { trackEvent } = useAnalytics()
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle")
   const [progress, setProgress] = useState(0)
@@ -368,6 +371,14 @@ export function BulkUploadDialog({ open, onOpenChange, onSuccess }: BulkUploadDi
 
       const created = (result as any)?.created ?? validRecords.length
       const updated = (result as any)?.updated ?? 0
+
+      trackEvent(AnalyticsEventType.MEMBER_BULK_UPLOADED, {
+        created_count: created,
+        updated_count: updated,
+        skipped_count: invalidCount,
+        target_unit_id: !!targetUnitId,
+      });
+
       setErrorMessage(`Upload complete: ${created} created, ${updated} updated. ${invalidCount} skipped.`)
       setUploadStatus("success")
       onSuccess?.()

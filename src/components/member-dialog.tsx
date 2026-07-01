@@ -20,6 +20,8 @@ import { useToast } from "@/components/ui/use-toast"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useOrganization } from "@/hooks/use-organization"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Upload, X, Check } from "lucide-react"
@@ -61,6 +63,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
   const { toast } = useToast()
+  const { trackEvent } = useAnalytics()
 
   const {
     register,
@@ -144,6 +147,13 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
         joined_date: data.joined_date,
         skills: data.skills,
         plus_code: (data as any).plus_code,
+      });
+
+      trackEvent(AnalyticsEventType.MEMBER_CREATED, {
+        source: 'dialog',
+        status: data.status,
+        has_avatar: !!data.avatar_url,
+        unit_count: (data.unit_ids || []).length,
       });
 
       toast({

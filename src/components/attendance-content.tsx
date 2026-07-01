@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { useAnalytics } from "@/hooks/useAnalytics"
+import { AnalyticsEventType } from "@/services/analytics/types"
 import { useUserRole, useManagedMembers, useAccessibleUnits } from "@/hooks/use-user-role"
 import {
   DropdownMenu,
@@ -25,6 +27,7 @@ export function AttendanceContent() {
   const { isAdmin } = useUserRole();
   const { members, isLoading: membersLoading } = useManagedMembers();
   const { ministries, isLoading: filtersLoading } = useAccessibleUnits();
+  const { trackEvent } = useAnalytics();
 
   const stats = useQuery(api.attendance.getStats);
   const attendanceRecords = useQuery(api.attendance.listWithDetails);
@@ -75,6 +78,12 @@ export function AttendanceContent() {
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
+
+      trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
+        report: 'attendance',
+        date: record.date,
+        event_type: record.event_type_label,
+      });
     } catch (error) {
       console.error("Export failed:", error)
     }
