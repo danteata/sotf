@@ -74,6 +74,11 @@ export function UserManagement() {
     api.members.getAll,
     organization?._id ? { organization_id: organization._id } : "skip"
   );
+  // Unit-admin assignments (leader + co-admins), the source of truth for access.
+  const unitAdminsData = useQuery(
+    api.unit_admins.listByOrg,
+    organization?._id ? { organization_id: organization._id } : "skip"
+  );
 
   const updateRole = useMutation(api.users.updateRole);
   const addUnitAdmin = useMutation(api.unit_admins.addAdmin);
@@ -206,10 +211,18 @@ export function UserManagement() {
     }
   }
 
+  // Units a user administers, sourced from unit_admins (leader + co-admins) so
+  // it matches the access they actually get — not just units they primarily lead.
   const getLeaderUnitsForUser = (user: any) => {
     const member = members.find(m => m.user_id === user._id)
     if (!member) return []
-    return allUnits.filter((u: any) => u.leader_id === member._id)
+    const adminUnitIds = new Set(
+      (unitAdminsData || [])
+        .filter((r: any) => r.member_id === member._id)
+        .map((r: any) => r.unit_id as string)
+    )
+    // Include legacy leader_id-led units too, so pre-backfill leaders aren't missed.
+    return allUnits.filter((u: any) => adminUnitIds.has(u._id) || u.leader_id === member._id)
   }
 
   if (!isAdmin) {

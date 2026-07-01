@@ -42,7 +42,7 @@ export function AuthCheck({ children }: { children: React.ReactNode }) {
 
     if (isClerkConfigured) {
       if (isLoaded && !isSignedIn) {
-        navigate("/sign-in")
+        navigate("/")
       }
     }
   }, [isClerkConfigured, navigate, isLoaded, isSignedIn])

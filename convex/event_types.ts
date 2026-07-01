@@ -1,7 +1,7 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireSuperAdmin, requireUser } from "./auth";
+import { requireSuperAdmin, requireOrgAdmin, requireUser } from "./auth";
 
 export const getAll = query({
     args: {},
@@ -37,7 +37,9 @@ export const create = mutation({
         sort_order: v.number(),
     },
     handler: async (ctx, args) => {
-        await requireSuperAdmin(ctx);
+        // Note: event_types is a global (cross-organization) table, so an admin
+        // creating a type makes it available to every organization.
+        await requireOrgAdmin(ctx);
         return await ctx.db.insert("event_types", args);
     },
 });
@@ -57,7 +59,7 @@ export const update = mutation({
         }),
     },
     handler: async (ctx, args) => {
-        await requireSuperAdmin(ctx);
+        await requireOrgAdmin(ctx);
         await ctx.db.patch(args.id, args.updates);
     },
 });
@@ -65,7 +67,7 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("event_types") },
     handler: async (ctx, args) => {
-        await requireSuperAdmin(ctx);
+        await requireOrgAdmin(ctx);
         await ctx.db.delete(args.id);
     },
 });

@@ -26,7 +26,7 @@ export function UserNav() {
 
   if (!isClerkConfigured) {
     return (
-      <Button variant="outline" onClick={() => navigate("/sign-in")} className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 neon-glow">
+      <Button variant="outline" onClick={() => navigate("/")} className="border-primary/30 hover:bg-primary/10 hover:border-primary/50 neon-glow">
         Sign In (Demo)
       </Button>
     )
@@ -45,7 +45,7 @@ export function UserNav() {
 
   if (!isSignedIn) {
     return (
-      <Button variant="outline" onClick={() => navigate("/sign-in")} className="border-primary/30 hover:bg-primary/10 hover:border-primary/50">
+      <Button variant="outline" onClick={() => navigate("/")} className="border-primary/30 hover:bg-primary/10 hover:border-primary/50">
         Sign In
       </Button>
     )

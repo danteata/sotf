@@ -1,8 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { MoreHorizontal, ArrowUpDown, Phone, Tag, Users, Building2, Eye, Edit, Trash2 } from "lucide-react"
+import { ArrowUpDown, Phone, Tag, Users, Building2, Eye, Edit, Trash2, SlidersHorizontal } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +42,13 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
   const [showBulkLabels, setShowBulkLabels] = useState(false);
+  const [visibleCols, setVisibleCols] = useState({
+    contact: true,
+    address: true,
+    units: true,
+    labels: true,
+    lastAttendance: true,
+  });
   const { terminology } = useTerminology()
   const { toast } = useToast()
 
@@ -175,6 +190,37 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
         </div>
       )}
 
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2">
+              <SlidersHorizontal className="h-4 w-4" />
+              Columns
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {([
+              ["contact", "Contact"],
+              ["address", "Address"],
+              ["units", "Units"],
+              ["labels", "Labels"],
+              ["lastAttendance", "Last attendance"],
+            ] as const).map(([key, label]) => (
+              <DropdownMenuCheckboxItem
+                key={key}
+                checked={visibleCols[key]}
+                onCheckedChange={(v) => setVisibleCols((prev) => ({ ...prev, [key]: !!v }))}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {label}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       <div className="rounded-xl border overflow-x-auto shadow-sm">
         <Table>
           <TableHeader>
@@ -187,43 +233,51 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                 />
               </TableHead>
               <TableHead className="min-w-[180px]">
-                <div className="flex items-center space-x-2" onClick={() => handleSort("name")}>
+                <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("name")}>
                   <span className="font-bold">Name</span>
-                  <ArrowUpDown className="h-4 w-4 cursor-pointer" />
+                  <ArrowUpDown className="h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead className="hidden md:table-cell">Contact</TableHead>
-              <TableHead className="hidden md:table-cell">Address</TableHead>
+              {visibleCols.contact && <TableHead className="hidden md:table-cell">Contact</TableHead>}
+              {visibleCols.address && <TableHead className="hidden md:table-cell">Address</TableHead>}
               <TableHead>
-                <div className="flex items-center space-x-2" onClick={() => handleSort("status")}>
+                <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("status")}>
                   <span className="font-bold">Status</span>
-                  <ArrowUpDown className="h-4 w-4 cursor-pointer" />
+                  <ArrowUpDown className="h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead className="hidden md:table-cell">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span className="font-bold">Units</span>
-                </div>
+              {visibleCols.units && (
+                <TableHead className="hidden md:table-cell">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    <span className="font-bold">Units</span>
+                  </div>
+                </TableHead>
+              )}
+              {visibleCols.labels && (
+                <TableHead className="hidden xl:table-cell">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4" />
+                    <span className="font-bold">Labels</span>
+                  </div>
+                </TableHead>
+              )}
+              {visibleCols.lastAttendance && (
+                <TableHead className="hidden lg:table-cell">
+                  <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("last_attendance")}>
+                    <span className="font-bold whitespace-nowrap">Last Attendance</span>
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </TableHead>
+              )}
+              <TableHead className="sticky right-0 z-20 bg-muted/30 text-right w-[120px] shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.1)]">
+                Actions
               </TableHead>
-              <TableHead className="hidden xl:table-cell">
-                <div className="flex items-center gap-2">
-                  <Tag className="h-4 w-4" />
-                  <span className="font-bold">Labels</span>
-                </div>
-              </TableHead>
-              <TableHead>
-                <div className="flex items-center space-x-2" onClick={() => handleSort("last_attendance")}>
-                  <span className="font-bold">Last Attendance</span>
-                  <ArrowUpDown className="h-4 w-4 cursor-pointer" />
-                </div>
-              </TableHead>
-              <TableHead className="w-[50px] text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {getSortedMembers().map((member) => (
-              <TableRow key={member.id} className="hover:bg-muted/50 transition-colors border-border last:border-0">
+              <TableRow key={member.id} className="group hover:bg-muted/50 transition-colors border-border last:border-0">
                 <TableCell>
                   <Checkbox
                     checked={selectedMembers.includes(member.id || '')}
@@ -240,33 +294,45 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                     <div className="font-bold">{member.name}</div>
                   </div>
                 </TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Phone className="mr-1 h-3 w-3" />
-                    <span>{member.phone || '—'}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="hidden md:table-cell">{member.address || member.city || '—'}</TableCell>
+                {visibleCols.contact && (
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Phone className="mr-1 h-3 w-3" />
+                      <span>{member.phone || '—'}</span>
+                    </div>
+                  </TableCell>
+                )}
+                {visibleCols.address && (
+                  <TableCell className="hidden md:table-cell max-w-[160px] truncate text-sm text-muted-foreground">
+                    {member.address || member.city || '—'}
+                  </TableCell>
+                )}
                 <TableCell>{getStatusBadge(member.status)}</TableCell>
-                <TableCell className="hidden md:table-cell">
-                  <div className="flex flex-wrap gap-1">
-                    {((member as any).unit_names || []).length > 0 ? (
-                      ((member as any).unit_names || []).map((unitName: string, idx: number) => (
-                        <Badge key={idx} variant="outline" className="text-xs">
-                          {unitName}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-muted-foreground text-sm">—</span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="hidden xl:table-cell">
-                  <MemberLabels labels={(member as any).labels || []} />
-                </TableCell>
-                <TableCell className="font-medium">{member.last_attendance}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
+                {visibleCols.units && (
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex flex-wrap gap-1">
+                      {((member as any).unit_names || []).length > 0 ? (
+                        ((member as any).unit_names || []).map((unitName: string, idx: number) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {unitName}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </div>
+                  </TableCell>
+                )}
+                {visibleCols.labels && (
+                  <TableCell className="hidden xl:table-cell">
+                    <MemberLabels labels={(member as any).labels || []} />
+                  </TableCell>
+                )}
+                {visibleCols.lastAttendance && (
+                  <TableCell className="hidden lg:table-cell font-medium">{member.last_attendance}</TableCell>
+                )}
+                <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-muted/50 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.1)]">
+                  <div className="flex items-center justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="icon"

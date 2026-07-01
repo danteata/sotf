@@ -210,6 +210,20 @@ export const listByUnit = query({
     },
 });
 
+// All active unit-admin rows for an organization. Used by admin screens to show
+// which units each user administers (leader or co-admin), matching their access.
+export const listByOrg = query({
+    args: { organization_id: v.id("organizations") },
+    handler: async (ctx, args) => {
+        await requireOrgAccess(ctx, args.organization_id);
+        const rows = await ctx.db
+            .query("unit_admins")
+            .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+            .collect();
+        return rows.filter((r) => r.is_active);
+    },
+});
+
 export const listByMember = query({
     args: { member_id: v.id("members") },
     handler: async (ctx, args) => {

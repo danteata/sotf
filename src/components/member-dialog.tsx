@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FileUploader } from "@/components/file-uploader"
+import { UnitPicker } from "@/components/unit-picker"
 import { useToast } from "@/components/ui/use-toast"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -23,16 +24,14 @@ import { useOrganization } from "@/hooks/use-organization"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
-import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { X, Check, Image as ImageIcon } from "lucide-react"
-import { Checkbox } from "@radix-ui/react-checkbox"
+import { X, Image as ImageIcon } from "lucide-react"
 
 const memberSchema = z.object({
   title: z.string().optional(),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().min(1, "Phone number is required"),
   dob: z.string().optional(),
   birth_month: z.number().min(1).max(12).optional(),
@@ -72,11 +71,13 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
     setValue,
     watch,
     reset,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<MemberFormData>({
     resolver: zodResolver(memberSchema),
+    mode: "onChange",
     defaultValues: {
       title: "",
+      gender: "",
       status: "visitor",
       country: "Ghana",
       unit_ids: [],
@@ -107,8 +108,6 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
   const inScope = (units: any[]) =>
     restrictToScope ? units.filter(u => allowedUnitIds.has(u._id)) : units;
 
-  const functionalUnits = inScope(unitsData?.filter(unit => unit.type === "functional" || unit.type === "ministry") || []);
-  const adminUnits = inScope(unitsData?.filter(unit => unit.type === "administrative" || unit.type === "geographic") || []);
 
   // Handle photo upload completion
   const handlePhotoUpload = (url: string) => {
@@ -147,7 +146,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
       const normalizedPhone = (data.phone || "").replace(/\D/g, "")
       await createMember({
         name: `${data.first_name} ${data.last_name}`,
-        email: data.email,
+        email: data.email || undefined,
         phone: normalizedPhone,
         status: data.status,
         dob: data.dob,
@@ -230,7 +229,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
                   <div className="md:col-span-1 space-y-2">
                     <Label htmlFor="title" className="text-sm font-medium">Title</Label>
-                    <Select onValueChange={(value) => setValue("title", value)}>
+                    <Select value={watch("title")} onValueChange={(value) => setValue("title", value, { shouldValidate: true })}>
                       <SelectTrigger id="title" className="rounded-lg bg-background/50 border-input-border">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
@@ -265,7 +264,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                     <Label htmlFor="status" className="text-sm font-medium after:content-['*'] after:text-destructive after:ml-0.5">
                       Status
                     </Label>
-                    <Select onValueChange={(value) => setValue("status", value)} defaultValue="visitor">
+                    <Select value={watch("status")} onValueChange={(value) => setValue("status", value, { shouldValidate: true })}>
                       <SelectTrigger className="rounded-lg bg-background/50 border-input-border">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -288,7 +287,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="birth_month" className="text-sm font-medium">Birth Month</Label>
-                    <Select onValueChange={(value) => setValue("birth_month", parseInt(value))}>
+                    <Select value={watch("birth_month")?.toString() ?? ""} onValueChange={(value) => setValue("birth_month", parseInt(value))}>
                       <SelectTrigger className="rounded-lg bg-background/50 border-input-border">
                         <SelectValue placeholder="Select month" />
                       </SelectTrigger>
@@ -303,7 +302,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="birth_day" className="text-sm font-medium">Birth Day</Label>
-                    <Select onValueChange={(value) => setValue("birth_day", parseInt(value))}>
+                    <Select value={watch("birth_day")?.toString() ?? ""} onValueChange={(value) => setValue("birth_day", parseInt(value))}>
                       <SelectTrigger className="rounded-lg bg-background/50 border-input-border">
                         <SelectValue placeholder="Select day" />
                       </SelectTrigger>
@@ -321,7 +320,7 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="gender" className="text-sm font-medium">Gender</Label>
-                    <Select onValueChange={(value) => setValue("gender", value)}>
+                    <Select value={watch("gender") ?? ""} onValueChange={(value) => setValue("gender", value)}>
                       <SelectTrigger className="rounded-lg bg-background/50 border-input-border">
                         <SelectValue placeholder="Select" />
                       </SelectTrigger>
@@ -347,8 +346,8 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
               <TabsContent value="contact" className="space-y-6 mt-0 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium after:content-['*'] after:text-destructive after:ml-0.5">
-                      Email address
+                    <Label htmlFor="email" className="text-sm font-medium">
+                      Email address <span className="text-muted-foreground font-normal">(optional)</span>
                     </Label>
                     <Input {...register("email")} type="email" placeholder="example@email.com" className="rounded-lg bg-background/50 border-input-border focus-visible:ring-primary/20" />
                     {errors.email && (
@@ -392,94 +391,19 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
                 </div>
               </TabsContent>
 
-              <TabsContent value="units" className="space-y-8 mt-0 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="space-y-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold text-foreground">Functional Units</Label>
-                      <Badge variant="outline" className="rounded-full bg-muted/30 text-[10px] uppercase tracking-wider">Departmental</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Select functional units such as departments, teams, or specialty groups.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
-                      {functionalUnits.map((unit) => (
-                        <div
-                          key={unit._id}
-                          className={`flex items-center space-x-3 p-2.5 rounded-lg transition-colors border ${
-                            watch("unit_ids")?.includes(unit._id)
-                              ? 'bg-primary/5 border-primary/30'
-                              : 'border-transparent hover:bg-muted/60'
-                          }`}
-                        >
-                          <Checkbox
-                            id={`unit-${unit._id}`}
-                            checked={watch("unit_ids")?.includes(unit._id) || false}
-                            onCheckedChange={(checked) => handleUnitToggle(unit._id, !!checked)}
-                            className="h-4 w-4 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                          <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1">
-                            {unit.name}
-                          </label>
-                        </div>
-                      ))}
-                      {functionalUnits.length === 0 && (
-                        <div className="col-span-full text-center py-6 text-muted-foreground italic text-sm">
-                          No functional units available.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold text-foreground">Administrative Units</Label>
-                      <Badge variant="outline" className="rounded-full bg-muted/30 text-[10px] uppercase tracking-wider">Geographic</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Select administrative or geographic units for organizational structuring.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto border border-border/50 rounded-xl p-4 bg-muted/20 scrollbar-thin">
-                      {adminUnits.map((unit) => (
-                        <div
-                          key={unit._id}
-                          className={`flex items-center space-x-3 p-2.5 rounded-lg transition-colors border ${
-                            watch("unit_ids")?.includes(unit._id)
-                              ? 'bg-primary/5 border-primary/30'
-                              : 'border-transparent hover:bg-muted/60'
-                          }`}
-                        >
-                          <Checkbox
-                            id={`unit-${unit._id}`}
-                            checked={watch("unit_ids")?.includes(unit._id) || false}
-                            onCheckedChange={(checked) => handleUnitToggle(unit._id, !!checked)}
-                            className="h-4 w-4 border-muted-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                          />
-                          <label htmlFor={`unit-${unit._id}`} className="text-sm font-medium cursor-pointer flex-1">
-                            {unit.name}
-                          </label>
-                        </div>
-                      ))}
-                      {adminUnits.length === 0 && (
-                        <div className="col-span-full text-center py-6 text-muted-foreground italic text-sm">
-                          No administrative units available.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {watch("unit_ids") && watch("unit_ids")!.length > 0 && (
-                    <div className="pt-4 border-t border-border/50">
-                      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-3">Selected Units</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {watch("unit_ids")?.map((unitId) => {
-                          const unit = unitsData?.find(u => u._id === unitId);
-                          return unit ? (
-                            <Badge key={unitId} variant="secondary" className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-all cursor-default">
-                              <Check className="h-3 w-3" />
-                              <span className="text-xs font-semibold">{unit.name}</span>
-                            </Badge>
-                          ) : null;
-                        })}
-                      </div>
-                    </div>
-                  )}
+              <TabsContent value="units" className="space-y-4 mt-0 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div>
+                  <Label className="text-sm font-medium">Units</Label>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">
+                    {restrictToScope
+                      ? "Add this member to the unit(s) you manage."
+                      : "Select the units this member belongs to."}
+                  </p>
+                  <UnitPicker
+                    units={inScope(unitsData || [])}
+                    selectedIds={watch("unit_ids") || []}
+                    onToggle={(id) => handleUnitToggle(id, !(watch("unit_ids") || []).includes(id))}
+                  />
                 </div>
               </TabsContent>
 
@@ -522,7 +446,8 @@ export function MemberDialog({ open, onOpenChange, onSuccess }: MemberDialogProp
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isValid}
+              title={!isValid ? "Enter the required fields (First name, Last name, Phone, Status) to continue" : undefined}
               className="min-w-[140px] rounded-lg shadow-soft hover:shadow-soft-lg transition-all font-semibold"
             >
               {isSubmitting ? (

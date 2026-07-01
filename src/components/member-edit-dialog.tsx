@@ -43,6 +43,7 @@ import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileUploader } from "@/components/file-uploader"
+import { UnitPicker } from "@/components/unit-picker"
 import { Upload, X, Crown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -51,7 +52,7 @@ const memberSchema = z.object({
   unit_ids: z.array(z.string()).optional(),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   phone: z.string().min(1, "Phone number is required"),
   dob: z.string().optional(),
   birth_month: z.number().min(1).max(12).optional(),
@@ -108,7 +109,7 @@ export function MemberEditDialog({
       title: member.title || "",
       first_name: member.first_name || firstName,
       last_name: member.last_name || lastName,
-      email: member.email,
+      email: member.email || "",
       phone: member.phone,
       dob: member.dob || "",
       birth_month: member.birth_month || undefined,
@@ -151,7 +152,7 @@ export function MemberEditDialog({
         title: member.title || "",
         first_name: member.first_name || firstName,
         last_name: member.last_name || lastName,
-        email: member.email,
+        email: member.email || "",
         phone: member.phone,
         dob: member.dob || "",
         birth_month: member.birth_month || undefined,
@@ -195,7 +196,7 @@ export function MemberEditDialog({
         id: member._id || (member as any).id,
         updates: {
           name: `${data.first_name} ${data.last_name}`,
-          email: data.email,
+          email: data.email || undefined,
           phone: normalizedPhone,
           status: data.status,
           dob: data.dob,
@@ -251,11 +252,11 @@ export function MemberEditDialog({
             <div className="px-6 pb-6">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-5 h-12 bg-slate-100/50 p-1 rounded-xl mb-6">
-                  <TabsTrigger value="basic" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">General</TabsTrigger>
+                  <TabsTrigger value="basic" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Basic</TabsTrigger>
                   <TabsTrigger value="contact" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Contact</TabsTrigger>
-                  <TabsTrigger value="photo" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Media</TabsTrigger>
+                  <TabsTrigger value="photo" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Photo</TabsTrigger>
                   <TabsTrigger value="unit" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">{unitLabels.single}</TabsTrigger>
-                  <TabsTrigger value="labels" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Tags</TabsTrigger>
+                  <TabsTrigger value="labels" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Labels</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="basic" className="space-y-4 mt-0">
@@ -265,7 +266,7 @@ export function MemberEditDialog({
                       name="title"
                       render={({ field }) => (
                         <FormItem className="md:col-span-1">
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Title</FormLabel>
+                          <FormLabel className="text-sm font-medium">Title</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger className="rounded-xl border-slate-200">
@@ -287,7 +288,7 @@ export function MemberEditDialog({
                       name="first_name"
                       render={({ field }) => (
                         <FormItem className="md:col-span-3">
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">First Name</FormLabel>
+                          <FormLabel className="text-sm font-medium">First Name</FormLabel>
                           <FormControl>
                             <Input {...field} className="rounded-xl border-slate-200 focus:ring-slate-400" />
                           </FormControl>
@@ -303,7 +304,7 @@ export function MemberEditDialog({
                       name="last_name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Last Name</FormLabel>
+                          <FormLabel className="text-sm font-medium">Last Name</FormLabel>
                           <FormControl>
                             <Input {...field} className="rounded-xl border-slate-200 focus:ring-slate-400" />
                           </FormControl>
@@ -317,7 +318,7 @@ export function MemberEditDialog({
                       name="gender"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Gender</FormLabel>
+                          <FormLabel className="text-sm font-medium">Gender</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger className="rounded-xl border-slate-200">
@@ -339,7 +340,7 @@ export function MemberEditDialog({
                     name="dob"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Date of Birth</FormLabel>
+                        <FormLabel className="text-sm font-medium">Date of Birth</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} className="rounded-xl border-slate-200" />
                         </FormControl>
@@ -354,7 +355,7 @@ export function MemberEditDialog({
                       name="birth_month"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Birth Month</FormLabel>
+                          <FormLabel className="text-sm font-medium">Birth Month</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger className="rounded-xl border-slate-200">
@@ -385,7 +386,7 @@ export function MemberEditDialog({
                       name="birth_day"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Birth Day</FormLabel>
+                          <FormLabel className="text-sm font-medium">Birth Day</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
                               <SelectTrigger className="rounded-xl border-slate-200">
@@ -411,7 +412,7 @@ export function MemberEditDialog({
                     name="skills"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Skills / Talents</FormLabel>
+                        <FormLabel className="text-sm font-medium">Skills / Talents</FormLabel>
                         <FormControl>
                           <Input {...field} placeholder="e.g. Singing, Playing instrument, Teaching..." className="rounded-xl border-slate-200" />
                         </FormControl>
@@ -428,7 +429,7 @@ export function MemberEditDialog({
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Email Address</FormLabel>
+                        <FormLabel className="text-sm font-medium">Email Address</FormLabel>
                         <FormControl>
                           <Input type="email" {...field} className="rounded-xl border-slate-200" />
                         </FormControl>
@@ -442,7 +443,7 @@ export function MemberEditDialog({
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Contact Number</FormLabel>
+                        <FormLabel className="text-sm font-medium">Contact Number</FormLabel>
                         <FormControl>
                           <Input {...field} className="rounded-xl border-slate-200" />
                         </FormControl>
@@ -456,7 +457,7 @@ export function MemberEditDialog({
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Physical Address</FormLabel>
+                        <FormLabel className="text-sm font-medium">Physical Address</FormLabel>
                         <FormControl>
                           <Input {...field} className="rounded-xl border-slate-200" />
                         </FormControl>
@@ -471,7 +472,7 @@ export function MemberEditDialog({
                       name="city"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">City</FormLabel>
+                          <FormLabel className="text-sm font-medium">City</FormLabel>
                           <FormControl>
                             <Input {...field} className="rounded-xl border-slate-200" />
                           </FormControl>
@@ -484,7 +485,7 @@ export function MemberEditDialog({
                       name="state"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">State / Region</FormLabel>
+                          <FormLabel className="text-sm font-medium">State / Region</FormLabel>
                           <FormControl>
                             <Input {...field} className="rounded-xl border-slate-200" />
                           </FormControl>
@@ -500,7 +501,7 @@ export function MemberEditDialog({
                       name="zip"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Postal Code</FormLabel>
+                          <FormLabel className="text-sm font-medium">Postal Code</FormLabel>
                           <FormControl>
                             <Input {...field} className="rounded-xl border-slate-200" />
                           </FormControl>
@@ -513,7 +514,7 @@ export function MemberEditDialog({
                       name="country"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-[10px] text-slate-400 tracking-wider">Country</FormLabel>
+                          <FormLabel className="text-sm font-medium">Country</FormLabel>
                           <FormControl>
                             <Input {...field} className="rounded-xl border-slate-200" />
                           </FormControl>
@@ -528,7 +529,7 @@ export function MemberEditDialog({
                     name="plus_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Maps Location (Plus Code)</FormLabel>
+                        <FormLabel className="text-sm font-medium">Maps Location (Plus Code)</FormLabel>
                         <FormControl>
                           <Input {...field} className="rounded-xl border-slate-200 font-mono text-xs" />
                         </FormControl>
@@ -574,7 +575,7 @@ export function MemberEditDialog({
                     name="joined_date"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">Onboarding Date</FormLabel>
+                        <FormLabel className="text-sm font-medium">Onboarding Date</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} className="rounded-xl border-slate-200" />
                         </FormControl>
@@ -587,39 +588,19 @@ export function MemberEditDialog({
                     control={form.control as any}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[10px] text-slate-400 tracking-wider">{unitLabels.plural}</FormLabel>
-                        <div className="space-y-2 border border-slate-100 rounded-2xl p-4 max-h-[250px] overflow-y-auto bg-slate-50/50">
-                          {availableUnits.map(unit => (
-                            <div key={unit.id}
-                              className={cn(
-                                "flex items-center space-x-3 p-3 rounded-xl transition-all border border-transparent hover:bg-white hover:border-slate-100 hover:shadow-sm cursor-pointer",
-                                field.value?.includes(unit.id) ? "bg-white border-slate-200 shadow-sm" : ""
-                              )}
-                              onClick={() => {
-                                const current = field.value || [];
-                                if (current.includes(unit.id)) {
-                                  field.onChange(current.filter((m: string) => m !== unit.id));
-                                } else {
-                                  field.onChange([...current, unit.id]);
-                                }
-                              }}
-                            >
-                              <div className={cn(
-                                "h-5 w-5 rounded border-2 flex items-center justify-center transition-all",
-                                field.value?.includes(unit.id) ? "bg-slate-900 border-slate-900" : "bg-white border-slate-200"
-                              )}>
-                                {field.value?.includes(unit.id) && <div className="h-1.5 w-1.5 bg-white rounded-full" />}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm text-slate-900 truncate">{unit.name}</p>
-                                <p className="text-[10px] text-slate-400">{unit.type}</p>
-                              </div>
-                            </div>
-                          ))}
-                          {availableUnits.length === 0 && (
-                            <p className="text-sm text-slate-400 text-center py-6 italic">All units deployed.</p>
-                          )}
-                        </div>
+                        <FormLabel className="text-sm font-medium">{unitLabels.plural}</FormLabel>
+                        <UnitPicker
+                          units={availableUnits}
+                          selectedIds={field.value || []}
+                          onToggle={(id) => {
+                            const current = field.value || [];
+                            field.onChange(
+                              current.includes(id)
+                                ? current.filter((m: string) => m !== id)
+                                : [...current, id]
+                            );
+                          }}
+                        />
                       </FormItem>
                     )}
                   />

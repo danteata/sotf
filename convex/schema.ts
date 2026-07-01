@@ -158,7 +158,8 @@ export default defineSchema({
     })
         .index("by_unit", ["unit_id"])
         .index("by_member", ["member_id"])
-        .index("by_unit_member", ["unit_id", "member_id"]),
+        .index("by_unit_member", ["unit_id", "member_id"])
+        .index("by_org", ["organization_id"]),
 
     // Many-to-many relationship between members and units
     member_units: defineTable({

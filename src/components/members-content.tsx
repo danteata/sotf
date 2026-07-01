@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Download, Filter, Plus, Search, Upload, Users, Building2, Tag } from "lucide-react"
+import { Download, Filter, Plus, Search, Upload, Users, Building2, Tag, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery, useMutation } from "convex/react"
 import { useAnalytics } from "@/hooks/useAnalytics"
@@ -26,10 +27,10 @@ interface MembersContentProps {
 
 export function MembersContent({ initialMembers }: MembersContentProps) {
   const { trackEvent } = useAnalytics()
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
-  const [unitFilter, setUnitFilter] = useState("all")
-  const [labelFilter, setLabelFilter] = useState("all")
+  const [unitFilters, setUnitFilters] = useState<string[]>([])
+  const [labelFilters, setLabelFilters] = useState<string[]>([])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
@@ -43,25 +44,25 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]
 
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(member => member.status === statusFilter)
+    // Status: match ANY selected status
+    if (statusFilters.length > 0) {
+      filtered = filtered.filter(member => statusFilters.includes(member.status))
     }
 
-    // Apply unit filter
-    if (unitFilter !== "all") {
+    // Units: member is in ANY selected unit
+    if (unitFilters.length > 0) {
       filtered = filtered.filter(member => {
         const memberUnitIds = (member as any).unit_ids || [];
         const memberUnitNames = (member as any).unit_names || [];
-        return memberUnitIds.includes(unitFilter) || memberUnitNames.some((name: string) => name === unitFilter);
+        return unitFilters.some(f => memberUnitIds.includes(f) || memberUnitNames.includes(f));
       });
     }
 
-    // Apply label filter
-    if (labelFilter !== "all") {
+    // Labels: member has ANY selected label
+    if (labelFilters.length > 0) {
       filtered = filtered.filter(member => {
         const memberLabels = (member as any).labels || [];
-        return memberLabels.some((label: any) => label._id === labelFilter || label.name === labelFilter);
+        return labelFilters.some(f => memberLabels.some((label: any) => label._id === f || label.name === f));
       });
     }
 
@@ -75,7 +76,23 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       )
     }
     return filtered;
-  }, [initialMembers, statusFilter, searchQuery, unitFilter, labelFilter])
+  }, [initialMembers, statusFilters, searchQuery, unitFilters, labelFilters])
+
+  // Filter helpers
+  const addFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
+    setter(prev => (prev.includes(value) ? prev : [...prev, value]))
+  const removeFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
+    setter(prev => prev.filter(v => v !== value))
+  const resetFilters = () => {
+    setStatusFilters([])
+    setUnitFilters([])
+    setLabelFilters([])
+    setSearchQuery("")
+  }
+
+  const unitName = (id: string) => unitsData?.find(u => u._id === id)?.name ?? id
+  const labelName = (id: string) => (labelsData as any)?.find((l: any) => l._id === id)?.name ?? id
+  const activeFilterCount = statusFilters.length + unitFilters.length + labelFilters.length + (searchQuery ? 1 : 0)
 
   const totalMembers = filteredMembers.length
 
@@ -222,27 +239,29 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
               />
             </div>
             <div className="md:col-span-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              {/* key remounts the trigger after each pick so it resets to placeholder */}
+              <Select key={`status-${statusFilters.length}`} onValueChange={(v) => addFilter(setStatusFilters, v)}>
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent className="rounded-lg shadow-lg border-border/50">
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="visitor">Visitor</SelectItem>
+                  {["active", "inactive", "visitor"].filter(s => !statusFilters.includes(s)).map(s => (
+                    <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                  ))}
+                  {statusFilters.length === 3 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">All statuses selected</div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2">
-              <Select value={unitFilter} onValueChange={setUnitFilter}>
+            <div className="md:col-span-3">
+              <Select key={`unit-${unitFilters.length}`} onValueChange={(v) => addFilter(setUnitFilters, v)}>
                 <SelectTrigger className="rounded-lg">
                   <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Unit" />
                 </SelectTrigger>
                 <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
-                  <SelectItem value="all">All Units</SelectItem>
-                  {unitsData?.map((unit) => (
+                  {unitsData?.filter(u => !unitFilters.includes(u._id)).map((unit) => (
                     <SelectItem key={unit._id} value={unit._id}>
                       {unit.name}
                     </SelectItem>
@@ -250,15 +269,14 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2">
-              <Select value={labelFilter} onValueChange={setLabelFilter}>
+            <div className="md:col-span-3">
+              <Select key={`label-${labelFilters.length}`} onValueChange={(v) => addFilter(setLabelFilters, v)}>
                 <SelectTrigger className="rounded-lg">
                   <Tag className="w-4 h-4 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Label" />
                 </SelectTrigger>
                 <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
-                  <SelectItem value="all">All Labels</SelectItem>
-                  {labelsData?.map((label: any) => (
+                  {labelsData?.filter((l: any) => !labelFilters.includes(l._id)).map((label: any) => (
                     <SelectItem key={label._id} value={label._id}>
                       {label.name}
                     </SelectItem>
@@ -266,11 +284,44 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-2 flex items-center justify-end">
-              <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
-                {totalMembers.toLocaleString()} member{totalMembers !== 1 ? 's' : ''}
-              </span>
+          </div>
+
+          {/* Active filters + count */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {statusFilters.map(s => (
+                <Badge key={`s-${s}`} variant="secondary" className="gap-1 pl-2.5 capitalize font-normal">
+                  {s}
+                  <button type="button" onClick={() => removeFilter(setStatusFilters, s)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {unitFilters.map(id => (
+                <Badge key={`u-${id}`} variant="secondary" className="gap-1 pl-2.5 font-normal">
+                  {unitName(id)}
+                  <button type="button" onClick={() => removeFilter(setUnitFilters, id)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {labelFilters.map(id => (
+                <Badge key={`l-${id}`} variant="secondary" className="gap-1 pl-2.5 font-normal">
+                  {labelName(id)}
+                  <button type="button" onClick={() => removeFilter(setLabelFilters, id)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={resetFilters} className="h-7 px-2 text-muted-foreground hover:text-foreground">
+                  Reset all
+                </Button>
+              )}
             </div>
+            <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full shrink-0">
+              {totalMembers.toLocaleString()} member{totalMembers !== 1 ? 's' : ''}
+            </span>
           </div>
         </CardContent>
       </Card>
