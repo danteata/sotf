@@ -29,8 +29,8 @@ export function AttendanceContent() {
   const { ministries, isLoading: filtersLoading } = useAccessibleUnits();
   const { trackEvent } = useAnalytics();
 
-  const stats = useQuery(api.attendance.getStats);
-  const attendanceRecords = useQuery(api.attendance.listWithDetails);
+  const stats = useQuery(api.attendance.getStats, {});
+  const attendanceRecords = useQuery(api.attendance.listWithDetails, {});
   const loading = stats === undefined || filtersLoading || membersLoading;
   const [isRefreshing, setIsRefreshing] = useState(false)
 

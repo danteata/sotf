@@ -39,7 +39,7 @@ async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
         avatar_url: avatarUrl,
         unit_names: unitNames,
         units: unitNames, // Consistency
-        unit_ids: unitIds // Re-mapped
+        unit_ids: unitIds, // Re-mapped
     };
 }
 

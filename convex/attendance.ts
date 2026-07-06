@@ -7,6 +7,7 @@ import { requireWriteAccess } from "./scope";
 import { resolveManagedMemberIds } from "./members";
 
 export const listWithDetails = query({
+    args: {},
     handler: async (ctx) => {
         const user = await getUserSafe(ctx);
         if (!user) return []; // Return empty array if user doesn't exist
@@ -40,6 +41,7 @@ export const listWithDetails = query({
 });
 
 export const listWithMembers = query({
+    args: {},
     handler: async (ctx) => {
         const user = await getUserSafe(ctx);
         if (!user) return []; // Return empty array if user doesn't exist
@@ -279,6 +281,7 @@ export const recordFullAttendance = mutation({
 });
 
 export const getStats = query({
+    args: {},
     handler: async (ctx) => {
         const user = await requireUser(ctx);
         const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
@@ -445,31 +448,81 @@ export const getMemberSummary = query({
         if (member?.organization_id) {
             await requireOrgAccess(ctx, member.organization_id);
         }
+
+        // Get member's unit assignments
+        const memberUnits = await ctx.db
+            .query("member_units")
+            .withIndex("by_member", (q) => q.eq("member_id", args.memberId))
+            .collect();
+        const memberUnitIds = new Set(memberUnits.map((mu) => mu.unit_id));
+
+        // Get member's attendance records
         const memberAttendance = await ctx.db
             .query("member_attendance")
             .withIndex("by_member", (q) => q.eq("member_id", args.memberId))
             .collect();
+        const attendedRecordIds = new Set(memberAttendance.map((ma) => ma.attendance_id));
 
-        if (memberAttendance.length === 0) {
-            return {
-                total_attendance: 0,
-                last_attendance_date: null,
-                consecutive_absences: 0
-            };
-        }
+        // Get all attendance records for the organization
+        const allAttendanceRecords = member?.organization_id
+            ? await ctx.db
+                .query("attendance")
+                .withIndex("by_org_and_date", (q) => q.eq("organization_id", member.organization_id))
+                .order("desc")
+                .take(100)
+            : await ctx.db.query("attendance").order("desc").take(100);
 
-        const records = await Promise.all(
-            memberAttendance.map((ma) => ctx.db.get(ma.attendance_id))
+        // Build attendance history with present/absent status
+        const attendanceHistory = await Promise.all(
+            allAttendanceRecords.map(async (record) => {
+                const eventType = record.event_type_id ? await ctx.db.get(record.event_type_id) : null;
+                const eventUnitIds = (eventType as any)?.unit_ids || [];
+
+                // Check if this event applies to this member
+                // If event has unit scoping, member must be in one of those units
+                const eventAppliesToMember = eventUnitIds.length === 0 ||
+                    eventUnitIds.some((uid: string) => memberUnitIds.has(uid as any));
+
+                if (!eventAppliesToMember) {
+                    return null; // Event doesn't apply to this member, skip
+                }
+
+                const memberAttended = attendedRecordIds.has(record._id);
+
+                return {
+                    date: record.date,
+                    event_type_label: (eventType as any)?.label || (eventType as any)?.name || 'Unknown',
+                    event_type_value: (eventType as any)?.value || 'unknown',
+                    status: memberAttended ? 'present' : 'absent',
+                    count: record.count || 0,
+                };
+            })
         );
 
-        const validRecords = records
-            .filter((r): r is any => r !== null)
+        // Filter out nulls (events not applicable to member) and sort by date descending
+        const filteredHistory = attendanceHistory
+            .filter((h): h is NonNullable<typeof h> => h !== null)
             .sort((a, b) => b.date.localeCompare(a.date));
 
+        // Calculate stats from filtered history
+        const presentRecords = filteredHistory.filter(h => h.status === 'present');
+        const totalAttendance = presentRecords.length;
+        const lastAttendedDate = presentRecords[0]?.date || null;
+
+        // Calculate consecutive absences
+        let consecutiveAbsences = 0;
+        for (const record of filteredHistory) {
+            if (record.status === 'present') {
+                break;
+            }
+            consecutiveAbsences++;
+        }
+
         return {
-            total_attendance: validRecords.length,
-            last_attendance_date: validRecords[0]?.date || null,
-            consecutive_absences: 0 // Placeholder as in original
+            total_attendance: totalAttendance,
+            last_attendance_date: lastAttendedDate,
+            consecutive_absences: consecutiveAbsences,
+            attendance_history: filteredHistory,
         };
     },
 });

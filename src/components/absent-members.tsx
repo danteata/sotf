@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Download, Filter, Mail, Phone, CalendarIcon } from "lucide-react"
+import { useCallback, useState, useMemo } from "react"
+import { Download, Mail, Phone, CalendarIcon, ArrowUpDown } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,35 @@ import { api } from "../../convex/_generated/api"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { toast } from "sonner"
+import { MemberProfileDialog } from "./member-profile-dialog"
+import type { Member } from "@/types/database"
+
+type AttendanceRecord = {
+  _id: string
+  date: string
+  event_type_value?: string
+  event_type_label?: string
+  members: string[]
+}
+
+type MemberRow = Member & {
+  id: string
+  unit_names?: string[]
+  lastAttendance?: string | null
+}
+
+function getLastAttendanceForMember(memberId: string, attendanceRecords: AttendanceRecord[]) {
+  let lastAttendance: string | null = null
+
+  for (const record of attendanceRecords) {
+    if (!record.members.includes(memberId)) continue
+    if (!lastAttendance || record.date > lastAttendance) {
+      lastAttendance = record.date
+    }
+  }
+
+  return lastAttendance
+}
 
 export function AbsentMembers() {
   const { trackEvent } = useAnalytics()
@@ -27,22 +56,28 @@ export function AbsentMembers() {
   const [absenceFilter, setAbsenceFilter] = useState("all")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [selectedUnit, setSelectedUnit] = useState("")
+  const [sortField, setSortField] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  const [viewingMember, setViewingMember] = useState<MemberRow | null>(null)
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
+  const effectiveEventType = eventType || eventTypes[0]?.value || ""
 
   // Convex Queries
-  const membersData = useQuery(api.members.getAll, {}) || []
-  const allMembers = useMemo(() => membersData.map((m: any) => ({
+  const rawMembersData = useQuery(api.members.getAll, {})
+  const membersData = useMemo(() => (rawMembersData || []) as MemberRow[], [rawMembersData])
+  const rawAttendanceRecords = useQuery(api.attendance.listWithMembers, {})
+  const attendanceRecords = useMemo(() => (rawAttendanceRecords || []) as AttendanceRecord[], [rawAttendanceRecords])
+  const allMembers = useMemo(() => membersData.map((m) => ({
     ...m,
-    id: m._id,
-    _id: m._id
-  })), [membersData])
-  const attendanceRecords = useQuery(api.attendance.listWithMembers) || []
-  const unitsData = useQuery(api.units.list, {}) || []
+    id: String(m._id || m.id || ""),
+    _id: m._id,
+    lastAttendance: m.lastAttendance ?? getLastAttendanceForMember(String(m._id || m.id || ""), attendanceRecords),
+  })), [membersData, attendanceRecords])
 
   // Get unique unit names from members
   const availableUnits = useMemo(() => {
     const unitSet = new Set<string>()
-    allMembers.forEach((member: any) => {
+    allMembers.forEach((member) => {
       if (member.unit_names && member.unit_names.length > 0) {
         member.unit_names.forEach((unit: string) => unitSet.add(unit))
       }
@@ -50,80 +85,101 @@ export function AbsentMembers() {
     return Array.from(unitSet).sort()
   }, [allMembers])
 
-  const loading = membersData === undefined || attendanceRecords === undefined;
-
-  // Set default event type when event types are loaded
-  useMemo(() => {
-    if (!eventTypesLoading && eventTypes.length > 0 && !eventType) {
-      setEventType(eventTypes[0].value);
-    }
-  }, [eventTypes, eventTypesLoading, eventType]);
+  const loading = rawMembersData === undefined || rawAttendanceRecords === undefined;
 
   // Find the attendance record for the selected date and event type
   const selectedAttendanceRecord = useMemo(() => {
-    if (!selectedDate || !eventType) return null
+    if (!selectedDate || !effectiveEventType) return null
     const selectedDateStr = format(selectedDate, "yyyy-MM-dd")
-    return attendanceRecords.find((record: any) =>
-      record.event_type_value === eventType &&
+    return attendanceRecords.find((record) =>
+      record.event_type_value === effectiveEventType &&
       record.date === selectedDateStr
     )
-  }, [selectedDate, eventType, attendanceRecords]);
+  }, [selectedDate, effectiveEventType, attendanceRecords]);
 
   // Calculate consecutive absences for each member
-  const calculateConsecutiveAbsences = (memberId: string, baseDate: Date) => {
-    const memberAttendanceRecords = attendanceRecords
-      .filter((record: any) => record.members.includes(memberId))
-      .sort((a: any, b: any) => a.date.localeCompare(b.date))
+  const calculateConsecutiveAbsences = useCallback((memberId: string, baseDate: Date) => {
+    // Find the current event type config to check unit scoping
+    const currentEventType = eventTypes.find((et) => et.value === effectiveEventType)
+    const eventUnitIds = currentEventType?.unit_ids || []
 
-    if (memberAttendanceRecords.length === 0) return 0
+    // Get the member's unit IDs for scoping check
+    const member = allMembers.find((m) => m.id === memberId)
+    const memberUnitIds = member?.unit_ids || []
+    const memberUnitIdSet = new Set(memberUnitIds.map(String))
 
-    // Find the most recent attendance before or on the selected date
-    const recentAttendance = memberAttendanceRecords
-      .filter((record: any) => new Date(record.date) <= baseDate)
-      .slice(-1)[0]
+    // Check if this event applies to this member based on unit scoping
+    // If event has no unit scoping, it applies to all members
+    // If event has unit scoping, member must be in one of those units
+    const eventAppliesToMember = eventUnitIds.length === 0 ||
+      eventUnitIds.some((uid: string) => memberUnitIdSet.has(uid))
 
-    if (!recentAttendance) return 0
+    if (!eventAppliesToMember) return 0 // Event doesn't apply to this member
 
-    // Count consecutive absences from the most recent attendance to selected date
+    // Get all attendance records for the selected event type, sorted by date descending
+    const eventRecords = attendanceRecords
+      .filter((record) => record.event_type_value === effectiveEventType)
+      .sort((a, b) => b.date.localeCompare(a.date))
+
+    // Filter to records on or before the selected date
+    const baseDateStr = format(baseDate, "yyyy-MM-dd")
+    const recordsOnOrBeforeBase = eventRecords
+      .filter((record) => record.date <= baseDateStr)
+
+    if (recordsOnOrBeforeBase.length === 0) return 0
+
+    // Find the member's most recent attendance record
+    const memberRecords = recordsOnOrBeforeBase
+      .filter((record) => record.members.includes(memberId))
+
+    const lastAttended = memberRecords[0] // Most recent (sorted desc)
+
+    // Count consecutive absences: records after last attendance where member is absent
     let consecutiveAbsences = 0
-    let currentDate = new Date(recentAttendance.date)
-    currentDate.setDate(currentDate.getDate() + 7) // Start counting from the week after last attendance
+    for (const record of recordsOnOrBeforeBase) {
+      // Stop if we've reached a record the member attended
+      if (record._id === lastAttended?._id) break
 
-    while (currentDate <= baseDate) {
-      const dateStr = format(currentDate, "yyyy-MM-dd")
-      const hasAttended = attendanceRecords.some((record: any) =>
-        record.date === dateStr &&
-        record.event_type_value === eventType &&
-        record.members.includes(memberId)
-      )
-
-      if (!hasAttended) {
-        consecutiveAbsences++
-      } else {
-        consecutiveAbsences = 0 // Reset if they attended (shouldn't happen with our logic but safer)
-      }
-
-      currentDate.setDate(currentDate.getDate() + 7) // Next week
+      // This record is after the member's last attendance - count as absence
+      consecutiveAbsences++
     }
 
     return consecutiveAbsences
-  }
+  }, [allMembers, attendanceRecords, effectiveEventType, eventTypes])
 
   // Get absent members for the selected event
   const absentMembers = useMemo(() => {
     if (!selectedAttendanceRecord || !selectedDate) return []
 
+    // Find the current event type config to check unit scoping
+    const currentEventType = eventTypes.find((et) => et.value === effectiveEventType)
+    const eventUnitIds = currentEventType?.unit_ids || []
+
     // Filter members who were not in the attendees list
+    // Also apply unit scoping: only include members who are in the event's scoped units
     const absentMemberIds = allMembers
-      .filter((member: any) => !selectedAttendanceRecord.members.includes(member.id))
-      .map((member: any) => member.id)
+      .filter((member) => {
+        // Check if member was absent
+        if (selectedAttendanceRecord.members.includes(member.id)) return false
+
+        // Apply unit scoping: if event has unit_ids, member must be in one of those units
+        if (eventUnitIds.length > 0) {
+          const memberUnitIds = member.unit_ids || []
+          const memberUnitIdSet = new Set(memberUnitIds.map(String))
+          const isInScopedUnit = eventUnitIds.some((uid: string) => memberUnitIdSet.has(uid))
+          if (!isInScopedUnit) return false
+        }
+
+        return true
+      })
+      .map((member) => member.id)
 
     // Apply consecutive absences filter
-    let filteredMembers = allMembers.filter((member: any) => absentMemberIds.includes(member.id))
+    let filteredMembers = allMembers.filter((member) => absentMemberIds.includes(member.id))
 
     if (absenceFilter !== "all") {
       const threshold = parseInt(absenceFilter.replace("+", ""))
-      filteredMembers = filteredMembers.filter((member: any) => {
+      filteredMembers = filteredMembers.filter((member) => {
         const absences = calculateConsecutiveAbsences(member.id, selectedDate)
         return absences >= threshold
       })
@@ -132,21 +188,60 @@ export function AbsentMembers() {
     // Apply unit filter
     if (selectedUnit && selectedUnit !== "all") {
       filteredMembers = filteredMembers.filter(
-        (member: any) => member.unit_names?.includes(selectedUnit)
+        (member) => member.unit_names?.includes(selectedUnit)
       )
     }
 
     // Apply search filter
     if (searchQuery) {
       filteredMembers = filteredMembers.filter(
-        (member: any) =>
+        (member) =>
           member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           member.email?.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     }
 
     return filteredMembers
-  }, [selectedAttendanceRecord, selectedDate, allMembers, absenceFilter, searchQuery, eventType, attendanceRecords, selectedUnit])
+  }, [selectedAttendanceRecord, selectedDate, allMembers, absenceFilter, searchQuery, selectedUnit, calculateConsecutiveAbsences, effectiveEventType, eventTypes])
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDirection("asc")
+    }
+  }
+
+  const sortedMembers = useMemo(() => {
+    if (!sortField) return absentMembers
+    return [...absentMembers].sort((a, b) => {
+      let comparison: number
+      switch (sortField) {
+        case "name":
+          comparison = a.name.localeCompare(b.name)
+          break
+        case "status":
+          comparison = a.status.localeCompare(b.status)
+          break
+        case "lastAttendance": {
+          const aDate = a.lastAttendance || ""
+          const bDate = b.lastAttendance || ""
+          comparison = aDate.localeCompare(bDate)
+          break
+        }
+        case "consecutiveAbsences": {
+          const aAbs = selectedDate ? calculateConsecutiveAbsences(a.id, selectedDate) : 0
+          const bAbs = selectedDate ? calculateConsecutiveAbsences(b.id, selectedDate) : 0
+          comparison = aAbs - bAbs
+          break
+        }
+        default:
+          return 0
+      }
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+  }, [absentMembers, sortField, sortDirection, selectedDate, calculateConsecutiveAbsences])
 
   return (
     <div className="space-y-4">
@@ -159,7 +254,7 @@ export function AbsentMembers() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="max-w-[300px]"
             />
-            <Select value={eventType || undefined} onValueChange={setEventType}>
+            <Select value={effectiveEventType || undefined} onValueChange={setEventType}>
               <SelectTrigger className="w-[180px]" disabled={eventTypesLoading || eventTypes.length === 0}>
                 <SelectValue placeholder={eventTypesLoading ? "Loading..." : eventTypes.length === 0 ? "No event types" : "Select event type"} />
               </SelectTrigger>
@@ -238,7 +333,7 @@ export function AbsentMembers() {
               const headers = ["Name", "Email", "Phone", "Status", "Last Attendance", "Consecutive Absences", "Units"]
               const csvContent = [
                 headers.join(","),
-                ...absentMembers.map((member: any) => {
+                ...absentMembers.map((member) => {
                   const absences = selectedDate ? calculateConsecutiveAbsences(member.id, selectedDate) : 0
                   return [
                     `"${member.name}"`,
@@ -257,7 +352,7 @@ export function AbsentMembers() {
               const url = window.URL.createObjectURL(blob)
               const a = document.createElement("a")
               a.href = url
-              a.download = `absent-members-${eventType}-${format(selectedDate || new Date(), "yyyy-MM-dd")}.csv`
+              a.download = `absent-members-${effectiveEventType}-${format(selectedDate || new Date(), "yyyy-MM-dd")}.csv`
               document.body.appendChild(a)
               a.click()
               document.body.removeChild(a)
@@ -265,7 +360,7 @@ export function AbsentMembers() {
 
               trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
                 report: 'absent_members',
-                event_type: eventType,
+                event_type: effectiveEventType,
                 unit_filter: selectedUnit || 'all',
               });
 
@@ -279,8 +374,8 @@ export function AbsentMembers() {
 
         {selectedAttendanceRecord && (
           <div className="text-sm text-muted-foreground">
-            Showing absent members for: <strong>{(selectedAttendanceRecord as any).event_type_label}</strong> on{" "}
-            <strong>{format(new Date((selectedAttendanceRecord as any).date), "PPP")}</strong>
+            Showing absent members for: <strong>{selectedAttendanceRecord.event_type_label}</strong> on{" "}
+            <strong>{format(new Date(selectedAttendanceRecord.date), "PPP")}</strong>
           </div>
         )}
       </div>
@@ -289,11 +384,31 @@ export function AbsentMembers() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Member</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("name")}>
+                <div className="flex items-center gap-1">
+                  Member
+                  <ArrowUpDown className="h-3 w-3" />
+                </div>
+              </TableHead>
               <TableHead>Contact</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Attendance</TableHead>
-              <TableHead>Consecutive Absences</TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("status")}>
+                <div className="flex items-center gap-1">
+                  Status
+                  <ArrowUpDown className="h-3 w-3" />
+                </div>
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("lastAttendance")}>
+                <div className="flex items-center gap-1">
+                  Last Attendance
+                  <ArrowUpDown className="h-3 w-3" />
+                </div>
+              </TableHead>
+              <TableHead className="cursor-pointer select-none" onClick={() => handleSort("consecutiveAbsences")}>
+                <div className="flex items-center gap-1">
+                  Consecutive Absences
+                  <ArrowUpDown className="h-3 w-3" />
+                </div>
+              </TableHead>
               <TableHead>Units</TableHead>
             </TableRow>
           </TableHeader>
@@ -316,10 +431,13 @@ export function AbsentMembers() {
                 </TableCell>
               </TableRow>
             ) : (
-              absentMembers.map((member: any) => (
+              sortedMembers.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell>
-                    <div className="flex items-center gap-3">
+                    <button
+                      className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left"
+                      onClick={() => setViewingMember(member)}
+                    >
                       <Avatar>
                         <AvatarImage
                           src={member.avatar_url ?? member.avatar ?? ""}
@@ -330,7 +448,7 @@ export function AbsentMembers() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="font-medium">{member.name}</div>
-                    </div>
+                    </button>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
@@ -390,8 +508,8 @@ export function AbsentMembers() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {member.unit_names?.length > 0 ? (
-                        member.unit_names.map((min: string, index: number) => (
+                      {(member.unit_names?.length ?? 0) > 0 ? (
+                        member.unit_names?.map((min: string, index: number) => (
                           <Badge key={index} variant="outline">
                             {min}
                           </Badge>
@@ -425,6 +543,12 @@ export function AbsentMembers() {
           </Button>
         </div>
       </div>
+
+      <MemberProfileDialog
+        member={viewingMember}
+        open={!!viewingMember}
+        onOpenChange={(open) => { if (!open) setViewingMember(null) }}
+      />
     </div>
   )
 }

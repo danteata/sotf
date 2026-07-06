@@ -31,7 +31,14 @@ export default defineSchema({
         default_time: v.optional(v.string()), // Default time for events of this type (e.g., "09:00")
         is_active: v.boolean(),
         sort_order: v.number(),
-    }).index("by_value", ["value"]),
+        organization_id: v.optional(v.id("organizations")),
+        // Unit scoping: if unit_ids is set, this event only applies to members of those units
+        // If empty/undefined, the event applies to all members
+        unit_ids: v.optional(v.array(v.id("units"))),
+    })
+        .index("by_value", ["value"])
+        .index("by_org", ["organization_id"])
+        .index("by_org_and_value", ["organization_id", "value"]),
 
     // Legacy regions table removed - now handled by units with type "geographic"
 
@@ -204,7 +211,10 @@ export default defineSchema({
         event_id: v.optional(v.id("events")),
         event_type_id: v.optional(v.id("event_types")), // Link to event_types
         organization_id: v.optional(v.id("organizations")),
-    }).index("by_date", ["date"]).index("by_org", ["organization_id"]),
+    })
+        .index("by_date", ["date"])
+        .index("by_org", ["organization_id"])
+        .index("by_org_and_date", ["organization_id", "date"]),
 
     member_attendance: defineTable({
         member_id: v.id("members"),

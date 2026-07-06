@@ -61,8 +61,9 @@ export function AttendanceHistory({
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
 
   // Convex Query
-  const attendanceData = useQuery(api.attendance.listWithDetails) || [];
-  const loading = attendanceData === undefined;
+  const rawAttendanceData = useQuery(api.attendance.listWithDetails, {});
+  const attendanceData = rawAttendanceData || [];
+  const loading = rawAttendanceData === undefined;
 
   const handleViewAttendees = (record: any) => {
     setViewingRecord(record)

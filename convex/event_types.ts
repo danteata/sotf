@@ -1,26 +1,66 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requireSuperAdmin, requireOrgAdmin, requireUser } from "./auth";
+import { Id } from "./_generated/dataModel";
+import { isSuperAdmin, requireSuperAdmin, requireOrgAdmin, requireUser, resolveOrgId } from "./auth";
+
+async function assertUnitsBelongToOrg(
+    ctx: any,
+    unitIds: Id<"units">[] | undefined,
+    orgId: Id<"organizations"> | null,
+) {
+    if (!unitIds || unitIds.length === 0) return;
+    if (!orgId) throw new Error("Organization is required when scoping an event type to units");
+
+    for (const unitId of unitIds) {
+        const unit = await ctx.db.get(unitId);
+        if (!unit || unit.organization_id !== orgId) {
+            throw new Error("One or more selected units are outside this organization");
+        }
+    }
+}
+
+function mergeOrgOverrides(types: any[], orgId: Id<"organizations"> | null) {
+    const visible = types.filter((type) => !type.organization_id || type.organization_id === orgId);
+    const byValue = new Map<string, any>();
+
+    for (const type of visible) {
+        const existing = byValue.get(type.value);
+        if (!existing || type.organization_id === orgId) {
+            byValue.set(type.value, type);
+        }
+    }
+
+    return Array.from(byValue.values())
+        .filter((type) => type.is_active)
+        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+}
 
 export const getAll = query({
     args: {},
     handler: async (ctx) => {
-        await requireUser(ctx);
+        const user = await requireUser(ctx);
+        const orgId = await resolveOrgId(ctx);
         const types = await ctx.db
             .query("event_types")
             .collect();
-        return types
-            .filter(t => t.is_active)
-            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        if (isSuperAdmin(user) && !orgId) {
+            return types
+                .filter(t => t.is_active)
+                .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        }
+        return mergeOrgOverrides(types, orgId);
     },
 });
 
 export const listAll = query({
     args: {},
     handler: async (ctx) => {
-        await requireUser(ctx);
-        return await ctx.db.query("event_types").collect();
+        const user = await requireUser(ctx);
+        const orgId = await resolveOrgId(ctx);
+        const types = await ctx.db.query("event_types").collect();
+        if (isSuperAdmin(user) && !orgId) return types;
+        return types.filter((type) => !type.organization_id || type.organization_id === orgId);
     }
 });
 
@@ -35,12 +75,25 @@ export const create = mutation({
         default_time: v.optional(v.string()),
         is_active: v.boolean(),
         sort_order: v.number(),
+        unit_ids: v.optional(v.array(v.id("units"))),
     },
     handler: async (ctx, args) => {
-        // Note: event_types is a global (cross-organization) table, so an admin
-        // creating a type makes it available to every organization.
-        await requireOrgAdmin(ctx);
-        return await ctx.db.insert("event_types", args);
+        const user = await requireOrgAdmin(ctx);
+        const orgId = await resolveOrgId(ctx);
+        await assertUnitsBelongToOrg(ctx, args.unit_ids, orgId);
+
+        if (orgId) {
+            const existing = await ctx.db
+                .query("event_types")
+                .withIndex("by_org_and_value", (q) => q.eq("organization_id", orgId).eq("value", args.value))
+                .first();
+            if (existing) throw new Error("An event type with this value already exists");
+        }
+
+        return await ctx.db.insert("event_types", {
+            ...args,
+            organization_id: isSuperAdmin(user) ? undefined : orgId ?? undefined,
+        });
     },
 });
 
@@ -56,10 +109,47 @@ export const update = mutation({
             default_time: v.optional(v.string()),
             is_active: v.optional(v.boolean()),
             sort_order: v.optional(v.number()),
+            unit_ids: v.optional(v.array(v.id("units"))),
         }),
     },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Event type not found");
+
+        const orgId = await resolveOrgId(ctx, existing.organization_id);
+        await assertUnitsBelongToOrg(ctx, args.updates.unit_ids, orgId);
+
+        if (!existing.organization_id && !isSuperAdmin(user)) {
+            const orgOverride = orgId
+                ? await ctx.db
+                    .query("event_types")
+                    .withIndex("by_org_and_value", (q) => q.eq("organization_id", orgId).eq("value", existing.value))
+                    .first()
+                : null;
+
+            const overrideDoc = {
+                value: existing.value,
+                label: args.updates.label ?? existing.label,
+                color: args.updates.color ?? existing.color,
+                icon: args.updates.icon ?? existing.icon,
+                category: args.updates.category ?? existing.category,
+                description: args.updates.description ?? existing.description,
+                default_time: args.updates.default_time ?? existing.default_time,
+                is_active: args.updates.is_active ?? existing.is_active,
+                sort_order: args.updates.sort_order ?? existing.sort_order,
+                unit_ids: args.updates.unit_ids ?? existing.unit_ids,
+                organization_id: orgId ?? undefined,
+            };
+
+            if (orgOverride) {
+                await ctx.db.patch(orgOverride._id, overrideDoc);
+            } else {
+                await ctx.db.insert("event_types", overrideDoc);
+            }
+            return;
+        }
+
         await ctx.db.patch(args.id, args.updates);
     },
 });
@@ -67,12 +157,47 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id("event_types") },
     handler: async (ctx, args) => {
-        await requireOrgAdmin(ctx);
+        const user = await requireOrgAdmin(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Event type not found");
+
+        const orgId = await resolveOrgId(ctx, existing.organization_id);
+        if (!existing.organization_id && !isSuperAdmin(user)) {
+            const orgOverride = orgId
+                ? await ctx.db
+                    .query("event_types")
+                    .withIndex("by_org_and_value", (q) => q.eq("organization_id", orgId).eq("value", existing.value))
+                    .first()
+                : null;
+
+            const overrideDoc = {
+                value: existing.value,
+                label: existing.label,
+                color: existing.color,
+                icon: existing.icon,
+                category: existing.category,
+                description: existing.description,
+                default_time: existing.default_time,
+                is_active: false,
+                sort_order: existing.sort_order,
+                unit_ids: existing.unit_ids,
+                organization_id: orgId ?? undefined,
+            };
+
+            if (orgOverride) {
+                await ctx.db.patch(orgOverride._id, overrideDoc);
+            } else {
+                await ctx.db.insert("event_types", overrideDoc);
+            }
+            return;
+        }
+
         await ctx.db.delete(args.id);
     },
 });
 
 export const resetToDefaults = mutation({
+    args: {},
     handler: async (ctx) => {
         await requireSuperAdmin(ctx);
         // Delete all

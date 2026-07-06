@@ -43,6 +43,8 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useEventTypes, EventType } from "@/hooks/use-event-types"
+import { useQuery } from "convex/react"
+import { api } from "../../convex/_generated/api"
 
 const eventTypeSchema = z.object({
   label: z.string().min(1, "Label is required"),
@@ -52,6 +54,7 @@ const eventTypeSchema = z.object({
   category: z.string().optional(),
   description: z.string().optional(),
   default_time: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Time must be in HH:MM format").optional().or(z.literal("")),
+  unit_ids: z.array(z.string()).optional(),
 })
 
 type EventTypeFormData = z.infer<typeof eventTypeSchema>
@@ -65,6 +68,9 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
   const [editingEventType, setEditingEventType] = useState<EventType | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+
+  // Fetch units for scoping
+  const units = useQuery(api.units.list, {}) || []
 
   const {
     eventTypes,
@@ -87,6 +93,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
       category: "",
       description: "",
       default_time: "",
+      unit_ids: [],
     },
   })
 
@@ -100,6 +107,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
       category: "",
       description: "",
       default_time: "",
+      unit_ids: [],
     })
     setIsDialogOpen(true)
   }
@@ -114,6 +122,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
       category: eventType.category || "",
       description: eventType.description || "",
       default_time: eventType.default_time || "",
+      unit_ids: eventType.unit_ids || [],
     })
     setIsDialogOpen(true)
   }
@@ -149,7 +158,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
     try {
       let result
       if (editingEventType) {
-        result = await updateEventType(editingEventType.value, data)
+        result = await updateEventType(editingEventType._id, data)
       } else {
         result = await addEventType(data)
       }
@@ -310,7 +319,7 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDeleteEventType(eventType.value)}
+                      onClick={() => handleDeleteEventType(eventType._id)}
                       disabled={isLoading}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -465,6 +474,63 @@ export function EventTypesManagement({ onEventTypesChange }: EventTypesManagemen
                       <FormMessage />
                       <p className="text-xs text-muted-foreground">
                         Default start time for events of this type (used when auto-creating events)
+                      </p>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="unit_ids"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Applies to Units</FormLabel>
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {field.value?.map((unitId) => {
+                            const unit = units.find((u: any) => u._id === unitId)
+                            return unit ? (
+                              <Badge
+                                key={unitId}
+                                variant="secondary"
+                                className="cursor-pointer hover:bg-destructive hover:text-destructive-foreground"
+                                onClick={() => {
+                                  const newValue = field.value?.filter((id) => id !== unitId) || []
+                                  field.onChange(newValue)
+                                }}
+                              >
+                                {unit.name}
+                                <span className="ml-1">&times;</span>
+                              </Badge>
+                            ) : null
+                          })}
+                        </div>
+                        <Select
+                          onValueChange={(value) => {
+                            if (value && !field.value?.includes(value)) {
+                              field.onChange([...(field.value || []), value])
+                            }
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Add unit scope (optional)" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {units
+                              .filter((u: any) => !field.value?.includes(u._id))
+                              .map((unit: any) => (
+                                <SelectItem key={unit._id} value={unit._id}>
+                                  {unit.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <FormMessage />
+                      <p className="text-xs text-muted-foreground">
+                        If no units selected, this event applies to all members. Select units to scope attendance tracking.
                       </p>
                     </FormItem>
                   )}

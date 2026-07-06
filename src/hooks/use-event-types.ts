@@ -15,6 +15,7 @@ export interface EventType {
   category?: string
   description?: string
   default_time?: string
+  unit_ids?: string[] // If set, event only applies to members of these units
 }
 
 export interface EventTypeCategory {
@@ -35,7 +36,7 @@ export function useEventTypes() {
   const { terminology } = useTerminology()
 
   // Convex Queries
-  const rawEventTypes = useQuery(api.event_types.getAll);
+  const rawEventTypes = useQuery(api.event_types.getAll, {});
   const categoriesConfig = useQuery(api.app_config.getKey, { key: 'event_type_categories' })
 
   // Convex Mutations
@@ -77,6 +78,7 @@ export function useEventTypes() {
       category: dbType.category,
       description: dbType.description,
       default_time: dbType.default_time,
+      unit_ids: dbType.unit_ids,
     }
   })
 
@@ -92,6 +94,7 @@ export function useEventTypes() {
         default_time: eventType.default_time,
         is_active: true,
         sort_order: eventTypes.length + 1,
+        unit_ids: eventType.unit_ids as any,
       })
       return { success: true }
     } catch (error) {
@@ -110,6 +113,7 @@ export function useEventTypes() {
           category: updates.category,
           description: updates.description,
           default_time: updates.default_time,
+          unit_ids: updates.unit_ids as any,
         }
       })
       return { success: true }
@@ -129,7 +133,7 @@ export function useEventTypes() {
 
   const resetToDefaults = async () => {
     try {
-      await resetToDefaultsMut();
+      await resetToDefaultsMut({});
       return { success: true }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
