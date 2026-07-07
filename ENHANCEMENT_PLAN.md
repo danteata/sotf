@@ -15,7 +15,7 @@ Your app (SOTF) is a **Convex-based church management system** with:
 - Attendance summaries and trends
 
 ### What's Working Well
-- Clean React/Next.js + Convex architecture
+- Clean React + Convex architecture
 - Real-time data via Convex queries
 - Unit-based organization structure
 - Event type scoping to units

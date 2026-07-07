@@ -395,6 +395,425 @@ export const listRecentSessions = query({
 });
 
 // ---------------------------------------------------------------------------
+// Kiosk / steward functions
+//
+// The kiosk device is authenticated as an admin/steward Clerk account. It
+// marks attendance on behalf of other people (members by name search, or
+// brand-new visitors created as `members` rows with status "visitor"). This
+// closes the "no smartphone / no app_access" gap without a separate visitors
+// table — visitors simply become members with status "visitor" and can be
+// converted to "active" later with no attendance-history migration.
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve an open kiosk context for a session: returns safe display info plus
+ * the attendance_id (so the kiosk can mark on behalf of members). Requires
+ * write access (steward/admin). The token is never exposed to the kiosk UI;
+ * the kiosk operates by sessionId only.
+ */
+export const kioskGetSession = query({
+    args: { sessionId: v.id("check_in_sessions") },
+    handler: async (ctx, args) => {
+        await requireWriteAccess(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        await requireOrgAccess(ctx, session.organization_id);
+
+        const eventType = session.event_type_id
+            ? await ctx.db.get(session.event_type_id)
+            : null;
+        const org = await ctx.db.get(session.organization_id);
+
+        return {
+            sessionId: session._id,
+            organization_id: session.organization_id,
+            attendance_id: session.attendance_id ?? null,
+            display_name: session.display_name ?? eventType?.label ?? "Check-in",
+            date: session.date,
+            event_type_id: session.event_type_id,
+            event_type_label: eventType?.label ?? null,
+            organization_name: org?.name ?? null,
+            status: session.status,
+            opens_at: session.opens_at,
+            closes_at: session.closes_at,
+            check_in_count: session.check_in_count ?? 0,
+        };
+    },
+});
+
+/**
+ * Search members within the session's organization by name, phone, or email.
+ * Bounded to 20 results. Used by the kiosk "type a name" autocomplete.
+ */
+export const kioskSearchMembers = query({
+    args: {
+        sessionId: v.id("check_in_sessions"),
+        query: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireWriteAccess(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        await requireOrgAccess(ctx, session.organization_id);
+
+        const q = args.query.trim().toLowerCase();
+        if (q.length < 2) return [];
+
+        // Try a phone-prefix match first (most reliable at a kiosk).
+        let phoneMatches: Doc<"members">[] = [];
+        if (/^[0-9 +]/.test(q)) {
+            phoneMatches = await ctx.db
+                .query("members")
+                .withIndex("by_org_and_phone", (qq) =>
+                    qq
+                        .eq("organization_id", session.organization_id)
+                        .gte("phone", q),
+                )
+                .take(20);
+            // gte on phone is a prefix scan only when the index is ordered by
+            // the full string; filter to those that actually start with q.
+            phoneMatches = phoneMatches.filter((m) =>
+                (m.phone ?? "").toLowerCase().startsWith(q),
+            );
+        }
+
+        // Name substring + email substring scan (bounded) — for kiosk we
+        // accept a short table scan of the org's members since orgs are
+        // typically < a few thousand. Filter in-memory (no filter() in query
+        // per guidelines would need an index; name substring has no index).
+        const orgMembers = await ctx.db
+            .query("members")
+            .withIndex("by_org", (qq) => qq.eq("organization_id", session.organization_id))
+            .take(500);
+
+        const seen = new Set(phoneMatches.map((m) => m._id));
+        const nameMatches: Doc<"members">[] = [];
+        for (const m of orgMembers) {
+            if (seen.has(m._id)) continue;
+            const name = (m.name + " " + (m.other_names ?? "")).toLowerCase();
+            const email = (m.email ?? "").toLowerCase();
+            const phone = (m.phone ?? "").toLowerCase();
+            if (name.includes(q) || email.includes(q) || phone.includes(q)) {
+                nameMatches.push(m);
+                if (nameMatches.length + phoneMatches.length >= 20) break;
+            }
+        }
+
+        // For each candidate, indicate whether already checked in to this session.
+        const combined = [...phoneMatches, ...nameMatches].slice(0, 20);
+        const attendanceId = session.attendance_id;
+        const withStatus = await Promise.all(
+            combined.map(async (m) => {
+                let alreadyCheckedIn = false;
+                if (attendanceId) {
+                    const existing = await ctx.db
+                        .query("member_attendance")
+                        .withIndex("by_attendance_and_member", (qq) =>
+                            qq.eq("attendance_id", attendanceId).eq("member_id", m._id),
+                        )
+                        .first();
+                    alreadyCheckedIn = !!existing;
+                }
+                return {
+                    member_id: m._id,
+                    name: m.name,
+                    other_names: m.other_names,
+                    email: m.email,
+                    phone: m.phone,
+                    status: m.status,
+                    already_checked_in: alreadyCheckedIn,
+                };
+            }),
+        );
+
+        // Sort: checked-in last, then alphabetical.
+        withStatus.sort((a, b) => {
+            if (a.already_checked_in !== b.already_checked_in) {
+                return a.already_checked_in ? 1 : -1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+        return withStatus;
+    },
+});
+
+/**
+ * Check in an existing member from the kiosk. Steward-only. Marks present with
+ * source "kiosk" and the steward's user id as checked_in_by. Idempotent.
+ */
+export const kioskCheckIn = mutation({
+    args: {
+        sessionId: v.id("check_in_sessions"),
+        memberId: v.id("members"),
+        device_info: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireWriteAccess(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        await requireOrgAccess(ctx, session.organization_id);
+
+        if (session.status !== "open") {
+            return { status: "session_closed" as const };
+        }
+
+        const member = await ctx.db.get(args.memberId);
+        if (!member) {
+            return { status: "member_not_found" as const };
+        }
+        if (member.organization_id !== session.organization_id) {
+            await logCheckInAudit(ctx, {
+                session_id: session._id,
+                organization_id: session.organization_id,
+                member_id: member._id,
+                member_name: member.name,
+                clerk_user_id: (await ctx.auth.getUserIdentity())?.subject,
+                method: "kiosk",
+                outcome: "wrong_org",
+                device_info: args.device_info,
+            });
+            return { status: "wrong_org" as const };
+        }
+
+        const applies = await assertEventAppliesToMember(ctx, {
+            member,
+            eventTypeId: session.event_type_id,
+        });
+        if (!applies) {
+            await logCheckInAudit(ctx, {
+                session_id: session._id,
+                organization_id: session.organization_id,
+                member_id: member._id,
+                member_name: member.name,
+                clerk_user_id: (await ctx.auth.getUserIdentity())?.subject,
+                method: "kiosk",
+                outcome: "event_not_applicable",
+                device_info: args.device_info,
+            });
+            return { status: "event_not_applicable" as const };
+        }
+
+        if (!session.attendance_id) {
+            const attendanceId = await ensureAttendanceRecord(ctx, {
+                orgId: session.organization_id,
+                eventTypeId: session.event_type_id,
+                date: session.date,
+                eventId: session.event_id ?? undefined,
+            });
+            await ctx.db.patch(session._id, { attendance_id: attendanceId });
+            session.attendance_id = attendanceId;
+        }
+
+        const eventType = await ctx.db.get(session.event_type_id);
+        const nowIso = new Date().toISOString();
+        const late = computeLate(eventType, session.date, nowIso);
+
+        const result = await markMemberPresent(ctx, {
+            attendanceId: session.attendance_id,
+            memberId: member._id,
+            source: "kiosk",
+            checkedInBy: user._id,
+            sessionId: session._id,
+            checkedInAt: nowIso,
+            isLate: late.isLate,
+            minutesLate: late.minutesLate,
+            deviceInfo: args.device_info,
+        });
+
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            member_id: member._id,
+            member_name: member.name,
+            clerk_user_id: (await ctx.auth.getUserIdentity())?.subject,
+            method: "kiosk",
+            outcome: result.alreadyCheckedIn ? "already_checked_in" : "success",
+            device_info: args.device_info,
+        });
+
+        if (!result.alreadyCheckedIn) {
+            await ctx.db.patch(session._id, {
+                check_in_count: (session.check_in_count ?? 0) + 1,
+            });
+        }
+
+        return {
+            status: result.alreadyCheckedIn ? ("already_checked_in" as const) : ("checked_in" as const),
+            member_name: member.name,
+            member_status: member.status,
+            is_late: late.isLate,
+            minutes_late: late.minutesLate,
+        };
+    },
+});
+
+/**
+ * Find-or-create a visitor and check them in. Visitors are stored as
+ * `members` rows with status "visitor". Idempotent on phone (then email):
+ * returning visitors reuse their existing row and accumulate attendance
+ * history on one record, so conversion to "active" member later needs no
+ * attendance migration.
+ */
+export const kioskCheckInVisitor = mutation({
+    args: {
+        sessionId: v.id("check_in_sessions"),
+        name: v.string(),
+        phone: v.optional(v.string()),
+        email: v.optional(v.string()),
+        device_info: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireWriteAccess(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        await requireOrgAccess(ctx, session.organization_id);
+
+        if (session.status !== "open") {
+            return { status: "session_closed" as const };
+        }
+
+        const trimmedName = args.name.trim();
+        if (!trimmedName) return { status: "name_required" as const };
+        const trimmedPhone = args.phone?.trim() || undefined;
+        const trimmedEmail = args.email?.trim().toLowerCase() || undefined;
+
+        // Find existing visitor/member by phone (then email) within the org.
+        let member: Doc<"members"> | null = null;
+        if (trimmedPhone) {
+            member = await ctx.db
+                .query("members")
+                .withIndex("by_org_and_phone", (qq) =>
+                    qq
+                        .eq("organization_id", session.organization_id)
+                        .eq("phone", trimmedPhone),
+                )
+                .first() ?? null;
+        }
+        if (!member && trimmedEmail) {
+            member = await ctx.db
+                .query("members")
+                .withIndex("by_email", (qq) => qq.eq("email", trimmedEmail))
+                .first() ?? null;
+            // Email index is global; verify same org.
+            if (member && member.organization_id !== session.organization_id) {
+                member = null;
+            }
+        }
+
+        const nowIso = new Date().toISOString();
+        let createdNew = false;
+        let wasVisitor = false;
+
+        if (!member) {
+            // Create a new visitor row.
+            const memberId = await ctx.db.insert("members", {
+                name: trimmedName,
+                phone: trimmedPhone,
+                email: trimmedEmail,
+                status: "visitor",
+                organization_id: session.organization_id,
+                created_at: nowIso,
+                updated_at: nowIso,
+            });
+            member = (await ctx.db.get(memberId))!;
+            createdNew = true;
+            wasVisitor = true;
+        } else {
+            wasVisitor = member.status === "visitor";
+        }
+
+        if (!session.attendance_id) {
+            const attendanceId = await ensureAttendanceRecord(ctx, {
+                orgId: session.organization_id,
+                eventTypeId: session.event_type_id,
+                date: session.date,
+                eventId: session.event_id ?? undefined,
+            });
+            await ctx.db.patch(session._id, { attendance_id: attendanceId });
+            session.attendance_id = attendanceId;
+        }
+
+        const eventType = await ctx.db.get(session.event_type_id);
+        const late = computeLate(eventType, session.date, nowIso);
+
+        const result = await markMemberPresent(ctx, {
+            attendanceId: session.attendance_id,
+            memberId: member._id,
+            source: "kiosk",
+            checkedInBy: user._id,
+            sessionId: session._id,
+            checkedInAt: nowIso,
+            isLate: late.isLate,
+            minutesLate: late.minutesLate,
+            deviceInfo: args.device_info,
+        });
+
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            member_id: member._id,
+            member_name: member.name,
+            clerk_user_id: (await ctx.auth.getUserIdentity())?.subject,
+            method: "kiosk",
+            outcome: result.alreadyCheckedIn ? "already_checked_in" : "success",
+            reason: createdNew ? "new_visitor" : wasVisitor ? "returning_visitor" : "existing_member_via_visitor_form",
+            device_info: args.device_info,
+        });
+
+        if (!result.alreadyCheckedIn) {
+            await ctx.db.patch(session._id, {
+                check_in_count: (session.check_in_count ?? 0) + 1,
+            });
+        }
+
+        return {
+            status: result.alreadyCheckedIn ? ("already_checked_in" as const) : ("checked_in" as const),
+            member_name: member.name,
+            member_status: member.status,
+            created_new: createdNew,
+            is_late: late.isLate,
+            minutes_late: late.minutesLate,
+        };
+    },
+});
+
+/**
+ * Live kiosk roster for a session (steward view). Returns the last N check-ins
+ * for this session with member names + times, for the "who's here" panel.
+ */
+export const kioskLiveRoster = query({
+    args: { sessionId: v.id("check_in_sessions") },
+    handler: async (ctx, args) => {
+        await requireWriteAccess(ctx);
+        const session = await ctx.db.get(args.sessionId);
+        if (!session) throw new Error("Session not found");
+        await requireOrgAccess(ctx, session.organization_id);
+
+        const recent = await ctx.db
+            .query("member_attendance")
+            .withIndex("by_check_in_session", (q) =>
+                q.eq("check_in_session_id", args.sessionId),
+            )
+            .order("desc")
+            .take(30);
+
+        return await Promise.all(
+            recent.map(async (ma) => {
+                const member = await ctx.db.get(ma.member_id);
+                return {
+                    member_id: ma.member_id,
+                    member_name: member?.name ?? "Unknown",
+                    member_status: member?.status ?? null,
+                    source: ma.source,
+                    checked_in_at: ma.checked_in_at,
+                    is_late: ma.is_late,
+                };
+            }),
+        );
+    },
+});
+
+// ---------------------------------------------------------------------------
 // Member / public functions
 // ---------------------------------------------------------------------------
 

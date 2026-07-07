@@ -30,6 +30,7 @@ const AuditTrailPage = lazy(() => import("@/pages/admin/AuditTrail"));
 
 // Member-facing check-in + portal
 const CheckInPage = lazy(() => import("@/pages/check-in/CheckIn"));
+const KioskPage = lazy(() => import("@/pages/check-in/Kiosk"));
 const PortalLayout = lazy(() => import("@/pages/portal/PortalLayout"));
 const PortalDashboard = lazy(() => import("@/pages/portal/Portal"));
 const PortalAttendance = lazy(() => import("@/pages/portal/PortalAttendance"));
@@ -109,6 +110,18 @@ export default function App() {
             <Suspense fallback={<PageLoader />}>
               <CheckInPage />
             </Suspense>
+          }
+        />
+
+        {/* Steward/kiosk route (admin-authenticated device at the door) */}
+        <Route
+          path="/kiosk/:sessionId"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <KioskPage />
+              </Suspense>
+            </Protected>
           }
         />
 

@@ -155,7 +155,8 @@ export default defineSchema({
         .index("by_org", ["organization_id"])
         .index("by_email", ["email"])
         .index("by_org_status", ["organization_id", "status"])
-        .index("by_user_id", ["user_id"]),
+        .index("by_user_id", ["user_id"])
+        .index("by_org_and_phone", ["organization_id", "phone"]),
 
     // Admins/leaders of a unit (many-to-many). Source of truth for unit-level
     // admin access. Always contains the primary leader (role "leader") plus any

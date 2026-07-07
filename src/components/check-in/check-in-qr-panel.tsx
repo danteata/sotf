@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useMemo } from "react"
+import { Link } from "react-router-dom"
 import QRCode from "qrcode"
-import { QrCode, RefreshCw, Lock, Unlock, Loader2, Users, Clock } from "lucide-react"
+import { QrCode, RefreshCw, Lock, Unlock, Loader2, Users, Clock, Monitor } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
@@ -179,6 +180,12 @@ export function CheckInQrPanel({ eventTypes }: { eventTypes: { _id: string; labe
                                     <Lock className="mr-2 h-4 w-4" />
                                     Close
                                 </Button>
+                                <Link to={`/kiosk/${session.sessionId}`} target="_blank">
+                                    <Button variant="outline" disabled={!isOpen}>
+                                        <Monitor className="mr-2 h-4 w-4" />
+                                        Open Kiosk
+                                    </Button>
+                                </Link>
                             </>
                         )}
                     </div>
