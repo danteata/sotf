@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from "react"
-import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3, ChevronDown } from "lucide-react"
+import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3, ChevronDown, QrCode, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,6 +9,7 @@ import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
 import { ServiceMetadataSummaryDialog } from "@/components/service-metadata-summary-dialog"
+import { CheckInQrPanel } from "@/components/check-in/check-in-qr-panel"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery, useMutation } from "convex/react"
@@ -31,6 +32,7 @@ export function AttendanceContent() {
 
   const stats = useQuery(api.attendance.getStats, {});
   const attendanceRecords = useQuery(api.attendance.listWithDetails, {});
+  const eventTypes = useQuery(api.event_types.getAll, {});
   const loading = stats === undefined || filtersLoading || membersLoading;
   const [isRefreshing, setIsRefreshing] = useState(false)
 
@@ -241,6 +243,11 @@ export function AttendanceContent() {
               label: "Record"
             },
             {
+              value: "checkin",
+              icon: <QrCode className="h-3.5 w-3.5" />,
+              label: "Check-in"
+            },
+            {
               value: "history",
               icon: <History className="h-3.5 w-3.5" />,
               label: "History"
@@ -279,6 +286,30 @@ export function AttendanceContent() {
               availableMembers={members}
               availableUnits={ministries}
             />
+          </TabsContent>
+
+          <TabsContent value="checkin" className="space-y-4 outline-none">
+            {!isAdmin ? (
+              <Card className="border-border/50 rounded-lg">
+                <CardContent className="p-8 text-center">
+                  <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">
+                    You need admin access to manage check-in sessions.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : !eventTypes || eventTypes.length === 0 ? (
+              <Card className="border-border/50 rounded-lg">
+                <CardContent className="p-8 text-center">
+                  <QrCode className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">
+                    No active event types found. Create event types first.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <CheckInQrPanel eventTypes={eventTypes} />
+            )}
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4 outline-none">

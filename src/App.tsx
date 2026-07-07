@@ -28,6 +28,14 @@ const MapPage = lazy(() => import("@/pages/map/Map"));
 const ReportsPage = lazy(() => import("@/pages/reports/Reports"));
 const AuditTrailPage = lazy(() => import("@/pages/admin/AuditTrail"));
 
+// Member-facing check-in + portal
+const CheckInPage = lazy(() => import("@/pages/check-in/CheckIn"));
+const PortalLayout = lazy(() => import("@/pages/portal/PortalLayout"));
+const PortalDashboard = lazy(() => import("@/pages/portal/Portal"));
+const PortalAttendance = lazy(() => import("@/pages/portal/PortalAttendance"));
+const PortalProfile = lazy(() => import("@/pages/portal/PortalProfile"));
+const PortalLink = lazy(() => import("@/pages/portal/PortalLink"));
+
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -56,6 +64,30 @@ function Protected({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Member portal routes: must be signed in, but NOT restricted to admin roles.
+// Plain members (and admins) can access the portal.
+function MemberRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  if (isLoading) {
+    return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
+  }
+
+  if (!isAuthenticated) {
+    // Preserve the redirect target so members return after sign-in.
+    const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+    return <Navigate to={`/sign-in?redirect_url=${redirect}`} replace />;
+  }
+
+  return (
+    <>
+      <UserSync />
+      <AuthAnalyticsBridge />
+      {children}
+    </>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -69,6 +101,33 @@ export default function App() {
         <Route path="/sign-up/*" element={<SignUpPage />} />
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+
+        {/* Public check-in scan route (auth handled inside the page) */}
+        <Route
+          path="/check-in/:token"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <CheckInPage />
+            </Suspense>
+          }
+        />
+
+        {/* Member self-service portal (any signed-in user; not admin-restricted) */}
+        <Route
+          path="/portal"
+          element={
+            <MemberRoute>
+              <Suspense fallback={<PageLoader />}>
+                <PortalLayout />
+              </Suspense>
+            </MemberRoute>
+          }
+        >
+          <Route index element={<PortalDashboard />} />
+          <Route path="attendance" element={<PortalAttendance />} />
+          <Route path="profile" element={<PortalProfile />} />
+          <Route path="link" element={<PortalLink />} />
+        </Route>
 
         {/* Protected Routes */}
         <Route

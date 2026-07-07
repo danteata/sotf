@@ -29,6 +29,8 @@ export default defineSchema({
         category: v.optional(v.string()),
         description: v.optional(v.string()),
         default_time: v.optional(v.string()), // Default time for events of this type (e.g., "09:00")
+        default_duration_minutes: v.optional(v.number()), // Default session window length (e.g., 240)
+        grace_minutes: v.optional(v.number()), // Minutes after start_time before a check-in is "late"
         is_active: v.boolean(),
         sort_order: v.number(),
         organization_id: v.optional(v.id("organizations")),
@@ -62,6 +64,10 @@ export default defineSchema({
         level3_plural: v.optional(v.string()),
         level4_singular: v.optional(v.string()),
         level4_plural: v.optional(v.string()),
+        // Check-in / portal configuration
+        timezone: v.optional(v.string()), // IANA tz, e.g. "Africa/Accra"
+        hq_latitude: v.optional(v.number()),
+        hq_longitude: v.optional(v.number()),
     }),
 
     // Nested organizational units with types
@@ -219,9 +225,23 @@ export default defineSchema({
     member_attendance: defineTable({
         member_id: v.id("members"),
         attendance_id: v.id("attendance"),
+        // Check-in metadata (all optional so existing manual rows stay valid)
+        source: v.optional(v.string()), // "manual" | "qr" | "kiosk" | "portal" | "geofence"
+        checked_in_at: v.optional(v.string()), // ISO datetime of the check-in action
+        checked_in_by: v.optional(v.id("users")), // who marked (admin id; null for self-service)
+        check_in_session_id: v.optional(v.id("check_in_sessions")),
+        is_late: v.optional(v.boolean()),
+        minutes_late: v.optional(v.number()),
+        device_info: v.optional(v.string()),
+        location_lat: v.optional(v.number()),
+        location_long: v.optional(v.number()),
     })
         .index("by_attendance", ["attendance_id"])
-        .index("by_member", ["member_id"]),
+        .index("by_member", ["member_id"])
+        // Idempotency: one (attendance, member) row max. Critical for "already checked in".
+        .index("by_attendance_and_member", ["attendance_id", "member_id"])
+        .index("by_member_and_attendance", ["member_id", "attendance_id"])
+        .index("by_check_in_session", ["check_in_session_id"]),
 
     labels: defineTable({
         name: v.string(),
@@ -341,4 +361,79 @@ export default defineSchema({
         .index("by_performer", ["performed_by"])
         .index("by_timestamp", ["timestamp"])
         .index("by_org_timestamp", ["organization_id", "timestamp"]),
+
+    // Check-in sessions: one per (org, event_type, date). Holds the opaque QR
+    // token (hashed), lifecycle status, optional geofence, and a denormalized
+    // check-in count for the live admin UI. References attendance as the
+    // source of truth; deleting a session never deletes attendance.
+    check_in_sessions: defineTable({
+        organization_id: v.id("organizations"),
+        attendance_id: v.optional(v.id("attendance")),
+        event_type_id: v.id("event_types"),
+        event_id: v.optional(v.id("events")),
+        date: v.string(), // ISO date (YYYY-MM-DD), the session's service date
+        token_hash: v.string(), // SHA-256 hex of opaque token; never store raw token
+        token_algo: v.optional(v.string()), // "sha256" default; allows future rotation
+        status: v.string(), // "draft" | "open" | "closed" | "expired" | "revoked"
+        opens_at: v.string(), // ISO datetime (UTC)
+        closes_at: v.string(), // ISO datetime (UTC)
+        created_by: v.id("users"),
+        created_by_name: v.optional(v.string()),
+        created_at: v.string(),
+        closed_at: v.optional(v.string()),
+        closed_by: v.optional(v.id("users")),
+        // Geofence (optional)
+        location_mode: v.optional(v.string()), // "none" | "soft" | "strict"
+        latitude: v.optional(v.number()),
+        longitude: v.optional(v.number()),
+        radius_meters: v.optional(v.number()),
+        // Display
+        display_name: v.optional(v.string()),
+        // Denormalized live counter (updated on each check-in)
+        check_in_count: v.optional(v.number()),
+    })
+        .index("by_org_and_date", ["organization_id", "date"])
+        .index("by_attendance", ["attendance_id"])
+        .index("by_token_hash", ["token_hash"])
+        .index("by_org_and_status", ["organization_id", "status"])
+        .index("by_event_type_and_date", ["event_type_id", "date"])
+        .index("by_status", ["status"]),
+
+    // Per-attempt audit for check-ins. High-churn operational data kept in its
+    // own table (per Convex guideline) so it doesn't bloat general audit_logs
+    // scans. Every attempt (success + every failure reason) is logged here,
+    // giving an observable check-in funnel.
+    check_in_audit: defineTable({
+        session_id: v.id("check_in_sessions"),
+        organization_id: v.id("organizations"),
+        member_id: v.optional(v.id("members")),
+        member_name: v.optional(v.string()),
+        clerk_user_id: v.optional(v.string()), // who attempted (authenticated)
+        method: v.string(), // "qr" | "portal" | "kiosk" | "manual"
+        outcome: v.string(), // "success" | "already_checked_in" | "session_closed" | "expired" | "forbidden" | "outside_geofence" | "error" | ...
+        reason: v.optional(v.string()),
+        ip_address: v.optional(v.string()),
+        device_info: v.optional(v.string()),
+        timestamp: v.string(),
+    })
+        .index("by_session", ["session_id"])
+        .index("by_org_timestamp", ["organization_id", "timestamp"])
+        .index("by_member_timestamp", ["member_id", "timestamp"])
+        .index("by_outcome", ["outcome"]),
+
+    // Explicit link between a Clerk users account and a members record, for
+    // portal access. Today linkage is implicit (members.user_id or email
+    // match); this makes it auditable and supports multi-org members later
+    // (one row per org-member pair).
+    member_portal_links: defineTable({
+        member_id: v.id("members"),
+        organization_id: v.id("organizations"),
+        clerk_user_id: v.string(),
+        linked_by: v.optional(v.string()), // "self_email" | "invitation" | "admin"
+        linked_at: v.string(),
+        revoked_at: v.optional(v.string()),
+    })
+        .index("by_member", ["member_id"])
+        .index("by_clerk_user", ["clerk_user_id"])
+        .index("by_org", ["organization_id"]),
 });

@@ -17,7 +17,8 @@ import {
   Heart,
   DollarSign,
   Building2,
-  ClipboardList
+  ClipboardList,
+  QrCode
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
@@ -40,6 +41,12 @@ export function RoleBasedNavigation() {
       title: "Dashboard",
       href: "/",
       icon: Home,
+      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "member"]
+    },
+    {
+      title: "My Portal",
+      href: "/portal",
+      icon: QrCode,
       roles: ["admin", "organization_admin", "division_admin", "unit_admin", "member"]
     },
     {

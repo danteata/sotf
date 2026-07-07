@@ -1,10 +1,197 @@
 
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, getUserSafe } from "./auth";
 import { requireWriteAccess } from "./scope";
 import { resolveManagedMemberIds } from "./members";
+
+// ---------------------------------------------------------------------------
+// Shared attendance helpers
+//
+// These are the low-level building blocks both manual attendance
+// (recordFullAttendance) and QR/portal check-in (check_ins.ts) use. They keep
+// `attendance` + `member_attendance` as the single source of truth and make
+// writes incremental and idempotent instead of destructive.
+// ---------------------------------------------------------------------------
+
+export type CheckInSource = "manual" | "qr" | "kiosk" | "portal" | "geofence";
+
+/**
+ * Find or create the `attendance` row for (org, event_type, date).
+ * Does NOT touch member_attendance. Idempotent.
+ */
+export async function ensureAttendanceRecord(
+    ctx: any,
+    args: {
+        orgId: Id<"organizations">;
+        eventTypeId: Id<"event_types">;
+        date: string;
+        eventId?: Id<"events">;
+        notes?: string;
+    },
+): Promise<Id<"attendance">> {
+    const eventType = await ctx.db.get(args.eventTypeId);
+    if (!eventType) throw new Error("Event type not found");
+
+    // Find or create the event (only when no explicit event_id is provided)
+    let event: Doc<"events"> | null = null;
+    if (args.eventId) {
+        event = await ctx.db.get(args.eventId);
+        if (!event) throw new Error("Event not found");
+    } else {
+        event = await ctx.db
+            .query("events")
+            .withIndex("by_date", (q: any) => q.eq("date", args.date))
+            .filter((q: any) => q.eq(q.field("event_type_id"), args.eventTypeId))
+            .filter((q: any) => q.eq(q.field("organization_id"), args.orgId))
+            .first();
+
+        if (!event) {
+            const newEventId = await ctx.db.insert("events", {
+                title: `${eventType.label} - ${args.date}`,
+                date: args.date,
+                time: eventType.default_time,
+                description: args.notes || "Auto-created from attendance",
+                event_type_id: args.eventTypeId,
+                organization_id: args.orgId,
+                active: true,
+            });
+            event = await ctx.db.get(newEventId);
+        }
+    }
+
+    // Find or create the attendance row
+    const existing = await ctx.db
+        .query("attendance")
+        .withIndex("by_org_and_date", (q: any) =>
+            q.eq("organization_id", args.orgId).eq("date", args.date),
+        )
+        .filter((q: any) => q.eq(q.field("event_type_id"), args.eventTypeId))
+        .first();
+
+    if (existing) {
+        return existing._id as Id<"attendance">;
+    }
+
+    return (await ctx.db.insert("attendance", {
+        date: args.date,
+        event_type_id: args.eventTypeId,
+        event_id: event?._id,
+        organization_id: args.orgId,
+        count: 0,
+        notes: args.notes,
+    })) as Id<"attendance">;
+}
+
+/**
+ * Mark a single member present for an attendance record. Idempotent: if a
+ * member_attendance row already exists for (attendance, member) it is returned
+ * with `alreadyCheckedIn: true` and no new row/count change is made.
+ */
+export async function markMemberPresent(
+    ctx: any,
+    args: {
+        attendanceId: Id<"attendance">;
+        memberId: Id<"members">;
+        source: CheckInSource;
+        checkedInBy?: Id<"users">;
+        sessionId?: Id<"check_in_sessions">;
+        checkedInAt?: string;
+        isLate?: boolean;
+        minutesLate?: number;
+        deviceInfo?: string;
+        lat?: number;
+        long?: number;
+    },
+): Promise<{ id: Id<"member_attendance">; alreadyCheckedIn: boolean }> {
+    const existing = await ctx.db
+        .query("member_attendance")
+        .withIndex("by_attendance_and_member", (q: any) =>
+            q.eq("attendance_id", args.attendanceId).eq("member_id", args.memberId),
+        )
+        .first();
+
+    if (existing) {
+        return { id: existing._id as Id<"member_attendance">, alreadyCheckedIn: true };
+    }
+
+    const id = (await ctx.db.insert("member_attendance", {
+        member_id: args.memberId,
+        attendance_id: args.attendanceId,
+        source: args.source,
+        checked_in_at: args.checkedInAt,
+        checked_in_by: args.checkedInBy,
+        check_in_session_id: args.sessionId,
+        is_late: args.isLate,
+        minutes_late: args.minutesLate,
+        device_info: args.deviceInfo,
+        location_lat: args.lat,
+        location_long: args.long,
+    })) as Id<"member_attendance">;
+
+    // Maintain denormalized counter (avoid .collect().length per Convex guideline)
+    const attendance = await ctx.db.get(args.attendanceId);
+    if (attendance) {
+        await ctx.db.patch(args.attendanceId, {
+            count: (attendance.count || 0) + 1,
+        });
+    }
+
+    return { id, alreadyCheckedIn: false };
+}
+
+/**
+ * Remove a single member's presence from an attendance record. Decrements
+ * the attendance count. Used by admin "unmark" and check-in undo.
+ */
+export async function removeMemberPresence(
+    ctx: any,
+    args: { attendanceId: Id<"attendance">; memberId: Id<"members"> },
+): Promise<void> {
+    const existing = await ctx.db
+        .query("member_attendance")
+        .withIndex("by_attendance_and_member", (q: any) =>
+            q.eq("attendance_id", args.attendanceId).eq("member_id", args.memberId),
+        )
+        .first();
+
+    if (!existing) return;
+
+    await ctx.db.delete(existing._id);
+
+    const attendance = await ctx.db.get(args.attendanceId);
+    if (attendance) {
+        await ctx.db.patch(args.attendanceId, {
+            count: Math.max(0, (attendance.count || 0) - 1),
+        });
+    }
+}
+
+/**
+ * Whether an event type applies to a member, honoring event_type.unit_ids
+ * scoping. Mirrors the logic already in getMemberSummary.
+ */
+export async function assertEventAppliesToMember(
+    ctx: any,
+    args: { member: Doc<"members">; eventTypeId: Id<"event_types"> },
+): Promise<boolean> {
+    const eventType = await ctx.db.get(args.eventTypeId);
+    if (!eventType) return false;
+
+    const eventUnitIds = (eventType as any).unit_ids || [];
+    if (eventUnitIds.length === 0) return true; // applies to all members
+
+    const memberUnits = await ctx.db
+        .query("member_units")
+        .withIndex("by_member", (q: any) => q.eq("member_id", args.member._id))
+        .collect();
+    const memberUnitIds = new Set(memberUnits.map((mu: any) => mu.unit_id as string));
+
+    return eventUnitIds.some((uid: any) => memberUnitIds.has(uid as string));
+}
+
+// ---------------------------------------------------------------------------
 
 export const listWithDetails = query({
     args: {},
@@ -192,89 +379,55 @@ export const recordFullAttendance = mutation({
             }
         }
 
-        // 1. Get Event Type
-        const eventType = await ctx.db.get(event_type_id);
-        if (!eventType) throw new Error("Event type not found");
-
-        // 2. Find or Create Event
-        let event: any = null;
-
-        if (event_id) {
-            // Use provided event
-            event = await ctx.db.get(event_id);
-            if (!event) throw new Error("Event not found");
-        } else {
-            // Find or create event for this date/type
-            event = await ctx.db
-                .query("events")
-                .withIndex("by_date", q => q.eq("date", date))
-                .filter(q => q.eq(q.field("event_type_id"), event_type_id))
-                .filter(q => q.eq(q.field("organization_id"), orgId))
-                .first();
-
-            if (!event) {
-                const eventId = await ctx.db.insert("events", {
-                    title: `${eventType.label} - ${date}`,
-                    date,
-                    time: eventType.default_time, // Use default time from event type
-                    description: notes || "Auto-created from attendance",
-                    event_type_id,
-                    organization_id: orgId,
-                    active: true,
-                });
-                event = await ctx.db.get(eventId);
-            }
-        }
-
-        // 3. Find or Create Attendance
-        const existingAttendance = await ctx.db
-            .query("attendance")
-            .withIndex("by_date", q => q.eq("date", date))
-            .filter(q => q.eq(q.field("event_type_id"), event_type_id))
-            .filter(q => q.eq(q.field("organization_id"), orgId))
-            .first();
-
-        let attendanceId: Id<"attendance">;
-
-        if (existingAttendance) {
-            await ctx.db.patch(existingAttendance._id, {
-                count: member_ids.length,
-                notes,
-                event_id: event?._id,
-            });
-            attendanceId = existingAttendance._id;
-
-            // Delete existing member_attendance
-            const currentAttendance = await ctx.db
-                .query("member_attendance")
-                .withIndex("by_attendance", q => q.eq("attendance_id", attendanceId))
-                .collect();
-
-            for (const record of currentAttendance) {
-                await ctx.db.delete(record._id);
-            }
-        } else {
-            attendanceId = await ctx.db.insert("attendance", {
-                date,
-                event_type_id,
-                event_id: event?._id,
-                organization_id: orgId,
-                count: member_ids.length,
-                notes,
-            });
-        }
-
-        // 4. Record new member attendance
+        // Validate member org membership up-front (cheap guard).
         for (const memberId of member_ids) {
             const member = await ctx.db.get(memberId);
             if (member?.organization_id && member.organization_id !== orgId) {
                 throw new Error("Member org mismatch");
             }
-            await ctx.db.insert("member_attendance", {
-                member_id: memberId,
-                attendance_id: attendanceId,
+        }
+
+        // 1. Ensure the attendance record exists (creates event if needed).
+        const attendanceId = await ensureAttendanceRecord(ctx, {
+            orgId: orgId as Id<"organizations">,
+            eventTypeId: event_type_id,
+            date,
+            eventId: event_id,
+            notes,
+        });
+
+        // 2. Compute the desired present set vs the current present set.
+        const desiredSet = new Set(member_ids);
+        const currentRows = await ctx.db
+            .query("member_attendance")
+            .withIndex("by_attendance", (q: any) => q.eq("attendance_id", attendanceId))
+            .collect();
+
+        // Remove members no longer marked present.
+        for (const row of currentRows) {
+            if (!desiredSet.has(row.member_id)) {
+                await removeMemberPresence(ctx, {
+                    attendanceId,
+                    memberId: row.member_id,
+                });
+            }
+        }
+
+        // Add members newly marked present (idempotent via markMemberPresent).
+        for (const memberId of member_ids) {
+            await markMemberPresent(ctx, {
+                attendanceId,
+                memberId,
+                source: "manual",
+                checkedInBy: (await getUserSafe(ctx))?._id as Id<"users"> | undefined,
             });
         }
+
+        // 3. Patch attendance metadata (notes/event_id) to reflect this save.
+        await ctx.db.patch(attendanceId, {
+            notes,
+            event_id: event_id ?? (await ctx.db.get(attendanceId))?.event_id,
+        });
 
         return attendanceId;
     }

@@ -12,6 +12,8 @@ import type * as app_config from "../app_config.js";
 import type * as attendance from "../attendance.js";
 import type * as audit from "../audit.js";
 import type * as auth from "../auth.js";
+import type * as check_ins from "../check_ins.js";
+import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as event_types from "../event_types.js";
 import type * as events from "../events.js";
@@ -37,6 +39,8 @@ declare const fullApi: ApiFromModules<{
   attendance: typeof attendance;
   audit: typeof audit;
   auth: typeof auth;
+  check_ins: typeof check_ins;
+  crons: typeof crons;
   dashboard: typeof dashboard;
   event_types: typeof event_types;
   events: typeof events;
