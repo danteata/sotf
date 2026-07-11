@@ -3,6 +3,10 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/jetbrains-mono";
 @import "@fontsource-variable/inter";
+@import "@fontsource/fraunces/400.css";
+@import "@fontsource/fraunces/400-italic.css";
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -78,6 +82,7 @@
 @theme {
     --font-sans: 'Inter Variable', sans-serif;
     --font-mono: 'JetBrains Mono Variable', monospace;
+    --font-serif: 'Fraunces', ui-serif, Georgia, serif;
 
     --color-background: var(--background);
     --color-foreground: var(--foreground);
