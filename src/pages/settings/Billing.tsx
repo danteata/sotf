@@ -1,0 +1,202 @@
+import { useState } from "react"
+import { CreditCard, Check, Loader2, Sparkles, Crown } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { LayoutWrapper } from "@/components/layout-wrapper"
+import { useSubscription } from "@/providers/SubscriptionProvider"
+import { toast } from "sonner"
+
+const PRO_FEATURES = [
+    "Unlimited members & units",
+    "Advanced reports & CSV exports",
+    "Priority support",
+    "Early access to new features",
+]
+
+function formatDate(iso: string | null): string {
+    if (!iso) return "—"
+    return new Date(iso).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    })
+}
+
+export default function BillingPage() {
+    const { isPro, status, currentPeriodEnd, loading, startCheckout, manageSubscription } =
+        useSubscription()
+    const [actionLoading, setActionLoading] = useState(false)
+
+    const handleUpgrade = async () => {
+        setActionLoading(true)
+        try {
+            await startCheckout(`${window.location.origin}/billing`)
+            // The user is redirected to Paystack; the webhook updates the row.
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not start checkout.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleManage = async () => {
+        setActionLoading(true)
+        try {
+            await manageSubscription()
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Could not open subscription manager.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    return (
+        <LayoutWrapper>
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div>
+                    <h1 className="text-3xl tracking-tight text-foreground">Billing</h1>
+                    <p className="text-muted-foreground mt-1">
+                        Manage your organization's subscription plan.
+                    </p>
+                </div>
+
+                {/* Current plan */}
+                <Card className="border-border/50 shadow-soft">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                {isPro ? (
+                                    <Crown className="h-5 w-5 text-amber-500" />
+                                ) : (
+                                    <Sparkles className="h-5 w-5 text-muted-foreground" />
+                                )}
+                                <CardTitle>Current Plan</CardTitle>
+                            </div>
+                            <Badge
+                                variant={isPro ? "default" : "secondary"}
+                                className={isPro ? "bg-primary/20 text-primary border-primary/30" : ""}
+                            >
+                                {loading ? "…" : isPro ? "Pro" : "Free"}
+                            </Badge>
+                        </div>
+                        <CardDescription>
+                            {isPro
+                                ? "Your organization has full access to sotf."
+                                : "Your organization is on the Free plan."}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {loading ? (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" /> Loading subscription…
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+                                    <div>
+                                        <p className="text-muted-foreground">Status</p>
+                                        <p className="font-medium capitalize">{status}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-muted-foreground">Renews / ends</p>
+                                        <p className="font-medium">{formatDate(currentPeriodEnd)}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-3">
+                                    {isPro ? (
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleManage}
+                                            disabled={actionLoading}
+                                        >
+                                            <CreditCard className="mr-2 h-4 w-4" />
+                                            Manage subscription
+                                        </Button>
+                                    ) : (
+                                        <Button onClick={handleUpgrade} disabled={actionLoading}>
+                                            {actionLoading ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <Crown className="mr-2 h-4 w-4" />
+                                            )}
+                                            Upgrade to Pro
+                                        </Button>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Plan comparison */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="border-border/50">
+                        <CardHeader>
+                            <CardTitle className="text-base">Free</CardTitle>
+                            <CardDescription>Core church management.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-semibold">
+                                ₵0<span className="text-sm font-normal text-muted-foreground">/mo</span>
+                            </p>
+                            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                <li className="flex gap-2">
+                                    <Check className="h-4 w-4 text-primary mt-0.5" /> Members & units
+                                </li>
+                                <li className="flex gap-2">
+                                    <Check className="h-4 w-4 text-primary mt-0.5" /> Attendance tracking
+                                </li>
+                                <li className="flex gap-2">
+                                    <Check className="h-4 w-4 text-primary mt-0.5" /> Basic financials
+                                </li>
+                            </ul>
+                        </CardContent>
+                    </Card>
+
+                    <Card
+                        className={
+                            isPro
+                                ? "border-primary/40 bg-primary/5"
+                                : "border-primary/30 shadow-soft"
+                        }
+                    >
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-base">Pro</CardTitle>
+                                {isPro && <Badge className="bg-primary/20 text-primary">Active</Badge>}
+                            </div>
+                            <CardDescription>Everything in Free, plus more.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-2xl font-semibold">
+                                ₵150<span className="text-sm font-normal text-muted-foreground">/mo</span>
+                            </p>
+                            <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                                {PRO_FEATURES.map((f) => (
+                                    <li key={f} className="flex gap-2">
+                                        <Check className="h-4 w-4 text-primary mt-0.5" /> {f}
+                                    </li>
+                                ))}
+                            </ul>
+                            {!isPro && !loading && (
+                                <Button className="mt-4 w-full" onClick={handleUpgrade} disabled={actionLoading}>
+                                    {actionLoading && (
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Choose Pro
+                                </Button>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                    Payments are processed securely by Paystack. You'll be redirected to complete
+                    payment; your plan updates automatically via webhook.
+                </p>
+            </div>
+        </LayoutWrapper>
+    )
+}

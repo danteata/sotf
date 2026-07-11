@@ -10,6 +10,7 @@ import {
   Calendar,
   BarChart3,
   Settings,
+  CreditCard,
   Church,
   MapPin,
   UserCheck,
@@ -103,6 +104,12 @@ export function RoleBasedNavigation() {
       href: "/admin",
       icon: Settings,
       roles: ["admin"]
+    },
+    {
+      title: "Billing",
+      href: "/billing",
+      icon: CreditCard,
+      roles: ["admin", "organization_admin", "division_admin"]
     },
     {
       title: "Audit Trail",

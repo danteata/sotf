@@ -1,6 +1,6 @@
 
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
 import { getUnitIdsAdministeredBy, addUnitAdminInternal } from "./unit_admins";
 import { Id } from "./_generated/dataModel";
@@ -171,6 +171,19 @@ export const store = mutation({
         return userId;
     },
 });
+
+// Internal: resolve a user by email (used by the Paystack webhook to map a
+// billing email back to an organization). Returns null when no user matches.
+export const getUserByEmail = internalQuery({
+    args: { email: v.string() },
+    handler: async (ctx, args) => {
+        const email = args.email.toLowerCase()
+        return await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", email))
+            .unique()
+    },
+})
 
 export const getRole = query({
     args: {},

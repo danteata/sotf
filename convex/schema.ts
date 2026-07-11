@@ -12,7 +12,9 @@ export default defineSchema({
         division_id: v.optional(v.string()),
         unit_id: v.optional(v.string()),
         active: v.boolean(),
-    }).index("by_clerk_id", ["clerk_user_id"]),
+    })
+        .index("by_clerk_id", ["clerk_user_id"])
+        .index("by_email", ["email"]),
 
     app_config: defineTable({
         key: v.string(),
@@ -435,6 +437,37 @@ export default defineSchema({
         .index("by_org_timestamp", ["organization_id", "timestamp"])
         .index("by_member_timestamp", ["member_id", "timestamp"])
         .index("by_outcome", ["outcome"]),
+
+    // Per-organization subscription to a sotf plan (e.g. Free vs Pro), backed by
+    // Paystack. Keyed by organization so an entire church shares one plan. The
+    // row is the source of truth for entitlements; Paystack webhooks keep it in
+    // sync via convex/http.ts. No offline license signing (unlike Selah) — the
+    // web client reads this row directly.
+    subscriptions: defineTable({
+        organization_id: v.id("organizations"),
+        // Purchaser email (lowercased); used to resolve the org on webhooks.
+        email: v.string(),
+        plan: v.union(v.literal("free"), v.literal("pro")),
+        status: v.union(
+            v.literal("active"),
+            v.literal("non-renewing"),
+            v.literal("attention"),
+            v.literal("past_due"),
+            v.literal("cancelled")
+        ),
+        paystackCustomerCode: v.optional(v.string()),
+        paystackSubscriptionCode: v.optional(v.string()),
+        paystackPlanCode: v.optional(v.string()),
+        // ISO end of the current paid period; null on free / no period yet.
+        currentPeriodEnd: v.optional(v.union(v.string(), v.null())),
+        lastEventAt: v.optional(v.string()),
+        lastChargeAt: v.optional(v.string()),
+        createdAt: v.string(),
+        updatedAt: v.string(),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_email", ["email"])
+        .index("by_subscription_code", ["paystackSubscriptionCode"]),
 
     // Explicit link between a Clerk users account and a members record, for
     // portal access. Today linkage is implicit (members.user_id or email

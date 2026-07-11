@@ -8,6 +8,7 @@ import { ConvexReactClient } from 'convex/react'
 import { OrganizationProvider } from './hooks/use-organization.tsx'
 import { ThemeProvider } from './components/theme-provider'
 import { AnalyticsProvider } from './providers/AnalyticsProvider'
+import { SubscriptionProvider } from './providers/SubscriptionProvider'
 import { AnalyticsProviderType } from './services/analytics'
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
@@ -38,7 +39,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                         apiKey={analyticsApiKey}
                     >
                         <OrganizationProvider>
-                            <App />
+                            <SubscriptionProvider>
+                                <App />
+                            </SubscriptionProvider>
                         </OrganizationProvider>
                     </AnalyticsProvider>
                 </ThemeProvider>

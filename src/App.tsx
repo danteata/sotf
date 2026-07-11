@@ -22,6 +22,7 @@ const UserManagementPage = lazy(() => import("@/pages/admin/UserManagement"));
 const LabelManagementPage = lazy(() => import("@/pages/admin/LabelManagement"));
 const OrganizationPage = lazy(() => import("@/pages/organization/Organization"));
 const SettingsPage = lazy(() => import("@/pages/settings/Settings"));
+const BillingPage = lazy(() => import("@/pages/settings/Billing"));
 const ProfilePage = lazy(() => import("@/pages/profile/Profile"));
 const AttendancePage = lazy(() => import("@/pages/attendance/Attendance"));
 const AbsentMembersSharePage = lazy(() => import("@/pages/share/AbsentMembersShare"));
@@ -239,6 +240,16 @@ export default function App() {
             <Protected>
               <Suspense fallback={<PageLoader />}>
                 <SettingsPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/billing"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <BillingPage />
               </Suspense>
             </Protected>
           }
