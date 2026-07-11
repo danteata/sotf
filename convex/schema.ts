@@ -244,6 +244,20 @@ export default defineSchema({
         .index("by_member_and_attendance", ["member_id", "attendance_id"])
         .index("by_check_in_session", ["check_in_session_id"]),
 
+    // Public, token-gated links for sharing an event's absent-member list
+    // with people who don't have app accounts (e.g. follow-up volunteers).
+    absent_member_shares: defineTable({
+        organization_id: v.id("organizations"),
+        event_type_value: v.string(),
+        date: v.string(), // yyyy-MM-dd
+        token: v.string(),
+        created_by: v.optional(v.string()), // clerk_user_id
+        expires_at: v.optional(v.number()),
+        revoked: v.boolean(),
+    })
+        .index("by_token", ["token"])
+        .index("by_org_event_date", ["organization_id", "event_type_value", "date"]),
+
     labels: defineTable({
         name: v.string(),
         description: v.optional(v.string()),

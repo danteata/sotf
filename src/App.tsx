@@ -24,6 +24,7 @@ const OrganizationPage = lazy(() => import("@/pages/organization/Organization"))
 const SettingsPage = lazy(() => import("@/pages/settings/Settings"));
 const ProfilePage = lazy(() => import("@/pages/profile/Profile"));
 const AttendancePage = lazy(() => import("@/pages/attendance/Attendance"));
+const AbsentMembersSharePage = lazy(() => import("@/pages/share/AbsentMembersShare"));
 const MapPage = lazy(() => import("@/pages/map/Map"));
 const ReportsPage = lazy(() => import("@/pages/reports/Reports"));
 const AuditTrailPage = lazy(() => import("@/pages/admin/AuditTrail"));
@@ -102,6 +103,14 @@ export default function App() {
         <Route path="/sign-up/*" element={<SignUpPage />} />
         <Route path="/invite/:token" element={<InvitePage />} />
         <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
+        <Route
+          path="/share/absent/:token"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <AbsentMembersSharePage />
+            </Suspense>
+          }
+        />
 
         {/* Public check-in scan route (auth handled inside the page) */}
         <Route

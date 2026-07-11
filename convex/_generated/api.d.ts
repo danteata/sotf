@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as absentShares from "../absentShares.js";
 import type * as app_config from "../app_config.js";
 import type * as attendance from "../attendance.js";
 import type * as audit from "../audit.js";
@@ -35,6 +36,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  absentShares: typeof absentShares;
   app_config: typeof app_config;
   attendance: typeof attendance;
   audit: typeof audit;

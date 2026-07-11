@@ -21,6 +21,8 @@ import { AnalyticsEventType } from "@/services/analytics/types"
 import { toast } from "sonner"
 import { MemberProfileDialog } from "./member-profile-dialog"
 import type { Member } from "@/types/database"
+import { useOrganization } from "@/hooks/use-organization"
+import { ShareAbsentLinkDialog } from "@/components/share-absent-link-dialog"
 
 type AttendanceRecord = {
   _id: string
@@ -61,6 +63,7 @@ export function AbsentMembers() {
   const [viewingMember, setViewingMember] = useState<MemberRow | null>(null)
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
   const effectiveEventType = eventType || eventTypes[0]?.value || ""
+  const { organization } = useOrganization()
 
   // Convex Queries
   const rawMembersData = useQuery(api.members.getAll, {})
@@ -370,6 +373,14 @@ export function AbsentMembers() {
             <Download className="mr-2 h-4 w-4" />
             Export List
           </Button>
+          {organization?._id && effectiveEventType && selectedDate && (
+            <ShareAbsentLinkDialog
+              organizationId={organization._id}
+              eventType={effectiveEventType}
+              eventTypeLabel={eventTypes.find((t) => t.value === effectiveEventType)?.label ?? effectiveEventType}
+              date={selectedDate}
+            />
+          )}
         </div>
 
         {selectedAttendanceRecord && (
