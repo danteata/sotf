@@ -15,7 +15,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -29,7 +28,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -44,8 +42,7 @@ import { MemberLabels, LabelSelector } from "./label-selector"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileUploader } from "@/components/file-uploader"
 import { UnitPicker } from "@/components/unit-picker"
-import { Upload, X, Crown } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { X, Crown } from "lucide-react"
 
 const memberSchema = z.object({
   title: z.string().optional(),
@@ -239,24 +236,27 @@ export function MemberEditDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] w-[calc(100%-2rem)] sm:w-[700px] max-h-[90vh] overflow-y-auto p-0 border border-border/50 shadow-soft-xl overflow-hidden"
+        className="flex flex-col w-[calc(100%-2rem)] sm:w-[700px] max-h-[90vh] p-0 border border-border/50 shadow-soft-xl overflow-hidden"
       >
-        <DialogHeader className="px-6 pt-6 pb-2">
+        <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="text-xl tracking-tight">Edit Member Profile</DialogTitle>
-          <DialogDescription className="text-slate-500">
+          <DialogDescription>
             Update personal information, unit assignments, and classification labels.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-0">
-            <div className="px-6 pb-6">
+          <form onSubmit={form.handleSubmit(onSubmit as any)} className="flex flex-col flex-1 min-h-0">
+            {/* Scrollable body: only this area scrolls, so the footer below stays
+                reachable no matter how tall a given tab's content is (e.g. a long
+                unit list). */}
+            <div className="px-6 pb-6 flex-1 min-h-0 overflow-y-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 h-12 bg-slate-100/50 p-1 rounded-xl mb-6">
-                  <TabsTrigger value="basic" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Basic</TabsTrigger>
-                  <TabsTrigger value="contact" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Contact</TabsTrigger>
-                  <TabsTrigger value="photo" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Photo</TabsTrigger>
-                  <TabsTrigger value="unit" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">{unitLabels.single}</TabsTrigger>
-                  <TabsTrigger value="labels" className="rounded-lg data-[state=active]:shadow-sm data-[state=active]:bg-white text-xs">Labels</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-5 h-12 p-1 rounded-xl mb-6">
+                  <TabsTrigger value="basic" className="rounded-lg text-xs">Basic</TabsTrigger>
+                  <TabsTrigger value="contact" className="rounded-lg text-xs">Contact</TabsTrigger>
+                  <TabsTrigger value="photo" className="rounded-lg text-xs">Photo</TabsTrigger>
+                  <TabsTrigger value="unit" className="rounded-lg text-xs">{unitLabels.single}</TabsTrigger>
+                  <TabsTrigger value="labels" className="rounded-lg text-xs">Labels</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="basic" className="space-y-4 mt-0">
@@ -269,7 +269,7 @@ export function MemberEditDialog({
                           <FormLabel className="text-sm font-medium">Title</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="rounded-xl border-slate-200">
+                              <SelectTrigger className="rounded-xl">
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
                             </FormControl>
@@ -290,7 +290,7 @@ export function MemberEditDialog({
                         <FormItem className="md:col-span-3">
                           <FormLabel className="text-sm font-medium">First Name</FormLabel>
                           <FormControl>
-                            <Input {...field} className="rounded-xl border-slate-200 focus:ring-slate-400" />
+                            <Input {...field} className="rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -306,7 +306,7 @@ export function MemberEditDialog({
                         <FormItem>
                           <FormLabel className="text-sm font-medium">Last Name</FormLabel>
                           <FormControl>
-                            <Input {...field} className="rounded-xl border-slate-200 focus:ring-slate-400" />
+                            <Input {...field} className="rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -321,7 +321,7 @@ export function MemberEditDialog({
                           <FormLabel className="text-sm font-medium">Gender</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger className="rounded-xl border-slate-200">
+                              <SelectTrigger className="rounded-xl">
                                 <SelectValue placeholder="Select gender" />
                               </SelectTrigger>
                             </FormControl>
@@ -342,7 +342,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Date of Birth</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} className="rounded-xl border-slate-200" />
+                          <Input type="date" {...field} className="rounded-xl" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -358,7 +358,7 @@ export function MemberEditDialog({
                           <FormLabel className="text-sm font-medium">Birth Month</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
-                              <SelectTrigger className="rounded-xl border-slate-200">
+                              <SelectTrigger className="rounded-xl">
                                 <SelectValue placeholder="Select month" />
                               </SelectTrigger>
                             </FormControl>
@@ -389,7 +389,7 @@ export function MemberEditDialog({
                           <FormLabel className="text-sm font-medium">Birth Day</FormLabel>
                           <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
                             <FormControl>
-                              <SelectTrigger className="rounded-xl border-slate-200">
+                              <SelectTrigger className="rounded-xl">
                                 <SelectValue placeholder="Select day" />
                               </SelectTrigger>
                             </FormControl>
@@ -414,7 +414,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Skills / Talents</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="e.g. Singing, Playing instrument, Teaching..." className="rounded-xl border-slate-200" />
+                          <Input {...field} placeholder="e.g. Singing, Playing instrument, Teaching..." className="rounded-xl" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -431,7 +431,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Email Address</FormLabel>
                         <FormControl>
-                          <Input type="email" {...field} className="rounded-xl border-slate-200" />
+                          <Input type="email" {...field} className="rounded-xl" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -445,7 +445,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Contact Number</FormLabel>
                         <FormControl>
-                          <Input {...field} className="rounded-xl border-slate-200" />
+                          <Input {...field} className="rounded-xl" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -459,7 +459,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Physical Address</FormLabel>
                         <FormControl>
-                          <Input {...field} className="rounded-xl border-slate-200" />
+                          <Input {...field} className="rounded-xl" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -474,7 +474,7 @@ export function MemberEditDialog({
                         <FormItem>
                           <FormLabel className="text-sm font-medium">City</FormLabel>
                           <FormControl>
-                            <Input {...field} className="rounded-xl border-slate-200" />
+                            <Input {...field} className="rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -487,7 +487,7 @@ export function MemberEditDialog({
                         <FormItem>
                           <FormLabel className="text-sm font-medium">State / Region</FormLabel>
                           <FormControl>
-                            <Input {...field} className="rounded-xl border-slate-200" />
+                            <Input {...field} className="rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -503,7 +503,7 @@ export function MemberEditDialog({
                         <FormItem>
                           <FormLabel className="text-sm font-medium">Postal Code</FormLabel>
                           <FormControl>
-                            <Input {...field} className="rounded-xl border-slate-200" />
+                            <Input {...field} className="rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -516,7 +516,7 @@ export function MemberEditDialog({
                         <FormItem>
                           <FormLabel className="text-sm font-medium">Country</FormLabel>
                           <FormControl>
-                            <Input {...field} className="rounded-xl border-slate-200" />
+                            <Input {...field} className="rounded-xl" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -531,7 +531,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Maps Location (Plus Code)</FormLabel>
                         <FormControl>
-                          <Input {...field} className="rounded-xl border-slate-200 font-mono text-xs" />
+                          <Input {...field} className="rounded-xl font-mono text-xs" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -542,9 +542,9 @@ export function MemberEditDialog({
                 <TabsContent value="photo" className="space-y-4 mt-0">
                   <div className="space-y-6 flex flex-col items-center pt-2">
                     <div className="relative group">
-                      <Avatar className="w-40 h-40 border-8 border-slate-50 shadow-soft ring-1 ring-slate-100">
+                      <Avatar className="w-40 h-40 border-8 border-muted shadow-soft ring-1 ring-border">
                         <AvatarImage src={uploadedImageUrl || ""} alt="Member photo" />
-                        <AvatarFallback className="bg-slate-50 text-slate-400 text-3xl">
+                        <AvatarFallback className="bg-muted text-muted-foreground text-3xl">
                           {form.watch("first_name") && form.watch("last_name")
                             ? `${form.watch("first_name")[0]}${form.watch("last_name")[0]}`.toUpperCase()
                             : "MP"}
@@ -555,7 +555,7 @@ export function MemberEditDialog({
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="absolute bottom-2 right-2 rounded-full w-8 h-8 p-0 shadow-lg border-2 border-white scale-0 group-hover:scale-100 transition-transform"
+                          className="absolute bottom-2 right-2 rounded-full w-8 h-8 p-0 shadow-lg border-2 border-background scale-0 group-hover:scale-100 transition-transform"
                           onClick={removePhoto}
                         >
                           <X className="w-4 h-4" />
@@ -577,7 +577,7 @@ export function MemberEditDialog({
                       <FormItem>
                         <FormLabel className="text-sm font-medium">Onboarding Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} className="rounded-xl border-slate-200" />
+                          <Input type="date" {...field} className="rounded-xl" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -606,10 +606,10 @@ export function MemberEditDialog({
                   />
 
                   {/* Units Led Section */}
-                  <div className="border border-slate-100 rounded-2xl p-4 bg-white">
+                  <div className="border border-border rounded-2xl p-4 bg-card">
                     <div className="flex items-center gap-2 mb-3">
-                      <Crown className="h-4 w-4 text-slate-600" />
-                      <h4 className="text-xs font-semibold text-slate-700">Units Led</h4>
+                      <Crown className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="text-xs font-semibold text-foreground">Units Led</h4>
                     </div>
                     <div className="space-y-2 max-h-[150px] overflow-y-auto">
                       {availableUnits.filter(u => {
@@ -630,26 +630,26 @@ export function MemberEditDialog({
                             return u.leader_id === memberId;
                           })
                           .map(unit => (
-                            <div key={unit.id} className="flex items-center gap-3 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <div key={unit.id} className="flex items-center gap-3 p-2 bg-muted/40 rounded-lg border border-border">
                               <div className="flex-1">
-                                <p className="text-sm text-slate-900">{unit.name}</p>
-                                <p className="text-[10px] text-slate-400">{unit.type}</p>
+                                <p className="text-sm text-foreground">{unit.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{unit.type}</p>
                               </div>
                               <Badge variant="secondary" className="text-[10px]">Leader</Badge>
                             </div>
                           ))
                       ) : (
-                        <p className="text-sm text-slate-400 py-2">No units led</p>
+                        <p className="text-sm text-muted-foreground py-2">No units led</p>
                       )}
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-3">
+                    <p className="text-[10px] text-muted-foreground mt-3">
                       Leadership assignments are managed in Unit Management.
                     </p>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="labels" className="space-y-4 mt-0">
-                  <div className="border border-slate-100 rounded-2xl p-5 bg-white">
+                  <div className="border border-border rounded-2xl p-5 bg-card">
                     <LabelSelector
                       memberId={(member as any)._id || (member as any).id || ''}
                       variant="full"
@@ -659,12 +659,14 @@ export function MemberEditDialog({
               </Tabs>
             </div>
 
-            <div className="bg-slate-50/80 px-6 py-4 flex items-center justify-between border-t border-slate-100">
+            {/* Sticky footer: stays visible regardless of scroll position in the
+                body above, so Submit is always reachable. */}
+            <div className="shrink-0 bg-muted/40 px-6 py-4 flex items-center justify-between border-t border-border">
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-xl"
+                className="font-bold text-muted-foreground hover:text-foreground rounded-xl"
               >
                 Cancel
               </Button>
@@ -672,7 +674,7 @@ export function MemberEditDialog({
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl px-6 shadow-soft"
+                  className="rounded-xl px-6 shadow-soft"
                 >
                   {isLoading ? "Saving..." : "Submit"}
                 </Button>
