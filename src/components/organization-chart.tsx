@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useRef } from 'react'
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import {
   Card,
   CardContent,
@@ -72,6 +72,8 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const [isPanning, setIsPanning] = useState(false)
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 })
   const gRef = useRef<SVGGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const hasAutoFitRef = useRef(false)
 
   // Dialog states
   const [nodeDetailsOpen, setNodeDetailsOpen] = useState(false)
@@ -176,9 +178,12 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       })
     }
 
-    // Center everything relative to x=500
-    const totalRootWidth = subtreeWidthMap.get(rootNode.id)!
-    positionNodes(rootNode, 500 - (totalRootWidth / 2), 50)
+    // Anchor the tree at x=0 (no node is ever positioned at a negative x this
+    // way). Actual centering within the viewport happens separately via
+    // fitToView, which measures the real container size — a fixed "center
+    // around x=500" assumption here would clip wide trees whenever the
+    // container is narrower than ~1000px or the tree wider than expected.
+    positionNodes(rootNode, 0, 50)
 
     // Build flat map
     const finalMap = new Map<string, ChartNode>()
@@ -229,11 +234,56 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   }
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2))
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.5))
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.2))
+
+  // Fit the whole tree inside the given viewport size: scales down (never up
+  // past 100%) so every node is visible, and pans so the tree is centered
+  // horizontally with a fixed top padding (it grows downward from the root).
+  const FIT_PADDING = 40
+  const fitToView = useCallback((viewportWidth: number, viewportHeight: number) => {
+    if (!rootNode || viewportWidth === 0 || viewportHeight === 0) return
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    nodeMap.forEach(n => {
+      minX = Math.min(minX, n.x)
+      maxX = Math.max(maxX, n.x + n.width)
+      minY = Math.min(minY, n.y)
+      maxY = Math.max(maxY, n.y + n.height)
+    })
+    if (!isFinite(minX)) return
+
+    const treeWidth = maxX - minX
+    const treeHeight = maxY - minY
+    const scaleX = (viewportWidth - FIT_PADDING * 2) / treeWidth
+    const scaleY = (viewportHeight - FIT_PADDING * 2) / treeHeight
+    const fittedZoom = Math.min(1, scaleX, scaleY)
+
+    const panX = (viewportWidth - treeWidth * fittedZoom) / (2 * fittedZoom) - minX
+    const panY = FIT_PADDING / fittedZoom - minY
+
+    setZoom(fittedZoom)
+    setPanOffset({ x: panX, y: panY })
+  }, [rootNode, nodeMap])
+
   const handleResetView = () => {
-    setZoom(1)
-    setPanOffset({ x: 0, y: 0 })
+    const el = containerRef.current
+    if (el) {
+      fitToView(el.clientWidth, el.clientHeight)
+    } else {
+      setZoom(1)
+      setPanOffset({ x: 0, y: 0 })
+    }
   }
+
+  // Auto-fit once, the first time the chart data becomes available, so the
+  // tree is never clipped off-screen on initial load regardless of org size.
+  useEffect(() => {
+    if (!rootNode || hasAutoFitRef.current) return
+    const el = containerRef.current
+    if (!el) return
+    fitToView(el.clientWidth, el.clientHeight)
+    hasAutoFitRef.current = true
+  }, [rootNode, fitToView])
 
   const getNodeColor = (node: ChartNode): string => {
     if (node.type === 'organization') return '#1f2937' // gray-800
@@ -389,7 +439,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
               <path
                 d={`M${node.x + node.width / 2},${node.y + node.height} C${node.x + node.width / 2},${node.y + node.height + 20} ${child.x + child.width / 2},${child.y - 40} ${child.x + child.width / 2},${child.y}`}
                 fill="none"
-                stroke={isLineDraggedOver ? '#3b82f6' : '#cbd5e1'}
+                stroke={isLineDraggedOver ? '#3b82f6' : 'var(--muted-foreground)'}
                 strokeWidth={isLineDraggedOver ? 4 : 2}
                 style={{ opacity: isLineDraggedOver ? 1 : 0.6, transition: 'all 0.2s' }}
               />
@@ -418,12 +468,15 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
           data-node-id={node.id}
         />
 
-        {/* Node content */}
+        {/* Node content. Y-offsets are fractions of node.height (not fixed
+            pixels) since unit nodes (60px tall) are shorter than the root
+            (80px) — fixed offsets tuned for the root overflowed below the
+            bottom edge of the shorter unit boxes. */}
         {!isBeingDragged && (
           <g style={{ pointerEvents: 'none' }}>
             <text
               x={node.x + node.width / 2}
-              y={node.y + (showDetails ? 30 : 45)}
+              y={node.y + node.height * (showDetails ? 0.375 : 0.44)}
               textAnchor="middle"
               className="text-sm fill-white"
               style={{ fontSize: '14px' }}
@@ -433,7 +486,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
 
             <text
               x={node.x + node.width / 2}
-              y={node.y + (showDetails ? 45 : 45)}
+              y={node.y + node.height * (showDetails ? 0.5625 : 0.66)}
               textAnchor="middle"
               className="text-xs fill-white/80"
               style={{ fontSize: '11px' }}
@@ -444,7 +497,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
             {showDetails && (
               <text
                 x={node.x + node.width / 2}
-                y={node.y + 65}
+                y={node.y + node.height * 0.8125}
                 textAnchor="middle"
                 className="text-xs fill-white/60"
                 style={{ fontSize: '10px' }}
@@ -494,7 +547,7 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   return (
     <div className="space-y-4">
       <Card className="shadow-soft rounded-xl border border-border/50 overflow-hidden">
-        <CardHeader className="border-b border-border/50 pb-4 bg-white">
+        <CardHeader className="border-b border-border/50 pb-4 bg-muted/30">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -536,8 +589,8 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
           </div>
         </CardHeader>
 
-        <CardContent className="p-0 bg-slate-50/30">
-          <div className="relative overflow-hidden h-[700px] select-none">
+        <CardContent className="p-0 bg-muted/20">
+          <div ref={containerRef} className="relative overflow-hidden h-[700px] select-none">
             <svg
               width="100%"
               height="100%"
@@ -618,9 +671,9 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
         <DialogContent className="rounded-xl shadow-soft-lg border-border/50 sm:max-w-[400px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <div className={`p-2 rounded-lg ${selectedNode?.type === 'organization' ? 'bg-slate-100 text-slate-700' :
-                selectedNode?.type === 'division' ? 'bg-blue-50 text-blue-600' :
-                  'bg-emerald-50 text-emerald-600'
+              <div className={`p-2 rounded-lg ${selectedNode?.type === 'organization' ? 'bg-muted text-muted-foreground' :
+                selectedNode?.type === 'division' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' :
+                  'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                 }`}>
                 {selectedNode?.type === 'organization' && <Building2 className="h-5 w-5" />}
                 {selectedNode?.type === 'division' && <MapPin className="h-5 w-5" />}
