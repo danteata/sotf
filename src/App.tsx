@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { useConvexAuth } from "convex/react";
 import { AuthLoadingWrapper } from "@/components/auth-loading-wrapper";
-import { UserSync } from "@/components/user-sync";
+import { useUserSync } from "@/hooks/use-user-sync";
 import { PageViewTracker } from "@/providers/PageViewTracker";
 import { AuthAnalyticsBridge } from "@/providers/AuthAnalyticsBridge";
 
@@ -49,6 +49,10 @@ function PageLoader() {
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  // Gate rendering on the Convex `users` row (and any pending invitation's
+  // organization_id) actually being synced, so org-scoped queries don't fire
+  // before organization_id is attached.
+  const isSynced = useUserSync();
 
   if (isLoading) {
     return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
@@ -58,9 +62,12 @@ function Protected({ children }: { children: React.ReactNode }) {
     return <Navigate to="/sign-in" replace />;
   }
 
+  if (!isSynced) {
+    return <PageLoader />;
+  }
+
   return (
     <>
-      <UserSync />
       <AuthAnalyticsBridge />
       {children}
     </>
@@ -71,6 +78,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 // Plain members (and admins) can access the portal.
 function MemberRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const isSynced = useUserSync();
 
   if (isLoading) {
     return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
@@ -82,9 +90,12 @@ function MemberRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to={`/sign-in?redirect_url=${redirect}`} replace />;
   }
 
+  if (!isSynced) {
+    return <PageLoader />;
+  }
+
   return (
     <>
-      <UserSync />
       <AuthAnalyticsBridge />
       {children}
     </>

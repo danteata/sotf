@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { isSuperAdmin, requireSuperAdmin, requireOrgAdmin, requireUser, resolveOrgId } from "./auth";
+import { isSuperAdmin, requireSuperAdmin, requireOrgAdmin, resolveOrgId, getUserSafe, normalizeOrgId } from "./auth";
 
 async function assertUnitsBelongToOrg(
     ctx: any,
@@ -39,8 +39,14 @@ function mergeOrgOverrides(types: any[], orgId: Id<"organizations"> | null) {
 export const getAll = query({
     args: {},
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
-        const orgId = await resolveOrgId(ctx);
+        // Use getUserSafe + normalizeOrgId (not requireUser/resolveOrgId) so
+        // a user who isn't synced yet, or whose organization_id hasn't been
+        // attached yet (e.g. mid-onboarding), gets an empty list instead of
+        // a thrown error.
+        const user = await getUserSafe(ctx);
+        if (!user) return [];
+        const orgId = normalizeOrgId(ctx, user.organization_id);
+        if (!isSuperAdmin(user) && !orgId) return [];
         const types = await ctx.db
             .query("event_types")
             .collect();
@@ -56,8 +62,10 @@ export const getAll = query({
 export const listAll = query({
     args: {},
     handler: async (ctx) => {
-        const user = await requireUser(ctx);
-        const orgId = await resolveOrgId(ctx);
+        const user = await getUserSafe(ctx);
+        if (!user) return [];
+        const orgId = normalizeOrgId(ctx, user.organization_id);
+        if (!isSuperAdmin(user) && !orgId) return [];
         const types = await ctx.db.query("event_types").collect();
         if (isSuperAdmin(user) && !orgId) return types;
         return types.filter((type) => !type.organization_id || type.organization_id === orgId);

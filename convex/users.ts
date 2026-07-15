@@ -185,6 +185,20 @@ export const getUserByEmail = internalQuery({
     },
 })
 
+// Internal: resolve a user by Clerk id. Actions have no `ctx.db` (only
+// queries/mutations do), so any action that needs the signed-in user's row
+// (e.g. Paystack checkout, which needs organization_id) must go through this
+// via ctx.runQuery instead of calling a db-touching helper directly.
+export const getUserByClerkId = internalQuery({
+    args: { clerkUserId: v.string() },
+    handler: async (ctx, args) => {
+        return await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", args.clerkUserId))
+            .unique()
+    },
+})
+
 export const getRole = query({
     args: {},
     handler: async (ctx) => {

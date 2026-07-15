@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, getUserSafe } from "./auth";
+import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, normalizeOrgId } from "./auth";
 import { setPrimaryLeaderInternal } from "./unit_admins";
 
 // Utility functions for hierarchical operations
@@ -73,7 +73,10 @@ export const list = query({
         if (user.role === "super_admin") {
             return await ctx.db.query("units").collect();
         }
-        const orgId = await resolveOrgId(ctx);
+        // Use normalizeOrgId directly (not resolveOrgId) so a user whose
+        // organization_id hasn't been attached yet (e.g. mid-onboarding)
+        // gets an empty list instead of a thrown error.
+        const orgId = normalizeOrgId(ctx, user.organization_id);
         if (!orgId) return [];
         return await ctx.db
             .query("units")
