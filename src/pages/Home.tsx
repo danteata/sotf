@@ -11,11 +11,9 @@ import {
     ShieldCheck,
     Crown,
     ArrowRight,
-    Quote,
     Share2,
     UserCog,
     Layers,
-    Sparkles,
     QrCode,
     Users,
     DollarSign,
@@ -24,8 +22,6 @@ import {
 const CREAM = '#FAF7F1'
 const CREAM_ALT = '#F4EEE4'
 const INK = '#221D16'
-
-const TRUSTED_BY = ['Grace Community', 'Redemption Chapel', 'Victory Assembly', 'Covenant Church', 'Living Word']
 
 const SUNDAY_TIMELINE = [
     {
@@ -88,7 +84,7 @@ const FEATURE_ROWS = [
         title: 'Check-in that just works',
         desc: 'QR self-check-in, kiosk mode for stewards, geofencing, lateness tracking, and a full audit trail. Members scan, you get data.',
         bullets: [
-            'QR codes with SHA-256 token security',
+            'Live headcount as members check in',
             'Geofence enforcement (strict or soft)',
             'Automatic lateness detection',
             'Kiosk mode for door stewards',
@@ -147,7 +143,8 @@ const SECONDARY_FEATURES = [
 const PRICING = [
     {
         name: 'Free',
-        price: '₵0',
+        priceUsd: '$0',
+        priceGhs: '₵0',
         period: '/month',
         description: 'Everything a growing church needs to get organized and start tracking.',
         features: ['Up to 200 members', 'Attendance tracking', 'Basic financial records', '1 organization', 'QR check-in'],
@@ -156,7 +153,8 @@ const PRICING = [
     },
     {
         name: 'Pro',
-        price: '₵150',
+        priceUsd: '$10',
+        priceGhs: '₵150',
         period: '/month',
         description: 'For churches that want the full picture and room to grow.',
         features: [
@@ -169,30 +167,6 @@ const PRICING = [
         ],
         cta: 'Choose Pro',
         highlight: true,
-    },
-]
-
-const TESTIMONIALS = [
-    {
-        quote:
-            "Check-in used to take us half an hour. Now members scan a code and we see who's in before the first song.",
-        name: 'Pastor Kwame Asante',
-        role: 'Lead Pastor, Grace Community',
-        color: 'bg-blue-500',
-    },
-    {
-        quote:
-            "We used to lose visitors after one Sunday. Now the follow-up list is ready before the service even ends, and our care team actually reaches them.",
-        name: 'Amina Bashiru',
-        role: 'Church Administrator',
-        color: 'bg-rose-500',
-    },
-    {
-        quote:
-            "The reports give our leadership real clarity on growth and follow-up. It pays for itself.",
-        name: 'Daniel Owusu',
-        role: 'Elder, Redemption Chapel',
-        color: 'bg-emerald-600',
     },
 ]
 
@@ -290,10 +264,9 @@ export default function HomePage() {
                 <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 lg:pt-28">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
                         <div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-neutral-600 mb-6">
-                                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                            <p className="text-sm font-medium text-primary mb-4">
                                 For churches that outgrew spreadsheets
-                            </div>
+                            </p>
                             <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl font-medium tracking-tight leading-[1.08]">
                                 By the time service ends, everything&apos;s already sorted.
                             </h1>
@@ -327,24 +300,8 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* Trusted by */}
-            <section className="py-10 px-6 border-y border-black/[0.06]">
-                <div className="max-w-5xl mx-auto text-center">
-                    <p className="text-xs font-semibold tracking-[0.15em] text-neutral-400 uppercase mb-6">
-                        Trusted by growing churches across Ghana
-                    </p>
-                    <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3">
-                        {TRUSTED_BY.map((name) => (
-                            <span key={name} className="font-serif italic text-neutral-400 text-lg">
-                                {name}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
             {/* How it works */}
-            <section id="features" className="pt-24 pb-4 px-6">
+            <section id="features" className="pt-16 pb-4 px-6 border-t border-black/[0.06]">
                 <div className="max-w-2xl mx-auto text-center">
                     <p className="text-xs font-semibold tracking-[0.15em] text-primary uppercase mb-3">
                         How it works
@@ -460,9 +417,10 @@ export default function HomePage() {
                                 )}
                                 <p className="text-xs font-semibold tracking-[0.15em] text-neutral-400 uppercase">{plan.name}</p>
                                 <div className="flex items-baseline gap-1 mt-3">
-                                    <span className="font-serif text-5xl font-medium tracking-tight">{plan.price}</span>
+                                    <span className="font-serif text-5xl font-medium tracking-tight">{plan.priceUsd}</span>
                                     <span className="text-sm text-neutral-500">{plan.period}</span>
                                 </div>
+                                <p className="mt-1 text-xs text-neutral-400">≈ {plan.priceGhs} GHS</p>
                                 <p className="mt-3 text-sm text-neutral-600">{plan.description}</p>
                                 <ul className="mt-6 space-y-3 text-sm flex-1">
                                     {plan.features.map((f) => (
@@ -485,44 +443,8 @@ export default function HomePage() {
                         ))}
                     </div>
                     <p className="mt-8 text-center text-sm text-neutral-500">
-                        Payments are processed securely by Paystack. Prices in GHS.
+                        Billed in Ghana cedis (GHS). USD shown for reference — rates may vary.
                     </p>
-                </div>
-            </section>
-
-            {/* Testimonials */}
-            <section className="py-24 px-6" style={{ background: CREAM_ALT }}>
-                <div className="max-w-6xl mx-auto">
-                    <div className="max-w-2xl mx-auto text-center mb-14">
-                        <h2 className="font-serif text-3xl md:text-4xl font-medium tracking-tight">
-                            Loved by church teams
-                        </h2>
-                        <p className="mt-4 text-neutral-600 text-lg leading-relaxed">
-                            Pastors and administrators spend less time on spreadsheets and more on people.
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                        {TESTIMONIALS.map((t) => (
-                            <figure
-                                key={t.name}
-                                className="flex flex-col rounded-2xl border border-black/[0.06] bg-white p-6"
-                            >
-                                <Quote className="h-6 w-6 text-primary/40 mb-4" />
-                                <blockquote className="font-serif italic text-base leading-relaxed text-neutral-800 flex-1">
-                                    {t.quote}
-                                </blockquote>
-                                <figcaption className="mt-6 flex items-center gap-3">
-                                    <div className={`h-10 w-10 rounded-full ${t.color} text-white flex items-center justify-center font-semibold text-sm`}>
-                                        {t.name.split(' ').map((p) => p.charAt(0)).slice(0, 2).join('')}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-medium">{t.name}</div>
-                                        <div className="text-xs text-neutral-500">{t.role}</div>
-                                    </div>
-                                </figcaption>
-                            </figure>
-                        ))}
-                    </div>
                 </div>
             </section>
 
@@ -647,7 +569,7 @@ export default function HomePage() {
                 </div>
                 <div className="max-w-6xl mx-auto mt-12 pt-8 border-t border-black/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-neutral-500">
                     <p>© 2026 Floc. Built for churches.</p>
-                    <p>Made in Ghana 🇬🇭</p>
+                    <p>Built with love for churches</p>
                 </div>
             </footer>
         </div>
