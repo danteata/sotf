@@ -139,29 +139,23 @@ export const getByToken = query({
             }
         });
 
+        // Real recorded sessions for this event type on/before the share date, most-recent
+        // first. Consecutive absences are counted against sessions that actually happened,
+        // not assumed calendar weeks — a session may not run on a perfectly regular
+        // weekly cadence (skipped weeks, shifted dates), so date arithmetic would
+        // overcount whenever the real cadence doesn't match.
+        const eventTypeRecordsOnOrBefore = eventTypeRecords
+            .filter((record) => record.date <= share.date)
+            .sort((a, b) => b.date.localeCompare(a.date));
+
         const calculateConsecutiveAbsences = (memberId: Id<"members">) => {
             const attendedDates = attendedDatesByMember.get(memberId);
-            if (!attendedDates || attendedDates.size === 0) return 0;
-
-            const baseDate = new Date(share.date);
-            const sortedDates = Array.from(attendedDates).sort();
-            const mostRecent = sortedDates.filter((d) => new Date(d) <= baseDate).slice(-1)[0];
-            if (!mostRecent) return 0;
 
             let consecutiveAbsences = 0;
-            const cursor = new Date(mostRecent);
-            cursor.setDate(cursor.getDate() + 7);
-
-            while (cursor <= baseDate) {
-                const dateStr = cursor.toISOString().slice(0, 10);
-                if (!attendedDates.has(dateStr)) {
-                    consecutiveAbsences++;
-                } else {
-                    consecutiveAbsences = 0;
-                }
-                cursor.setDate(cursor.getDate() + 7);
+            for (const record of eventTypeRecordsOnOrBefore) {
+                if (attendedDates?.has(record.date)) break;
+                consecutiveAbsences++;
             }
-
             return consecutiveAbsences;
         };
 
@@ -173,7 +167,7 @@ export const getByToken = query({
         const unitSet = new Set<string>();
         const members = await Promise.all(
             orgMembers
-                .filter((member) => !attendedMemberIds.has(member._id))
+                .filter((member) => !attendedMemberIds.has(member._id) && !member.archived_at)
                 .map(async (member) => {
                     const memberUnits = await ctx.db
                         .query("member_units")
