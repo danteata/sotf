@@ -473,7 +473,7 @@ export const kioskSearchMembers = query({
             // gte on phone is a prefix scan only when the index is ordered by
             // the full string; filter to those that actually start with q.
             phoneMatches = phoneMatches.filter((m) =>
-                (m.phone ?? "").toLowerCase().startsWith(q),
+                (m.phone ?? "").toLowerCase().startsWith(q) && !m.archived_at,
             );
         }
 
@@ -489,7 +489,7 @@ export const kioskSearchMembers = query({
         const seen = new Set(phoneMatches.map((m) => m._id));
         const nameMatches: Doc<"members">[] = [];
         for (const m of orgMembers) {
-            if (seen.has(m._id)) continue;
+            if (seen.has(m._id) || m.archived_at) continue;
             const name = (m.name + " " + (m.other_names ?? "")).toLowerCase();
             const email = (m.email ?? "").toLowerCase();
             const phone = (m.phone ?? "").toLowerCase();

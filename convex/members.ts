@@ -97,7 +97,10 @@ export async function resolveManagedMemberIds(ctx: any) {
 
 // Get all members with details and organization/role-based filtering
 export const getAll = query({
-    args: { organization_id: v.optional(v.id("organizations")) },
+    args: {
+        organization_id: v.optional(v.id("organizations")),
+        filter: v.optional(v.union(v.literal("active"), v.literal("archived"), v.literal("all"))),
+    },
     handler: async (ctx, args) => {
         // Get user identity for role-based access control
         const identity = await ctx.auth.getUserIdentity();
@@ -146,6 +149,13 @@ export const getAll = query({
                 members = members.filter((m): m is Doc<"members"> => m !== null);
             }
         }
+
+        // Archive filtering: default to active-only so archived members stay
+        // out of every list/picker unless explicitly requested.
+        const mode = args.filter ?? "active";
+        members = members.filter((m) =>
+            mode === "all" ? true : mode === "archived" ? !!m.archived_at : !m.archived_at
+        );
 
         // Sort by name
         members.sort((a, b) => a.name.localeCompare(b.name));
@@ -913,7 +923,7 @@ export const getManagedMembers = query({
         if (managedIds.size === 0) return [];
 
         const managedMembers = await Promise.all(Array.from(managedIds).map(id => ctx.db.get(id as Id<"members">)));
-        return await Promise.all(managedMembers.filter(m => m).map(m => formatMember(ctx, m!)));
+        return await Promise.all(managedMembers.filter((m): m is Doc<"members"> => !!m && !m.archived_at).map(m => formatMember(ctx, m)));
     }
 });
 
@@ -926,13 +936,15 @@ export const getRecent = query({
 
         let members;
         if (managedIds === "all") {
-            members = await ctx.db.query("members").order("desc").take(limit);
+            members = (await ctx.db.query("members").order("desc").take(limit * 2))
+                .filter((m) => !m.archived_at)
+                .slice(0, limit);
         } else {
             if (managedIds.size === 0) return [];
             const managedMembers = await Promise.all(Array.from(managedIds).map(id => ctx.db.get(id as Id<"members">)));
-            // Filter out deleted and sort by _creationTime
+            // Filter out deleted/archived and sort by _creationTime
             members = managedMembers
-                .filter((m): m is any => m !== null)
+                .filter((m): m is any => m !== null && !m.archived_at)
                 .sort((a, b) => b._creationTime - a._creationTime)
                 .slice(0, limit);
         }
@@ -1036,9 +1048,10 @@ export const getInsights = query({
         const user = await requireUser(ctx);
         const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
 
-        const members = orgId
+        const members = (orgId
             ? await ctx.db.query("members").withIndex("by_org", (q: any) => q.eq("organization_id", orgId)).collect()
-            : await ctx.db.query("members").collect();
+            : await ctx.db.query("members").collect()
+        ).filter((m) => !m.archived_at);
 
         const memberAttendanceRecords = await ctx.db.query("member_attendance").collect();
         const attendanceRecords = await ctx.db.query("attendance").collect();
@@ -1177,7 +1190,84 @@ export const getInsights = query({
     },
 });
 
-// Delete member
+// Archive member (soft delete): hides them from active lists/pickers while
+// preserving all history. Reversible via `restore`.
+export const archive = mutation({
+    args: { id: v.id("members") },
+    handler: async (ctx, args) => {
+        const managedIds = await resolveManagedMemberIds(ctx);
+        if (managedIds !== "all" && (!managedIds || !managedIds.has(args.id))) {
+            throw new Error("Forbidden");
+        }
+
+        const member = await ctx.db.get(args.id);
+        if (!member) throw new Error("Member not found");
+        if (member.archived_at) return; // already archived
+
+        const now = new Date().toISOString();
+        const user = await getUserSafe(ctx);
+
+        await ctx.db.patch(args.id, {
+            archived_at: now,
+            archived_by: user?.clerk_user_id,
+            app_access: false, // revoke portal/app access on archive
+            updated_at: now,
+        });
+
+        if (user) {
+            await ctx.runMutation(api.audit.logEvent, {
+                action: "member.archived",
+                entity_type: "member",
+                entity_id: args.id,
+                entity_name: member.name,
+                performed_by: user.clerk_user_id,
+                performed_by_name: user.name || user.email || "Unknown",
+                performed_by_role: user.role,
+                organization_id: member.organization_id,
+            });
+        }
+    },
+});
+
+// Restore a previously archived member. Does not re-grant app_access.
+export const restore = mutation({
+    args: { id: v.id("members") },
+    handler: async (ctx, args) => {
+        const managedIds = await resolveManagedMemberIds(ctx);
+        if (managedIds !== "all" && (!managedIds || !managedIds.has(args.id))) {
+            throw new Error("Forbidden");
+        }
+
+        const member = await ctx.db.get(args.id);
+        if (!member) throw new Error("Member not found");
+        if (!member.archived_at) return; // already active
+
+        const now = new Date().toISOString();
+        const user = await getUserSafe(ctx);
+
+        await ctx.db.patch(args.id, {
+            archived_at: undefined,
+            archived_by: undefined,
+            updated_at: now,
+        });
+
+        if (user) {
+            await ctx.runMutation(api.audit.logEvent, {
+                action: "member.restored",
+                entity_type: "member",
+                entity_id: args.id,
+                entity_name: member.name,
+                performed_by: user.clerk_user_id,
+                performed_by_name: user.name || user.email || "Unknown",
+                performed_by_role: user.role,
+                organization_id: member.organization_id,
+            });
+        }
+    },
+});
+
+// Permanently delete member. Only allowed once a member has been archived,
+// since this cascades and destroys attendance/label/unit history.
 export const remove = mutation({
     args: { id: v.id("members") },
     handler: async (ctx, args) => {
@@ -1189,6 +1279,9 @@ export const remove = mutation({
         // Get member data before deletion for audit log
         const member = await ctx.db.get(args.id);
         if (!member) throw new Error("Member not found");
+        if (!member.archived_at) {
+            throw new Error("Member must be archived before it can be permanently deleted");
+        }
 
         // Delete member unit assignments
         const existingUnits = await ctx.db

@@ -97,9 +97,10 @@ export const getDashboardData = query({
         const todayStr = now.toISOString().split('T')[0];
 
         // 1. Members
-        const allMembers = orgId
+        const allMembers = (orgId
             ? await ctx.db.query("members").withIndex("by_org", (q) => q.eq("organization_id", orgId)).collect()
-            : await ctx.db.query("members").collect();
+            : await ctx.db.query("members").collect()
+        ).filter((m: any) => !m.archived_at);
         const activeMembers = allMembers.filter((m: any) => m.status === 'active');
 
         let scopedMembers;

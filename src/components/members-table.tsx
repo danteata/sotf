@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowUpDown, Phone, Tag, Users, Building2, Eye, Edit, Trash2, SlidersHorizontal } from "lucide-react"
+import { ArrowUpDown, Phone, Tag, Users, Building2, Eye, Edit, Trash2, SlidersHorizontal, Archive, RotateCcw } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 import {
   DropdownMenu,
@@ -16,6 +16,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MemberEditDialog } from "@/components/member-edit-dialog"
 import { MemberProfileDialog } from "@/components/member-profile-dialog"
@@ -29,18 +39,21 @@ import type { Label } from "@/types/database"
 interface MembersTableProps {
   members: Member[];
   onMemberUpdate?: () => void;
+  isArchivedView?: boolean;
 }
 
 import { useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useToast } from "@/components/ui/use-toast"
 
-export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
+export function MembersTable({ members, onMemberUpdate, isArchivedView = false }: MembersTableProps) {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
+  const [memberToArchive, setMemberToArchive] = useState<Member | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [showBulkLabels, setShowBulkLabels] = useState(false);
   const [visibleCols, setVisibleCols] = useState({
     contact: true,
@@ -53,6 +66,54 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
   const { toast } = useToast()
 
   const deleteMember = useMutation(api.members.remove);
+  const archiveMember = useMutation(api.members.archive);
+  const restoreMember = useMutation(api.members.restore);
+
+  const handleArchive = async (member: Member) => {
+    try {
+      await archiveMember({ id: member.id as any });
+      toast({ title: "Member archived", description: `${member.name} has been archived.` });
+      onMemberUpdate?.();
+    } catch (error: any) {
+      toast({
+        title: "Failed to archive member",
+        description: error?.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setMemberToArchive(null);
+    }
+  };
+
+  const handleRestore = async (member: Member) => {
+    try {
+      await restoreMember({ id: member.id as any });
+      toast({ title: "Member restored", description: `${member.name} is active again.` });
+      onMemberUpdate?.();
+    } catch (error: any) {
+      toast({
+        title: "Failed to restore member",
+        description: error?.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePermanently = async (member: Member) => {
+    try {
+      await deleteMember({ id: member.id as any });
+      toast({ title: "Member permanently deleted" });
+      onMemberUpdate?.();
+    } catch (error: any) {
+      toast({
+        title: "Failed to delete member",
+        description: error?.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setMemberToDelete(null);
+    }
+  };
 
   const handleSelectAll = () => {
     if (selectedMembers.length === members.length) {
@@ -351,20 +412,38 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Edit</span>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={async () => {
-                        if (confirm("Are you sure you want to delete this member?")) {
-                          await deleteMember({ id: member.id as any });
-                          toast({ title: "Member deleted" });
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
+                    {isArchivedView ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleRestore(member)}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          <span className="sr-only">Restore</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setMemberToDelete(member)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete permanently</span>
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => setMemberToArchive(member)}
+                      >
+                        <Archive className="h-4 w-4" />
+                        <span className="sr-only">Archive</span>
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -396,6 +475,44 @@ export function MembersTable({ members, onMemberUpdate }: MembersTableProps) {
             onOpenChange={(open) => !open && setViewingMember(null)}
           />
         )}
+
+        <AlertDialog open={!!memberToArchive} onOpenChange={(open) => !open && setMemberToArchive(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Archive {memberToArchive?.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                They'll be hidden from active lists and pickers, but their attendance and history are
+                preserved. You can restore them anytime from the Archived tab.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={() => memberToArchive && handleArchive(memberToArchive)}>
+                Archive
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Permanently delete {memberToDelete?.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This cannot be undone. Their attendance records, unit assignments, and labels will be erased.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => memberToDelete && handleDeletePermanently(memberToDelete)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete Permanently
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )

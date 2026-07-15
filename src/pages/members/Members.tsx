@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { MembersContent } from "@/components/members-content"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { useOrganization } from "@/hooks/use-organization"
@@ -6,7 +7,11 @@ import { api } from "../../../convex/_generated/api"
 
 export default function MembersPage() {
     const { organization } = useOrganization()
-    const members = useQuery(api.members.getAll, organization ? { organization_id: organization._id } : "skip")
+    const [view, setView] = useState<'active' | 'archived'>('active')
+    const members = useQuery(
+        api.members.getAll,
+        organization ? { organization_id: organization._id, filter: view } : "skip"
+    )
 
     if (members === undefined) {
         return (
@@ -20,7 +25,7 @@ export default function MembersPage() {
 
     return (
         <LayoutWrapper>
-            <MembersContent initialMembers={members as any[]} />
+            <MembersContent initialMembers={members as any[]} view={view} onViewChange={setView} />
         </LayoutWrapper>
     )
 }

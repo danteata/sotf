@@ -40,6 +40,8 @@ export interface Member extends BaseResource {
   latitude?: number
   longitude?: number
   plus_code?: string
+  archived_at?: string
+  archived_by?: string
 }
 
 // Unit interface now handles all organizational units

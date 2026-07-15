@@ -153,6 +153,9 @@ export default defineSchema({
         // Timestamps
         created_at: v.optional(v.string()), // ISO timestamp
         updated_at: v.optional(v.string()), // ISO timestamp
+        // Soft delete / archive: undefined = active
+        archived_at: v.optional(v.string()), // ISO timestamp
+        archived_by: v.optional(v.string()), // clerk_user_id of who archived
     })
         .index("by_org", ["organization_id"])
         .index("by_email", ["email"])

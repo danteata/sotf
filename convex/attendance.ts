@@ -455,7 +455,7 @@ export const getStats = query({
         attendance.sort((a, b) => b.date.localeCompare(a.date));
         sundayServiceAttendance.sort((a, b) => b.date.localeCompare(a.date));
 
-        const totalActiveMembers = members.filter(m => m.status === 'active').length;
+        const totalActiveMembers = members.filter(m => m.status === 'active' && !m.archived_at).length;
 
         // Current and Last Week logic
         const today = new Date();
@@ -616,14 +616,17 @@ export const getMemberSummary = query({
             .collect();
         const attendedRecordIds = new Set(memberAttendance.map((ma) => ma.attendance_id));
 
-        // Get all attendance records for the organization
+        // Get all attendance records for the organization. Not capped: this is scoped to a
+        // single org (naturally bounded, unlike a global table) and an arbitrary cap here
+        // would truncate the history before it's even filtered down to what applies to
+        // this member, artificially undercounting total attendance/consecutive absences.
         const allAttendanceRecords = member?.organization_id
             ? await ctx.db
                 .query("attendance")
                 .withIndex("by_org_and_date", (q) => q.eq("organization_id", member.organization_id))
                 .order("desc")
-                .take(100)
-            : await ctx.db.query("attendance").order("desc").take(100);
+                .collect()
+            : await ctx.db.query("attendance").order("desc").collect();
 
         // Build attendance history with present/absent status
         const attendanceHistory = await Promise.all(

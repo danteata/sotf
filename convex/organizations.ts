@@ -112,10 +112,11 @@ export const getChartData = query({
         // Get child units grouped by parent
         const childUnits = units.filter(u => u.depth !== undefined && u.depth > 0);
 
-        const members = await ctx.db
+        const members = (await ctx.db
             .query("members")
             .withIndex("by_org_status", (q) => q.eq("organization_id", orgId).eq("status", "active"))
-            .collect();
+            .collect()
+        ).filter((m) => !m.archived_at);
 
         // Calculate member counts per unit using member_units junction table
         const memberCounts = await Promise.all(units.map(async (unit) => {

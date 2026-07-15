@@ -23,9 +23,11 @@ import { useToast } from "@/hooks/use-toast"
 
 interface MembersContentProps {
   initialMembers: Member[]
+  view?: 'active' | 'archived'
+  onViewChange?: (view: 'active' | 'archived') => void
 }
 
-export function MembersContent({ initialMembers }: MembersContentProps) {
+export function MembersContent({ initialMembers, view = 'active', onViewChange }: MembersContentProps) {
   const { trackEvent } = useAnalytics()
   const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -179,16 +181,18 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsBulkUploadOpen(true)}
-            className="shadow-sm hover:shadow-md transition-all rounded-lg"
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Bulk Upload
-          </Button>
-          {isAdmin && organization?._id && (
+          {view === 'active' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsBulkUploadOpen(true)}
+              className="shadow-sm hover:shadow-md transition-all rounded-lg"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Bulk Upload
+            </Button>
+          )}
+          {view === 'active' && isAdmin && organization?._id && (
             <Button
               variant="outline"
               size="sm"
@@ -207,16 +211,40 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
               Merge Duplicates
             </Button>
           )}
-          <Button
-            size="sm"
-            onClick={() => setIsAddMemberOpen(true)}
-            className="bg-primary text-primary-foreground shadow-soft hover:shadow-soft-lg transition-all rounded-lg"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Member
-          </Button>
+          {view === 'active' && (
+            <Button
+              size="sm"
+              onClick={() => setIsAddMemberOpen(true)}
+              className="bg-primary text-primary-foreground shadow-soft hover:shadow-soft-lg transition-all rounded-lg"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Member
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Active / Archived tabs */}
+      {onViewChange && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant={view === 'active' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onViewChange('active')}
+            className="rounded-lg"
+          >
+            Active
+          </Button>
+          <Button
+            variant={view === 'archived' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => onViewChange('archived')}
+            className="rounded-lg"
+          >
+            Archived
+          </Button>
+        </div>
+      )}
 
       {/* Filters and Search */}
       <Card className="shadow-soft hover:shadow-soft-lg transition-all rounded-xl border border-border/50">
@@ -330,6 +358,7 @@ export function MembersContent({ initialMembers }: MembersContentProps) {
       <div className="rounded-xl overflow-hidden shadow-soft border border-border/50 bg-card">
         <MembersTable
           members={filteredMembers}
+          isArchivedView={view === 'archived'}
         />
       </div>
 
