@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "deploy": "fly deploy --build-secret vite_env=\"$(cat .env.local)\""
   },
   "dependencies": {
     "@amplitude/unified": "^1.1.20",

@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      # The Dockerfile builds VITE_* vars from a BuildKit secret (never baked into a layer).
+      # VITE_ENV_FILE must hold the same contents as your local .env.local.
+      - run: flyctl deploy --remote-only --build-secret vite_env="$VITE_ENV_FILE"
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VITE_ENV_FILE: ${{ secrets.VITE_ENV_FILE }}
