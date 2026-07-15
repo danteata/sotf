@@ -21,7 +21,7 @@ import { action, query, internalQuery, internalMutation } from './_generated/ser
 import { internal } from './_generated/api'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
-import { requireUser } from './auth'
+import { isOrgAdmin } from './auth'
 
 const PAYSTACK_API = 'https://api.paystack.co'
 
@@ -51,10 +51,26 @@ async function paystack<T>(
     return data.data
 }
 
-/** Resolve the signed-in user's organization; throws when not set. */
-async function requireOrg(ctx: { auth: unknown } & any): Promise<Id<'organizations'>> {
-    const user = await requireUser(ctx)
-    if (!user?.organization_id) throw new Error('Your account is not linked to an organization.')
+/**
+ * Resolve the signed-in user's organization for billing actions. Actions have
+ * no `ctx.db` (unlike queries/mutations), so the user must be looked up via
+ * ctx.runQuery rather than a db-touching helper like the query-context-only
+ * `requireUser`. Billing affects the whole organization's plan, so this is
+ * restricted to org admins (same bar as `requireOrgAdmin` elsewhere).
+ */
+async function requireOrg(ctx: {
+    auth: { getUserIdentity: () => Promise<{ subject: string } | null> }
+    runQuery: (ref: any, args: any) => Promise<any>
+}): Promise<Id<'organizations'>> {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error('Not authenticated')
+
+    const user = await ctx.runQuery(internal.users.getUserByClerkId, {
+        clerkUserId: identity.subject,
+    })
+    if (!user) throw new Error('User not found')
+    if (!isOrgAdmin(user)) throw new Error('Only organization admins can manage billing.')
+    if (!user.organization_id) throw new Error('Your account is not linked to an organization.')
     return user.organization_id as Id<'organizations'>
 }
 
@@ -80,12 +96,21 @@ export const initializeCheckout = action({
             throw new Error('PAYSTACK_PRO_PLAN_CODE is not configured on this deployment.')
         }
 
+        // Paystack's /transaction/initialize requires `amount` even when a
+        // `plan` is given (the plan's own price overrides it for the actual
+        // charge, but the field must still be present and valid or the
+        // request is rejected with "Invalid amount sent"). Read it from the
+        // plan itself rather than duplicating it in an env var, so it can't
+        // drift if the price is ever changed on Paystack's side.
+        const plan = await paystack<{ amount: number }>(`/plan/${planCode}`, 'GET')
+
         const data = await paystack<{
             authorization_url: string
             access_code: string
             reference: string
         }>('/transaction/initialize', 'POST', {
             email: identity.email,
+            amount: plan.amount,
             plan: planCode,
             callback_url: args.callbackUrl ?? process.env.PAYSTACK_CALLBACK_URL,
             // Echoed back on webhooks so we can resolve the org reliably.

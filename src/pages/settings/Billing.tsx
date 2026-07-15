@@ -1,10 +1,11 @@
 import { useState } from "react"
-import { CreditCard, Check, Loader2, Sparkles, Crown } from "lucide-react"
+import { CreditCard, Check, Loader2, Sparkles, Crown, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { useSubscription } from "@/providers/SubscriptionProvider"
+import { useUserRole } from "@/hooks/use-user-role"
 import { toast } from "sonner"
 
 const PRO_FEATURES = [
@@ -26,7 +27,31 @@ function formatDate(iso: string | null): string {
 export default function BillingPage() {
     const { isPro, status, currentPeriodEnd, loading, startCheckout, manageSubscription } =
         useSubscription()
+    const { isAdmin, isLoading: roleLoading } = useUserRole()
     const [actionLoading, setActionLoading] = useState(false)
+
+    if (!roleLoading && !isAdmin) {
+        return (
+            <LayoutWrapper>
+                <div className="max-w-4xl mx-auto">
+                    <Card className="border-border/50 shadow-soft">
+                        <CardContent className="pt-6">
+                            <div className="text-center">
+                                <div className="p-3 bg-muted rounded-full inline-block mb-4">
+                                    <ShieldAlert className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Admins only</h3>
+                                <p className="text-muted-foreground">
+                                    Billing affects your whole organization's plan, so only organization
+                                    admins can view or change it.
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </LayoutWrapper>
+        )
+    }
 
     const handleUpgrade = async () => {
         setActionLoading(true)
