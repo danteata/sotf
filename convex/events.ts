@@ -4,7 +4,7 @@ import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgAccess, requireOrgAdmin, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
 import { requireWriteAccess } from "./scope";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
@@ -94,7 +94,7 @@ export const create = mutation({
         });
 
         // Log audit event
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "event.created",
             entity_type: "event",
             entity_id: eventId,
@@ -162,7 +162,7 @@ export const update = mutation({
 
         // Log audit event if there were changes
         if (Object.keys(changes).length > 0) {
-            await ctx.runMutation(api.audit.logEvent, {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "event.updated",
                 entity_type: "event",
                 entity_id: args.id,
@@ -188,7 +188,7 @@ export const remove = mutation({
         }
 
         // Log audit event before deletion
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "event.deleted",
             entity_type: "event",
             entity_id: args.id,

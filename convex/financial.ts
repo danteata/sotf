@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId } from "./auth";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 // --- Transactions ---
 
@@ -51,7 +51,7 @@ export const createTransaction = mutation({
         });
 
         // Audit log for transaction creation
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "financial.transaction_created",
             entity_type: "financial_transaction",
             entity_id: transactionId,
@@ -112,7 +112,7 @@ export const updateTransaction = mutation({
 
         // Audit log for transaction update
         if (Object.keys(changedFields).length > 0) {
-            await ctx.runMutation(api.audit.logEvent, {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "financial.transaction_updated",
                 entity_type: "financial_transaction",
                 entity_id: args.id,
@@ -140,7 +140,7 @@ export const removeTransaction = mutation({
         }
 
         // Audit log for transaction deletion
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "financial.transaction_deleted",
             entity_type: "financial_transaction",
             entity_id: args.id,

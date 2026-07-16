@@ -1,19 +1,29 @@
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
-import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, isSuperAdmin } from "./auth";
-import { getUnitIdsAdministeredBy } from "./unit_admins";
-import { requireWriteAccess, getAdministeredUnitIds } from "./scope";
-import { api } from "./_generated/api";
+import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, isSuperAdmin, normalizeOrgId } from "./auth";
+import {
+    requireWriteAccess,
+    getAdministeredUnitIds,
+    resolveManagedMemberIds,
+    memberIdInScope,
+    callerOrgId,
+} from "./scope";
+import { assertMemberLimit } from "./entitlements";
+import { internal } from "./_generated/api";
+
+// Re-export so existing imports of resolveManagedMemberIds from members keep working.
+export { resolveManagedMemberIds } from "./scope";
+
+type Ctx = QueryCtx | MutationCtx;
 
 // Helper to format member with details (typed)
-async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
-
+async function formatMember(ctx: Ctx, member: Doc<"members">) {
     // Get member units (including ministries which are units with type "ministry")
     const memberUnits = await ctx.db
         .query("member_units")
-        .withIndex("by_member", (q: any) => q.eq("member_id", member._id))
+        .withIndex("by_member", (q) => q.eq("member_id", member._id))
         .collect();
 
     const unitNames: string[] = [];
@@ -43,81 +53,42 @@ async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
     };
 }
 
-// Internal helper to get managed member IDs
-export async function resolveManagedMemberIds(ctx: any) {
-    const user = await getUserSafe(ctx);
-
-    if (!user) return new Set<Id<"members">>(); // Return empty set if user doesn't exist
-
-    if (user.role === 'super_admin') {
-        return "all";
-    }
-
-    if (user.role === 'organization_admin' || user.role === 'admin') {
-        if (!user.organization_id) return new Set<Id<"members">>();
-        const orgMembers = await ctx.db
-            .query("members")
-            .withIndex("by_org", (q: any) => q.eq("organization_id", user.organization_id as Id<"organizations">))
-            .collect();
-        return new Set(orgMembers.map((m: any) => m._id));
-    }
-
-    // Find linked member by user_id first, then fallback to email
-    let member = await ctx.db
-        .query("members")
-        .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
-        .first();
-
-    if (!member && user.email) {
-        member = await ctx.db
-            .query("members")
-            .withIndex("by_email", (q: any) => q.eq("email", user.email))
-            .first();
-    }
-
-    if (!member) return new Set<Id<"members">>();
-
-    let managedMemberIds = new Set<Id<"members">>();
-
-    // Generic Unit Leadership: scope covers every unit this member administers
-    // (primary leader or additional admin), sourced from unit_admins.
-    if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
-        const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
-
-        for (const unitId of adminUnitIds) {
-            const relations = await ctx.db.query("member_units")
-                .withIndex("by_unit", (q: any) => q.eq("unit_id", unitId))
-                .collect();
-            relations.forEach((r: any) => managedMemberIds.add(r.member_id));
-        }
-    }
-
-    return managedMemberIds;
+function matchesArchiveFilter(
+    m: Doc<"members">,
+    mode: "active" | "archived" | "all",
+): boolean {
+    if (mode === "all") return true;
+    if (mode === "archived") return !!m.archived_at;
+    return !m.archived_at;
 }
 
-// Get all members with details and organization/role-based filtering
+function matchesSearch(m: Doc<"members">, search: string): boolean {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+        (m.name?.toLowerCase().includes(q) ?? false) ||
+        (m.email?.toLowerCase().includes(q) ?? false) ||
+        (m.phone?.toLowerCase().includes(q) ?? false) ||
+        (m.other_names?.toLowerCase().includes(q) ?? false)
+    );
+}
+
+// Get all members with details and organization/role-based filtering.
+// Prefer `listPage` for the directory UI; keep this for pickers/exports.
 export const getAll = query({
     args: {
         organization_id: v.optional(v.id("organizations")),
         filter: v.optional(v.union(v.literal("active"), v.literal("archived"), v.literal("all"))),
     },
     handler: async (ctx, args) => {
-        // Get user identity for role-based access control
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
-
-        const user = await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
-            .unique();
-
+        const user = await getUserSafe(ctx);
         if (!user) return [];
 
-        let members;
+        const scope = await resolveManagedMemberIds(ctx);
+        const mode = args.filter ?? "active";
+        let members: Doc<"members">[] = [];
 
-        // Apply organization filtering based on user role
-        if (user.role === 'super_admin') {
-            // Super admin can see all members, optionally filtered by org
+        if (scope === "all") {
             if (args.organization_id) {
                 members = await ctx.db
                     .query("members")
@@ -126,42 +97,107 @@ export const getAll = query({
             } else {
                 members = await ctx.db.query("members").collect();
             }
-        } else if (user.role === 'organization_admin' || user.role === 'admin') {
-            // Org admins can only see members in their organization
-            if (user.organization_id) {
-                members = await ctx.db
-                    .query("members")
-                    .withIndex("by_org", (q) => q.eq("organization_id", user.organization_id as Id<"organizations">))
-                    .collect();
-            } else {
-                return []; // No organization assigned
-            }
+        } else if (scope === "org") {
+            const orgId =
+                normalizeOrgId(ctx, args.organization_id) ??
+                normalizeOrgId(ctx, user.organization_id);
+            if (!orgId) return [];
+            members = await ctx.db
+                .query("members")
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                .collect();
+        } else if (scope.size === 0) {
+            return [];
         } else {
-            // Other roles can only see members they manage (through leadership roles)
-            const managedIds = await resolveManagedMemberIds(ctx);
-            if (managedIds === null) return [];
-            if (managedIds === "all") {
-                members = await ctx.db.query("members").collect();
-            } else if (managedIds.size === 0) {
-                return [];
-            } else {
-                members = await Promise.all(Array.from(managedIds).map(id => ctx.db.get(id as Id<"members">)));
-                members = members.filter((m): m is Doc<"members"> => m !== null);
-            }
+            const docs = await Promise.all(
+                Array.from(scope).map((id) => ctx.db.get(id)),
+            );
+            members = docs.filter((m): m is Doc<"members"> => m !== null);
         }
 
-        // Archive filtering: default to active-only so archived members stay
-        // out of every list/picker unless explicitly requested.
-        const mode = args.filter ?? "active";
-        members = members.filter((m) =>
-            mode === "all" ? true : mode === "archived" ? !!m.archived_at : !m.archived_at
-        );
+        members = members.filter((m) => matchesArchiveFilter(m, mode));
+        members.sort((a, b) => a.name.localeCompare(b.name));
+        return await Promise.all(members.map(async (m) => formatMember(ctx, m)));
+    },
+});
 
-        // Sort by name
+/**
+ * Paginated member directory with optional server-side search + status filter.
+ * Cursor is a simple offset encoded as a string (stable for name-sorted lists).
+ */
+export const listPage = query({
+    args: {
+        organization_id: v.optional(v.id("organizations")),
+        filter: v.optional(v.union(v.literal("active"), v.literal("archived"), v.literal("all"))),
+        search: v.optional(v.string()),
+        status: v.optional(v.string()),
+        pageSize: v.optional(v.number()),
+        cursor: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const user = await getUserSafe(ctx);
+        if (!user) {
+            return { page: [], nextCursor: null, totalCount: 0, isDone: true };
+        }
+
+        const pageSize = Math.min(Math.max(args.pageSize ?? 50, 1), 100);
+        const offset = args.cursor ? Math.max(0, parseInt(args.cursor, 10) || 0) : 0;
+        const mode = args.filter ?? "active";
+        const search = (args.search ?? "").trim();
+        const scope = await resolveManagedMemberIds(ctx);
+
+        let members: Doc<"members">[] = [];
+
+        if (scope === "all") {
+            if (args.organization_id) {
+                members = await ctx.db
+                    .query("members")
+                    .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id))
+                    .collect();
+            } else {
+                members = await ctx.db.query("members").collect();
+            }
+        } else if (scope === "org") {
+            const orgId =
+                normalizeOrgId(ctx, args.organization_id) ??
+                normalizeOrgId(ctx, user.organization_id);
+            if (!orgId) {
+                return { page: [], nextCursor: null, totalCount: 0, isDone: true };
+            }
+            members = await ctx.db
+                .query("members")
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                .collect();
+        } else if (scope.size === 0) {
+            return { page: [], nextCursor: null, totalCount: 0, isDone: true };
+        } else {
+            const docs = await Promise.all(
+                Array.from(scope).map((id) => ctx.db.get(id)),
+            );
+            members = docs.filter((m): m is Doc<"members"> => m !== null);
+        }
+
+        members = members.filter((m) => matchesArchiveFilter(m, mode));
+        if (args.status) {
+            members = members.filter((m) => m.status === args.status);
+        }
+        if (search) {
+            members = members.filter((m) => matchesSearch(m, search));
+        }
         members.sort((a, b) => a.name.localeCompare(b.name));
 
-        // Enrich with details (this might be slow for N+1, but fine for MVP)
-        return await Promise.all(members.map(async (m) => formatMember(ctx, m)));
+        const totalCount = members.length;
+        const slice = members.slice(offset, offset + pageSize);
+        const nextOffset = offset + pageSize;
+        const isDone = nextOffset >= totalCount;
+
+        const page = await Promise.all(slice.map((m) => formatMember(ctx, m)));
+        return {
+            page,
+            nextCursor: isDone ? null : String(nextOffset),
+            totalCount,
+            isDone,
+        };
     },
 });
 
@@ -194,11 +230,9 @@ export const debugCurrentUser = query({
 
         const managedIds = await resolveManagedMemberIds(ctx);
         const managedMemberIds =
-            managedIds === "all"
-                ? ["all"]
-                : managedIds
-                    ? Array.from(managedIds)
-                    : [];
+            managedIds === "all" || managedIds === "org"
+                ? [managedIds]
+                : Array.from(managedIds);
 
         const ledUnitsWithCounts = await Promise.all(
             ledUnits.map(async (u) => {
@@ -509,9 +543,18 @@ export const getById = query({
     handler: async (ctx, args) => {
         const member = await ctx.db.get(args.id);
         if (!member) return null;
+        const user = await getUserSafe(ctx);
+        if (!user) throw new Error("Forbidden");
         const managedIds = await resolveManagedMemberIds(ctx);
         if (managedIds === "all") return await formatMember(ctx, member);
-        if (managedIds && managedIds.has(member._id)) return await formatMember(ctx, member);
+        if (managedIds === "org") {
+            const userOrg = normalizeOrgId(ctx, user.organization_id);
+            if (userOrg && member.organization_id === userOrg) {
+                return await formatMember(ctx, member);
+            }
+            throw new Error("Forbidden");
+        }
+        if (managedIds.has(member._id)) return await formatMember(ctx, member);
         throw new Error("Forbidden");
     },
 });
@@ -562,6 +605,10 @@ export const create = mutation({
             }
         }
 
+        if (orgId) {
+            await assertMemberLimit(ctx, orgId, 1);
+        }
+
         const now = new Date().toISOString();
         const memberId = await ctx.db.insert("members", {
             ...memberData,
@@ -583,7 +630,7 @@ export const create = mutation({
         }
 
         // Audit log
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "member.created",
             entity_type: "member",
             entity_id: memberId,
@@ -644,6 +691,10 @@ export const createBulk = mutation({
         if (!orgId) {
             throw new Error("Organization ID is required for bulk upload");
         }
+
+        // Pre-check Free plan capacity for net-new rows (updates don't count).
+        // Exact creates are enforced again as we go; this fails fast on huge imports.
+        await assertMemberLimit(ctx, orgId, 0);
 
         const normalizePhone = (phone?: string | null) => (phone || "").replace(/\D/g, "");
         const normalizeName = (name?: string | null) => (name || "").trim().toLowerCase();
@@ -777,6 +828,8 @@ export const createBulk = mutation({
                 continue;
             }
 
+            await assertMemberLimit(ctx, orgId, 1);
+
             const memberId = await ctx.db.insert("members", {
                 ...coreMemberData,
                 organization_id: orgId ?? coreMemberData.organization_id,
@@ -840,14 +893,20 @@ export const update = mutation({
     handler: async (ctx, args) => {
         const { id, updates, unit_ids } = args;
 
+        const user = await requireWriteAccess(ctx);
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds !== "all" && (!managedIds || !managedIds.has(id))) {
-            throw new Error("Forbidden");
-        }
-
-        // Get the current member data for audit log
         const currentMember = await ctx.db.get(id);
         if (!currentMember) throw new Error("Member not found");
+        if (
+            !memberIdInScope(
+                id,
+                currentMember.organization_id,
+                managedIds,
+                callerOrgId(ctx, user),
+            )
+        ) {
+            throw new Error("Forbidden");
+        }
 
         // Track what changed for audit log
         const changedFields: Record<string, { before: any; after: any }> = {};
@@ -866,6 +925,18 @@ export const update = mutation({
 
         // Update unit assignments if provided (replace all)
         if (unit_ids !== undefined) {
+            // Unit-level admins may only reassign members to units they
+            // administer (mirrors the guard in create). Without this, a
+            // unit_admin could move a member into any unit, including units
+            // in other organizations.
+            const unitScope = await getAdministeredUnitIds(ctx);
+            if (unitScope !== "all") {
+                const outside = unit_ids.filter((uid) => !unitScope.has(uid));
+                if (outside.length > 0) {
+                    throw new Error("Forbidden: one or more units are outside your scope");
+                }
+            }
+
             // Delete existing unit assignments
             const existing = await ctx.db
                 .query("member_units")
@@ -889,9 +960,8 @@ export const update = mutation({
         if (!member) throw new Error("Member not found");
 
         // Log audit event for member update
-        const user = await getUserSafe(ctx);
-        if (user && Object.keys(changedFields).length > 0) {
-            await ctx.runMutation(api.audit.logEvent, {
+        if (Object.keys(changedFields).length > 0) {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "member.updated",
                 entity_type: "member",
                 entity_id: id,
@@ -912,45 +982,79 @@ export const update = mutation({
 export const getManagedMembers = query({
     args: {},
     handler: async (ctx) => {
+        const user = await getUserSafe(ctx);
+        if (!user) return [];
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds === null) return [];
 
         if (managedIds === "all") {
             const allMembers = await ctx.db.query("members").collect();
-            return await Promise.all(allMembers.map(m => formatMember(ctx, m)));
+            return await Promise.all(
+                allMembers.filter((m) => !m.archived_at).map((m) => formatMember(ctx, m)),
+            );
+        }
+        if (managedIds === "org") {
+            const orgId = callerOrgId(ctx, user);
+            if (!orgId) return [];
+            const orgMembers = await ctx.db
+                .query("members")
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                .collect();
+            return await Promise.all(
+                orgMembers.filter((m) => !m.archived_at).map((m) => formatMember(ctx, m)),
+            );
         }
 
         if (managedIds.size === 0) return [];
 
-        const managedMembers = await Promise.all(Array.from(managedIds).map(id => ctx.db.get(id as Id<"members">)));
-        return await Promise.all(managedMembers.filter((m): m is Doc<"members"> => !!m && !m.archived_at).map(m => formatMember(ctx, m)));
-    }
+        const managedMembers = await Promise.all(
+            Array.from(managedIds).map((id) => ctx.db.get(id)),
+        );
+        return await Promise.all(
+            managedMembers
+                .filter((m): m is Doc<"members"> => !!m && !m.archived_at)
+                .map((m) => formatMember(ctx, m)),
+        );
+    },
 });
 
 export const getRecent = query({
     args: { limit: v.optional(v.number()) },
     handler: async (ctx, args) => {
         const limit = args.limit ?? 5;
+        const user = await getUserSafe(ctx);
+        if (!user) return [];
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds === null) return [];
 
-        let members;
+        let members: Doc<"members">[];
         if (managedIds === "all") {
             members = (await ctx.db.query("members").order("desc").take(limit * 2))
                 .filter((m) => !m.archived_at)
                 .slice(0, limit);
+        } else if (managedIds === "org") {
+            const orgId = callerOrgId(ctx, user);
+            if (!orgId) return [];
+            members = (
+                await ctx.db
+                    .query("members")
+                    .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                    .order("desc")
+                    .take(limit * 2)
+            )
+                .filter((m) => !m.archived_at)
+                .slice(0, limit);
         } else {
             if (managedIds.size === 0) return [];
-            const managedMembers = await Promise.all(Array.from(managedIds).map(id => ctx.db.get(id as Id<"members">)));
-            // Filter out deleted/archived and sort by _creationTime
+            const managedMembers = await Promise.all(
+                Array.from(managedIds).map((id) => ctx.db.get(id)),
+            );
             members = managedMembers
-                .filter((m): m is any => m !== null && !m.archived_at)
+                .filter((m): m is Doc<"members"> => m !== null && !m.archived_at)
                 .sort((a, b) => b._creationTime - a._creationTime)
                 .slice(0, limit);
         }
 
-        return await Promise.all(members.map(m => formatMember(ctx, m)));
-    }
+        return await Promise.all(members.map((m) => formatMember(ctx, m)));
+    },
 });
 
 // Bulk add members to a unit
@@ -1021,22 +1125,23 @@ export const bulkUpdateStatus = mutation({
             throw new Error("Invalid status");
         }
 
+        const user = await requireWriteAccess(ctx);
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds !== "all") {
-            if (!managedIds || managedIds.size === 0) {
-                throw new Error("Forbidden");
-            }
-            const unauthorized = args.member_ids.filter(id => !managedIds.has(id));
-            if (unauthorized.length > 0) {
+        const orgId = callerOrgId(ctx, user);
+
+        const members = await Promise.all(args.member_ids.map((id) => ctx.db.get(id)));
+        if (members.some((m) => !m)) throw new Error("Member not found");
+
+        for (const m of members) {
+            if (
+                !m ||
+                !memberIdInScope(m._id, m.organization_id, managedIds, orgId)
+            ) {
                 throw new Error("Forbidden");
             }
         }
 
-        const members = await Promise.all(args.member_ids.map(id => ctx.db.get(id)));
-        const missing = members.filter(m => !m).length;
-        if (missing > 0) throw new Error("Member not found");
-
-        await Promise.all(args.member_ids.map(id => ctx.db.patch(id, { status: args.status })));
+        await Promise.all(args.member_ids.map((id) => ctx.db.patch(id, { status: args.status })));
 
         return { updated: args.member_ids.length };
     },
@@ -1195,17 +1300,23 @@ export const getInsights = query({
 export const archive = mutation({
     args: { id: v.id("members") },
     handler: async (ctx, args) => {
+        const user = await requireWriteAccess(ctx);
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds !== "all" && (!managedIds || !managedIds.has(args.id))) {
-            throw new Error("Forbidden");
-        }
-
         const member = await ctx.db.get(args.id);
         if (!member) throw new Error("Member not found");
+        if (
+            !memberIdInScope(
+                args.id,
+                member.organization_id,
+                managedIds,
+                callerOrgId(ctx, user),
+            )
+        ) {
+            throw new Error("Forbidden");
+        }
         if (member.archived_at) return; // already archived
 
         const now = new Date().toISOString();
-        const user = await getUserSafe(ctx);
 
         await ctx.db.patch(args.id, {
             archived_at: now,
@@ -1215,7 +1326,7 @@ export const archive = mutation({
         });
 
         if (user) {
-            await ctx.runMutation(api.audit.logEvent, {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "member.archived",
                 entity_type: "member",
                 entity_id: args.id,
@@ -1233,17 +1344,23 @@ export const archive = mutation({
 export const restore = mutation({
     args: { id: v.id("members") },
     handler: async (ctx, args) => {
+        const user = await requireWriteAccess(ctx);
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds !== "all" && (!managedIds || !managedIds.has(args.id))) {
-            throw new Error("Forbidden");
-        }
-
         const member = await ctx.db.get(args.id);
         if (!member) throw new Error("Member not found");
+        if (
+            !memberIdInScope(
+                args.id,
+                member.organization_id,
+                managedIds,
+                callerOrgId(ctx, user),
+            )
+        ) {
+            throw new Error("Forbidden");
+        }
         if (!member.archived_at) return; // already active
 
         const now = new Date().toISOString();
-        const user = await getUserSafe(ctx);
 
         await ctx.db.patch(args.id, {
             archived_at: undefined,
@@ -1252,7 +1369,7 @@ export const restore = mutation({
         });
 
         if (user) {
-            await ctx.runMutation(api.audit.logEvent, {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "member.restored",
                 entity_type: "member",
                 entity_id: args.id,
@@ -1271,14 +1388,21 @@ export const restore = mutation({
 export const remove = mutation({
     args: { id: v.id("members") },
     handler: async (ctx, args) => {
+        const user = await requireWriteAccess(ctx);
         const managedIds = await resolveManagedMemberIds(ctx);
-        if (managedIds !== "all" && (!managedIds || !managedIds.has(args.id))) {
-            throw new Error("Forbidden");
-        }
-
         // Get member data before deletion for audit log
         const member = await ctx.db.get(args.id);
         if (!member) throw new Error("Member not found");
+        if (
+            !memberIdInScope(
+                args.id,
+                member.organization_id,
+                managedIds,
+                callerOrgId(ctx, user),
+            )
+        ) {
+            throw new Error("Forbidden");
+        }
         if (!member.archived_at) {
             throw new Error("Member must be archived before it can be permanently deleted");
         }
@@ -1321,9 +1445,8 @@ export const remove = mutation({
         await Promise.all(transactions.map(t => ctx.db.patch(t._id, { member_id: undefined, member_name: undefined })));
 
         // Log audit event for member deletion
-        const user = await getUserSafe(ctx);
-        if (user) {
-            await ctx.runMutation(api.audit.logEvent, {
+        {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "member.deleted",
                 entity_type: "member",
                 entity_id: args.id,

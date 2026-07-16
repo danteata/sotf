@@ -47,12 +47,37 @@ function PageLoader() {
   );
 }
 
+// Shown while the Clerk→Convex user sync is in flight, or if it failed so the
+// user isn't stranded on an infinite spinner.
+function SyncPending({ error, retry }: { error: boolean; retry: () => void }) {
+  if (!error) {
+    return <PageLoader />;
+  }
+  return (
+    <div className="flex items-center justify-center min-h-screen px-6">
+      <div className="max-w-sm w-full text-center space-y-4">
+        <h2 className="text-lg font-semibold">Something went wrong</h2>
+        <p className="text-sm text-muted-foreground">
+          We couldn't finish setting up your account. Please try again — if the
+          problem persists, contact support.
+        </p>
+        <button
+          onClick={retry}
+          className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft hover:bg-primary/90"
+        >
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Protected({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
   // Gate rendering on the Convex `users` row (and any pending invitation's
   // organization_id) actually being synced, so org-scoped queries don't fire
   // before organization_id is attached.
-  const isSynced = useUserSync();
+  const { isSynced, isError, retry } = useUserSync();
 
   if (isLoading) {
     return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
@@ -63,7 +88,7 @@ function Protected({ children }: { children: React.ReactNode }) {
   }
 
   if (!isSynced) {
-    return <PageLoader />;
+    return <SyncPending error={isError} retry={retry} />;
   }
 
   return (
@@ -78,7 +103,7 @@ function Protected({ children }: { children: React.ReactNode }) {
 // Plain members (and admins) can access the portal.
 function MemberRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const isSynced = useUserSync();
+  const { isSynced, isError, retry } = useUserSync();
 
   if (isLoading) {
     return <AuthLoadingWrapper><></></AuthLoadingWrapper>;
@@ -91,7 +116,7 @@ function MemberRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isSynced) {
-    return <PageLoader />;
+    return <SyncPending error={isError} retry={retry} />;
   }
 
   return (

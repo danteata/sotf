@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation, MutationCtx, QueryCtx } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { requireOrgAdmin, requireOrgAccess } from "./auth";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 type AnyCtx = MutationCtx | QueryCtx;
 
@@ -269,7 +269,7 @@ export const addAdmin = mutation({
             role: args.role,
         });
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "unit.admin_added",
             entity_type: "unit",
             entity_id: args.unit_id,
@@ -298,7 +298,7 @@ export const removeAdmin = mutation({
             memberId: args.member_id,
         });
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "unit.admin_removed",
             entity_type: "unit",
             entity_id: args.unit_id,
@@ -334,7 +334,7 @@ export const setPrimaryLeader = mutation({
             addedBy: actor.clerk_user_id,
         });
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "unit.primary_leader_changed",
             entity_type: "unit",
             entity_id: args.unit_id,

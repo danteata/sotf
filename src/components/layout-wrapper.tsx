@@ -1,6 +1,5 @@
 import { type ReactNode, useState, useEffect } from "react"
 import {
-  Bell,
   Menu,
   X,
   Sparkles
@@ -14,6 +13,7 @@ import { RoleBasedNavigation, RoleIndicator } from "@/components/role-based-navi
 import { OrganizationProvider } from "@/hooks/use-organization"
 import { OrganizationSelector } from "@/components/organization-selector"
 import { ModeToggle } from "@/components/mode-toggle"
+import { NotificationsPopover } from "@/components/notifications-popover"
 
 interface LayoutWrapperProps {
   children?: ReactNode
@@ -118,14 +118,7 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
 
             {/* Right section */}
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative h-9 w-9 hover:bg-muted rounded-lg"
-              >
-                <Bell className="h-4 w-4 text-muted-foreground" />
-                <span className="absolute top-2 right-2 h-2 w-2 bg-accent rounded-full pulse-glow"></span>
-              </Button>
+              {isSignedIn && isClerkConfigured && <NotificationsPopover />}
               <ModeToggle />
               <UserNav />
             </div>

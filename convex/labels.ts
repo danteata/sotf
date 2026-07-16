@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 export const list = query({
     args: { organization_id: v.optional(v.id("organizations")) },
@@ -72,7 +72,7 @@ export const create = mutation({
         });
 
         // Audit log
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "label.created",
             entity_type: "label",
             entity_id: labelId,
@@ -129,7 +129,7 @@ export const update = mutation({
 
         // Audit log
         if (Object.keys(changes).length > 0) {
-            await ctx.runMutation(api.audit.logEvent, {
+            await ctx.runMutation(internal.audit.logEvent, {
                 action: "label.updated",
                 entity_type: "label",
                 entity_id: args.id,
@@ -164,7 +164,7 @@ export const remove = mutation({
         }
 
         // Audit log
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "label.deleted",
             entity_type: "label",
             entity_id: args.id,

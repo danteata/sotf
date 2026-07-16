@@ -7,10 +7,12 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "check": "npm run typecheck && npm run lint && npm run test:run",
     "deploy": "fly deploy --build-secret vite_env=\"$(cat .env.local)\""
   },
   "dependencies": {

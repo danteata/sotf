@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { requireOrgAdmin, requireOrgAccess, resolveOrgId, isOrgAdmin } from "./auth";
 import { addUnitAdminInternal } from "./unit_admins";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 
 export const create = mutation({
@@ -214,7 +214,7 @@ export const revoke = mutation({
 
         await ctx.db.patch(args.id, { status: "revoked" });
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "invitation.revoked",
             entity_type: "invitation",
             entity_id: args.id,

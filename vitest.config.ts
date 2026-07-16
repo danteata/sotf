@@ -8,7 +8,10 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,tsx}'],
+    include: [
+      'src/**/*.{test,spec}.{js,mjs,cjs,ts,tsx}',
+      'convex/**/*.{test,spec}.{js,mjs,cjs,ts,tsx}',
+    ],
     coverage: {
       reporter: ['text', 'json', 'html'],
     },

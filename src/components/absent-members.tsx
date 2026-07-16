@@ -67,7 +67,7 @@ export function AbsentMembers() {
 
   // Convex Queries
   const rawMembersData = useQuery(api.members.getAll, {})
-  const membersData = useMemo(() => (rawMembersData || []) as MemberRow[], [rawMembersData])
+  const membersData = useMemo(() => (rawMembersData || []) as unknown as MemberRow[], [rawMembersData])
   const rawAttendanceRecords = useQuery(api.attendance.listWithMembers, {})
   const attendanceRecords = useMemo(() => (rawAttendanceRecords || []) as AttendanceRecord[], [rawAttendanceRecords])
   const allMembers = useMemo(() => membersData.map((m) => ({

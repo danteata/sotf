@@ -1,74 +1,22 @@
 
 import { v } from "convex/values";
 import { query } from "./_generated/server";
-import { Id, Doc } from "./_generated/dataModel";
-import { isSuperAdmin, requireUser, resolveOrgId, getUserSafe, normalizeOrgId } from "./auth";
+import { Id } from "./_generated/dataModel";
+import { isSuperAdmin, getUserSafe, normalizeOrgId } from "./auth";
+import {
+    resolveManagedMemberIds,
+    isOrgWideScope,
+    getLinkedMember,
+} from "./scope";
 import { getUnitIdsAdministeredBy } from "./unit_admins";
 
-// Internal helper to get managed member IDs
-async function getScopedMemberIds(ctx: any) {
-    const user = await getUserSafe(ctx);
-    if (!user) return new Set<Id<"members">>(); // Return empty set if user doesn't exist
-    if (isSuperAdmin(user)) return "all";
-
-    // Check if user has organization_id set
-    const userOrg = normalizeOrgId(ctx, user.organization_id);
-    if (!userOrg) {
-        // User exists but no organization - return empty set for now
-        // This can happen during invitation flow before org is fully set
-        return new Set<Id<"members">>();
-    }
-
-    const orgId = userOrg;
-
-    if (user.role === 'admin' || user.role === 'organization_admin') {
-        const orgMembers = await ctx.db
-            .query("members")
-            .withIndex("by_org", (q: any) => q.eq("organization_id", orgId))
-            .collect();
-        return new Set(orgMembers.map((m: any) => m._id));
-    }
-
-    // Find linked member by user_id first, then fallback to email
-    let member = await ctx.db
-        .query("members")
-        .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
-        .first();
-
-    if (!member && user.email) {
-        member = await ctx.db
-            .query("members")
-            .withIndex("by_email", (q: any) => q.eq("email", user.email))
-            .first();
-    }
-
-    if (!member) return new Set<Id<"members">>();
-
-    let managedMemberIds = new Set<Id<"members">>();
-
-    // Generic Unit Leadership: scope covers every unit this member administers
-    // (primary leader or additional admin), sourced from unit_admins.
-    if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
-        const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
-
-        for (const unitId of adminUnitIds) {
-            const relations = await ctx.db.query("member_units")
-                .withIndex("by_unit", (q: any) => q.eq("unit_id", unitId))
-                .collect();
-            relations.forEach((r: any) => managedMemberIds.add(r.member_id));
-        }
-    }
-
-    return managedMemberIds;
-}
-
 export const getDashboardData = query({
+    args: {},
     handler: async (ctx) => {
         const user = await getUserSafe(ctx);
         if (!user) return null; // Return null if user doesn't exist yet
 
-        const scopedIds = await getScopedMemberIds(ctx);
-        if (scopedIds === null) return null;
+        const scopedIds = await resolveManagedMemberIds(ctx);
 
         // Check if user has organization - if not, return empty data
         const userOrg = normalizeOrgId(ctx, user.organization_id);
@@ -100,19 +48,14 @@ export const getDashboardData = query({
         const allMembers = (orgId
             ? await ctx.db.query("members").withIndex("by_org", (q) => q.eq("organization_id", orgId)).collect()
             : await ctx.db.query("members").collect()
-        ).filter((m: any) => !m.archived_at);
-        const activeMembers = allMembers.filter((m: any) => m.status === 'active');
+        ).filter((m) => !m.archived_at);
+        const activeMembers = allMembers.filter((m) => m.status === 'active');
 
         let scopedMembers;
-        if (scopedIds === "all") {
-            const scopedMemberIds = new Set(activeMembers.map((m: any) => m._id));
-            const allAttendance = orgId
-                ? await ctx.db.query("attendance").withIndex("by_org", q => q.eq("organization_id", orgId)).collect()
-                : await ctx.db.query("attendance").collect();
-            const filteredAttendance = allAttendance.filter((a: any) => !a.unit_id || scopedMemberIds.has(a.unit_id));
-            scopedMembers = activeMembers; // Re-assign activeMembers to scopedMembers to maintain original logic
+        if (isOrgWideScope(scopedIds)) {
+            scopedMembers = activeMembers;
         } else {
-            scopedMembers = activeMembers.filter((m: any) => scopedIds.has(m._id));
+            scopedMembers = activeMembers.filter((m) => scopedIds.has(m._id));
         }
 
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
@@ -134,7 +77,7 @@ export const getDashboardData = query({
             const attendanceRecords = await attendanceQuery.order("desc").take(2);
 
             if (attendanceRecords.length > 0) {
-                if (scopedIds === "all") {
+                if (isOrgWideScope(scopedIds)) {
                     weeklyAttendance = attendanceRecords[0].count;
                     if (attendanceRecords.length > 1 && attendanceRecords[1].count > 0) {
                         attendanceChange = ((attendanceRecords[0].count - attendanceRecords[1].count) / attendanceRecords[1].count) * 100;
@@ -144,7 +87,7 @@ export const getDashboardData = query({
                         const relations = await ctx.db.query("member_attendance")
                             .withIndex("by_attendance", q => q.eq("attendance_id", aid))
                             .collect();
-                        return relations.filter((r: any) => (scopedIds as Set<Id<"members">>).has(r.member_id)).length;
+                        return relations.filter((r) => scopedIds.has(r.member_id)).length;
                     };
 
                     weeklyAttendance = await getCountForRecord(attendanceRecords[0]._id);
@@ -185,10 +128,7 @@ export const getDashboardData = query({
         const activeUnits = await unitsQuery.collect();
         let ledUnitsCount: number | null = null;
         if (user.role === 'unit_admin' || user.role === 'division_admin' || user.role === 'sub_unit_admin') {
-            const member = await ctx.db
-                .query("members")
-                .withIndex("by_user_id", (q: any) => q.eq("user_id", user._id))
-                .first();
+            const member = await getLinkedMember(ctx, user);
             if (member) {
                 const adminUnitIds = await getUnitIdsAdministeredBy(ctx, member._id);
                 ledUnitsCount = adminUnitIds.length;
@@ -234,8 +174,7 @@ export const getAttendanceTrends = query({
         }
 
         const weeks = args.weeks ?? 12;
-        const scopedIds = await getScopedMemberIds(ctx);
-        if (scopedIds === null) return [];
+        const scopedIds = await resolveManagedMemberIds(ctx);
         const orgId = isSuperAdmin(user) ? null : normalizeOrgId(ctx, user.organization_id);
 
         const endDate = new Date();
@@ -262,13 +201,13 @@ export const getAttendanceTrends = query({
             const weekKey = weekStart.toISOString().split('T')[0];
 
             let count = 0;
-            if (scopedIds === "all") {
+            if (isOrgWideScope(scopedIds)) {
                 count = record.count;
             } else {
                 const relations = await ctx.db.query("member_attendance")
                     .withIndex("by_attendance", q => q.eq("attendance_id", record._id))
                     .collect();
-                count = relations.filter((r: any) => (scopedIds as Set<Id<"members">>).has(r.member_id)).length;
+                count = relations.filter((r) => scopedIds.has(r.member_id)).length;
             }
 
             weeklyData[weekKey] = (weeklyData[weekKey] || 0) + count;

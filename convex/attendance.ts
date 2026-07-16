@@ -371,8 +371,9 @@ export const recordFullAttendance = mutation({
         if (!orgId) throw new Error("Organization not set");
 
         // Unit-level admins may only mark members within their scope present.
+        // Org-wide scopes ("all" | "org") are allowed; org mismatch is checked below.
         const memberScope = await resolveManagedMemberIds(ctx);
-        if (memberScope !== "all") {
+        if (memberScope !== "all" && memberScope !== "org") {
             const outside = member_ids.filter((id) => !memberScope.has(id));
             if (outside.length > 0) {
                 throw new Error("Forbidden: one or more members are outside your scope");

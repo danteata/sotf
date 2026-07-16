@@ -22,6 +22,7 @@ import { internal } from './_generated/api'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
 import { isOrgAdmin } from './auth'
+import { isProActive } from './entitlements'
 
 const PAYSTACK_API = 'https://api.paystack.co'
 
@@ -157,18 +158,6 @@ export const getSubscriptionManageLink = action({
  * has no subscription on file (i.e. free). Used by the web client to render
  * plan/billing status.
  */
-/** True when a subscription should currently confer the Pro plan. */
-function isProActive(sub: {
-    plan: 'free' | 'pro'
-    status: string
-    currentPeriodEnd?: string | null
-}, now: Date): boolean {
-    if (sub.plan !== 'pro') return false
-    if (sub.status === 'cancelled') return false
-    if (!sub.currentPeriodEnd) return sub.status === 'active'
-    return new Date(sub.currentPeriodEnd).getTime() > now.getTime()
-}
-
 export const getMySubscription = query({
     args: {},
     handler: async (ctx) => {

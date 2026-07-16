@@ -11,127 +11,115 @@ import {
   BarChart3,
   Settings,
   CreditCard,
-  Church,
   MapPin,
   UserCheck,
   Shield,
-  Heart,
   DollarSign,
   Building2,
   ClipboardList,
-  QrCode
+  QrCode,
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
-import { useTerminology } from "@/hooks/use-terminology"
+import { Capability, hasCapability } from "@/lib/permissions"
 
 interface NavigationItem {
   title: string
   href: string
   icon: React.ComponentType<{ className?: string }>
   badge?: string
-  roles: string[]
+  capability: Capability
 }
 
 export function RoleBasedNavigation() {
   const { pathname } = useLocation()
-  const { role, isAdmin, isLoading } = useUserRole()
-  const { terminology } = useTerminology()
+  const { role, isLoading } = useUserRole()
 
   const navigationItems: NavigationItem[] = [
     {
       title: "Dashboard",
-      href: "/",
+      href: "/dashboard",
       icon: Home,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "member"]
+      capability: "dashboard",
     },
     {
       title: "My Portal",
       href: "/portal",
       icon: QrCode,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin", "member"]
+      capability: "portal",
     },
     {
       title: "Members",
       href: "/members",
       icon: Users,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+      capability: "members",
     },
     {
       title: "Organization",
       href: "/organization",
       icon: Building2,
-      roles: ["admin", "organization_admin", "division_admin"]
+      capability: "organization",
     },
     {
       title: "Events",
       href: "/events",
       icon: Calendar,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+      capability: "events",
     },
     {
       title: "Attendance",
       href: "/attendance",
       icon: UserCheck,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+      capability: "attendance",
     },
     {
       title: "Financial",
       href: "/financial",
       icon: DollarSign,
-      roles: ["admin", "treasurer"]
+      capability: "financial",
     },
     {
       title: "Reports",
       href: "/reports",
       icon: BarChart3,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+      capability: "reports",
     },
     {
       title: "Map",
       href: "/map",
       icon: MapPin,
-      roles: ["admin", "organization_admin", "division_admin", "unit_admin"]
+      capability: "map",
     },
     {
       title: "User Management",
       href: "/user-management",
       icon: Shield,
       badge: "Admin",
-      roles: ["admin"]
+      capability: "user_management",
     },
     {
       title: "Settings",
-      href: "/admin",
+      href: "/settings",
       icon: Settings,
-      roles: ["admin"]
+      capability: "settings",
     },
     {
       title: "Billing",
       href: "/billing",
       icon: CreditCard,
-      roles: ["admin", "organization_admin", "division_admin"]
+      capability: "billing",
     },
     {
       title: "Audit Trail",
       href: "/audit-trail",
       icon: ClipboardList,
-      badge: "Super Admin",
-      roles: ["super_admin"]
-    }
+      badge: "Pro",
+      capability: "audit_trail",
+    },
   ]
 
-  // Filter navigation items based on user role
-  const visibleItems = navigationItems.filter(item => {
+  const visibleItems = navigationItems.filter((item) => {
     if (isLoading) return false
-
-    // Show items based on role
-    if (isAdmin) return item.roles.includes("admin") || item.roles.includes("super_admin")
-
-    // Check for specific role access
-    if (role && item.roles.includes(role)) return true
-
-    // Default member access
-    return item.roles.includes("member")
+    return hasCapability(role, item.capability)
   })
 
   if (isLoading) {
@@ -148,7 +136,9 @@ export function RoleBasedNavigation() {
     <nav className="space-y-1">
       {visibleItems.map((item) => {
         const Icon = item.icon
-        const isActive = pathname === item.href
+        const isActive =
+          pathname === item.href ||
+          (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))
 
         return (
           <Link key={item.href} to={item.href}>
@@ -158,10 +148,15 @@ export function RoleBasedNavigation() {
                 "w-full justify-start gap-3 h-10 px-3 rounded-xl text-sm transition-all duration-300",
                 isActive
                   ? "bg-sidebar-accent/15 text-sidebar-accent-foreground border border-sidebar-accent/30"
-                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 hover:border hover:border-sidebar-foreground/10"
+                  : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-foreground/5 hover:border hover:border-sidebar-foreground/10",
               )}
             >
-              <Icon className={cn("h-5 w-5 transition-all duration-300", isActive && "text-sidebar-accent-foreground")} />
+              <Icon
+                className={cn(
+                  "h-5 w-5 transition-all duration-300",
+                  isActive && "text-sidebar-accent-foreground",
+                )}
+              />
               <span>{item.title}</span>
               {item.badge && (
                 <Badge
@@ -187,20 +182,22 @@ export function RoleIndicator() {
 
   const getRoleDisplay = () => {
     switch (role) {
-      case 'super_admin':
-        return { label: 'Super Administrator', color: 'destructive' as const }
-      case 'admin':
-        return { label: 'Administrator', color: 'destructive' as const }
-      case 'organization_admin':
-        return { label: 'Organization Admin', color: 'default' as const }
-      case 'division_admin':
-        return { label: 'Division Admin', color: 'default' as const }
-      case 'unit_admin':
-        return { label: 'Unit Admin', color: 'secondary' as const }
+      case "super_admin":
+        return { label: "Super Administrator", color: "destructive" as const }
+      case "admin":
+      case "organization_admin":
+        return { label: "Organization Admin", color: "default" as const }
+      case "division_admin":
+        return { label: "Division Admin", color: "default" as const }
+      case "unit_admin":
+      case "sub_unit_admin":
+        return { label: "Unit Admin", color: "secondary" as const }
+      case "treasurer":
+        return { label: "Treasurer", color: "secondary" as const }
       default:
         return {
-          label: 'Member',
-          color: 'outline' as const
+          label: "Member",
+          color: "outline" as const,
         }
     }
   }
@@ -212,7 +209,7 @@ export function RoleIndicator() {
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <p className="text-sm font-semibold text-sidebar-foreground truncate">
-            {user.name || 'Unknown User'}
+            {user.name || "Unknown User"}
           </p>
           <Badge
             variant={roleInfo.color}

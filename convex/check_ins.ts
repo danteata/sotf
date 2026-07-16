@@ -10,6 +10,7 @@ import {
     resolveOrgId,
 } from "./auth";
 import { requireWriteAccess } from "./scope";
+import { requireFeature } from "./entitlements";
 import {
     ensureAttendanceRecord,
     markMemberPresent,
@@ -192,6 +193,12 @@ export const createOrOpenSession = mutation({
             throw new Error("Event type does not belong to your organization");
         }
 
+        // Geofenced check-in is a Pro feature (soft or strict).
+        const locationMode = args.location_mode ?? "none";
+        if (locationMode === "soft" || locationMode === "strict") {
+            await requireFeature(ctx, "geofenced_check_in", orgId);
+        }
+
         // Idempotent open: reuse an existing open session for (org, event_type, date).
         const existing = await ctx.db
             .query("check_in_sessions")
@@ -249,7 +256,7 @@ export const createOrOpenSession = mutation({
             created_by: user._id,
             created_by_name: user.name,
             created_at: now,
-            location_mode: args.location_mode ?? "none",
+            location_mode: locationMode,
             latitude: args.latitude,
             longitude: args.longitude,
             radius_meters: args.radius_meters,

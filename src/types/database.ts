@@ -120,7 +120,7 @@ export interface OrganizationContext {
 }
 
 // Role-based access control types
-export type UserRole = 'super_admin' | 'admin' | 'organization_admin' | 'division_admin' | 'unit_admin' | 'sub_unit_admin' | 'member'
+export type UserRole = 'super_admin' | 'admin' | 'organization_admin' | 'division_admin' | 'unit_admin' | 'sub_unit_admin' | 'treasurer' | 'member'
 
 // Organization Terminology Types
 export interface OrganizationTerminology {

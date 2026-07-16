@@ -1,8 +1,13 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { requireUser, resolveOrgId } from "./auth";
+import { requireFeature } from "./entitlements";
 
-// Log an audit event
-export const logEvent = mutation({
+// Log an audit event. Internal-only: writes must go through ctx.runMutation
+// (internal.audit.logEvent) so the caller's identity can't be forged by a
+// client. Exposing this as a public mutation let anyone inject arbitrary
+// action/performed_by/organization_id rows.
+export const logEvent = internalMutation({
     args: {
         action: v.string(),
         entity_type: v.string(),
@@ -51,12 +56,20 @@ export const getAuditLogs = query({
         offset: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
+        // Scope to the caller's org. resolveOrgId throws for non-super-admins
+        // without an org, and ignores any client-supplied org except for
+        // super_admins (who may pass one, or omit it to read across orgs).
+        await requireUser(ctx);
+        const resolvedOrgId = await resolveOrgId(ctx, args.organization_id);
+        // Full audit trail is a Pro feature (super_admins always pass).
+        await requireFeature(ctx, "audit_trail", resolvedOrgId);
+
         // Start with ordered query
         let query = ctx.db.query("audit_logs").order("desc");
 
         // Apply filters
-        if (args.organization_id) {
-            const orgId = args.organization_id;
+        if (resolvedOrgId) {
+            const orgId = resolvedOrgId;
             query = query.filter((q) => q.eq(q.field("organization_id"), orgId));
         }
 
@@ -104,6 +117,7 @@ export const getAuditLogs = query({
 export const getAuditLogById = query({
     args: { id: v.id("audit_logs") },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
         return await ctx.db.get(args.id);
     },
 });
@@ -116,6 +130,7 @@ export const getEntityAuditLogs = query({
         limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
         const limit = args.limit || 20;
 
         const logs = await ctx.db
@@ -137,12 +152,14 @@ export const getRecentAuditLogs = query({
         limit: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
+        await requireUser(ctx);
+        const resolvedOrgId = await resolveOrgId(ctx, args.organization_id);
         const limit = args.limit || 10;
 
         let query = ctx.db.query("audit_logs").order("desc");
 
-        if (args.organization_id) {
-            query = query.filter((q) => q.eq(q.field("organization_id"), args.organization_id));
+        if (resolvedOrgId) {
+            query = query.filter((q) => q.eq(q.field("organization_id"), resolvedOrgId));
         }
 
         const logs = await query.take(limit);
@@ -154,6 +171,7 @@ export const getRecentAuditLogs = query({
 export const getActionTypes = query({
     args: {},
     handler: async (ctx) => {
+        await requireUser(ctx);
         const logs = await ctx.db.query("audit_logs").collect();
         const actionTypes = [...new Set(logs.map((log) => log.action))];
         return actionTypes.sort();
@@ -164,6 +182,7 @@ export const getActionTypes = query({
 export const getEntityTypes = query({
     args: {},
     handler: async (ctx) => {
+        await requireUser(ctx);
         const logs = await ctx.db.query("audit_logs").collect();
         const entityTypes = [...new Set(logs.map((log) => log.entity_type))];
         return entityTypes.sort();

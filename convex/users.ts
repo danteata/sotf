@@ -4,7 +4,7 @@ import { mutation, query, internalMutation, internalQuery } from "./_generated/s
 import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
 import { getUnitIdsAdministeredBy, addUnitAdminInternal } from "./unit_admins";
 import { Id } from "./_generated/dataModel";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 export const store = mutation({
     args: { invitationToken: v.optional(v.string()) },
@@ -343,7 +343,7 @@ export const updateRole = mutation({
 
         // Audit log for role change
         const normalizedOrgId = target.organization_id ? ctx.db.normalizeId("organizations", target.organization_id) : null;
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "user.role_changed",
             entity_type: "user",
             entity_id: args.id,
@@ -380,7 +380,7 @@ export const setActive = mutation({
 
         await ctx.db.patch(args.id, { active: args.active });
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: args.active ? "user.reactivated" : "user.deactivated",
             entity_type: "user",
             entity_id: args.id,
@@ -421,7 +421,7 @@ export const remove = mutation({
 
         await ctx.db.delete(args.id);
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "user.removed",
             entity_type: "user",
             entity_id: args.id,

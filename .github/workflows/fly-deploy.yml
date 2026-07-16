@@ -1,17 +1,24 @@
+# Deploy only after CI succeeds on main.
 # See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
 
 name: Fly Deploy
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
 jobs:
   deploy:
     name: Deploy app
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    concurrency: deploy-group
     steps:
       - uses: actions/checkout@v4
+        with:
+          # checkout the commit that triggered CI, not the workflow file's default
+          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: superfly/flyctl-actions/setup-flyctl@master
       # The Dockerfile builds VITE_* vars from a BuildKit secret (never baked into a layer).
       # VITE_ENV_FILE must hold the same contents as your local .env.local.

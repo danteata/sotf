@@ -487,4 +487,20 @@ export default defineSchema({
         .index("by_member", ["member_id"])
         .index("by_clerk_user", ["clerk_user_id"])
         .index("by_org", ["organization_id"]),
+
+    // In-app notifications for the signed-in user (care tasks, invites, system).
+    notifications: defineTable({
+        clerk_user_id: v.string(),
+        organization_id: v.optional(v.id("organizations")),
+        type: v.string(), // e.g. "system" | "care" | "invite" | "billing" | "check_in"
+        title: v.string(),
+        body: v.optional(v.string()),
+        href: v.optional(v.string()), // optional deep link in the app
+        read_at: v.optional(v.string()), // ISO; undefined = unread
+        created_at: v.string(),
+        metadata: v.optional(v.any()),
+    })
+        .index("by_user", ["clerk_user_id"])
+        .index("by_user_created", ["clerk_user_id", "created_at"])
+        .index("by_org", ["organization_id"]),
 });
