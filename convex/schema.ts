@@ -503,4 +503,168 @@ export default defineSchema({
         .index("by_user", ["clerk_user_id"])
         .index("by_user_created", ["clerk_user_id", "created_at"])
         .index("by_org", ["organization_id"]),
+
+    // =======================================================================
+    // AUTOMATION ENGINE ("If-This-Then-That")
+    //
+    // A data-driven rule engine: rules reference a code-defined catalog of
+    // triggers/conditions/actions and supply parameters. Evaluation is
+    // transactional (mutations); delivery is decoupled via automation_tasks so
+    // a flaky provider never blocks a source write. See AUTOMATION_ENGINE_PLAN.md.
+    // =======================================================================
+
+    // The rule definition. condition/action trees are small bounded JSON.
+    automation_rules: defineTable({
+        organization_id: v.id("organizations"),
+        name: v.string(),
+        description: v.optional(v.string()),
+        trigger_key: v.string(), // catalog key, e.g. "member.consecutive_absences"
+        trigger_params: v.optional(v.any()), // { event_type_value, threshold, ... }
+        conditions: v.optional(v.any()), // Condition tree (bounded)
+        actions: v.array(v.any()), // [{ key, params }] ordered, small
+        // Scope: empty/undefined unit_ids => whole org
+        unit_ids: v.optional(v.array(v.id("units"))),
+        // Guardrails
+        cooldown_days: v.optional(v.number()),
+        dedup_bucket: v.optional(v.string()), // "day" | "week" | "none"
+        respect_quiet_hours: v.optional(v.boolean()),
+        // Lifecycle
+        status: v.string(), // "draft" | "enabled" | "paused"
+        dry_run: v.optional(v.boolean()),
+        priority: v.optional(v.number()),
+        created_by: v.string(), // clerk_user_id
+        created_by_name: v.optional(v.string()),
+        created_at: v.string(),
+        updated_at: v.optional(v.string()),
+        last_run_at: v.optional(v.string()),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_org_and_trigger", ["organization_id", "trigger_key"])
+        .index("by_org_and_status", ["organization_id", "status"]),
+
+    // Reusable message templates ({{variable}} interpolation).
+    automation_templates: defineTable({
+        organization_id: v.id("organizations"),
+        name: v.string(),
+        channel: v.string(), // "sms" | "email" | "in_app"
+        subject: v.optional(v.string()), // email only
+        body: v.string(),
+        is_active: v.boolean(),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_org_and_channel", ["organization_id", "channel"]),
+
+    // Event inbox for push triggers. Decouples the source mutation from
+    // evaluation (source only inserts a row + schedules processing).
+    automation_events: defineTable({
+        organization_id: v.id("organizations"),
+        trigger_key: v.string(),
+        subject_member_id: v.optional(v.id("members")),
+        payload: v.optional(v.any()), // bounded fact seed
+        status: v.string(), // "pending" | "processed" | "error"
+        error: v.optional(v.string()),
+        created_at: v.string(),
+    })
+        .index("by_status", ["status"])
+        .index("by_org_and_status", ["organization_id", "status"]),
+
+    // Task queue: the transactional -> delivery handoff. One row per action.
+    automation_tasks: defineTable({
+        organization_id: v.id("organizations"),
+        rule_id: v.id("automation_rules"),
+        run_id: v.optional(v.id("automation_runs")),
+        member_id: v.optional(v.id("members")),
+        action_key: v.string(),
+        action_params: v.optional(v.any()),
+        channel: v.optional(v.string()),
+        // Pre-rendered payload from the fact context (so the dispatcher needs no re-eval)
+        rendered: v.optional(v.any()), // { body?, subject?, label_id?, ... }
+        dedup_key: v.string(),
+        status: v.string(), // "pending" | "sent" | "deferred" | "failed" | "deduped" | "suppressed" | "dry_run" | "skipped_no_provider"
+        attempts: v.number(),
+        next_attempt_at: v.optional(v.string()), // backoff / quiet-hours defer
+        dry_run: v.optional(v.boolean()),
+        created_at: v.string(),
+        processed_at: v.optional(v.string()),
+        last_error: v.optional(v.string()),
+    })
+        .index("by_status", ["status"])
+        .index("by_status_and_channel", ["status", "channel"])
+        .index("by_status_and_next_attempt", ["status", "next_attempt_at"])
+        .index("by_dedup_key", ["dedup_key"])
+        .index("by_rule", ["rule_id"])
+        .index("by_run", ["run_id"]),
+
+    // Cooldown / streak / last-fired state per (rule, member). Prevents re-nagging.
+    automation_state: defineTable({
+        organization_id: v.id("organizations"),
+        rule_id: v.id("automation_rules"),
+        member_id: v.id("members"),
+        last_fired_at: v.optional(v.string()),
+        last_value: v.optional(v.any()), // e.g. last streak count seen
+    })
+        .index("by_rule_and_member", ["rule_id", "member_id"])
+        .index("by_org", ["organization_id"]),
+
+    // A run = one evaluation of one rule against one subject (observability).
+    automation_runs: defineTable({
+        organization_id: v.id("organizations"),
+        rule_id: v.id("automation_rules"),
+        trigger_key: v.string(),
+        matched: v.boolean(),
+        subject_member_id: v.optional(v.id("members")),
+        actions_queued: v.number(),
+        dry_run: v.boolean(),
+        source: v.optional(v.string()), // "scan" | "event" | "simulate"
+        note: v.optional(v.string()),
+        started_at: v.string(),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_rule", ["rule_id"]),
+
+    // High-churn per-message delivery log (mirrors check_in_audit).
+    message_log: defineTable({
+        organization_id: v.id("organizations"),
+        member_id: v.optional(v.id("members")),
+        rule_id: v.optional(v.id("automation_rules")),
+        channel: v.string(), // "sms" | "email" | "in_app" | "webhook" | "internal"
+        dedup_key: v.optional(v.string()),
+        category: v.string(), // "follow_up" | "reminder" | "alert" | "info"
+        outcome: v.string(), // "sent" | "failed" | "deduped" | "throttled" | "suppressed_consent" | "quiet_hours_deferred" | "dry_run" | "skipped_no_provider"
+        provider: v.optional(v.string()),
+        provider_message_id: v.optional(v.string()),
+        error: v.optional(v.string()),
+        rendered_preview: v.optional(v.string()),
+        sent_at: v.string(),
+    })
+        .index("by_org_and_sent_at", ["organization_id", "sent_at"])
+        .index("by_member_and_sent_at", ["member_id", "sent_at"])
+        .index("by_dedup_key", ["dedup_key"])
+        .index("by_outcome", ["outcome"]),
+
+    // Per-member channel consent + optional quiet-hours override.
+    member_messaging_prefs: defineTable({
+        member_id: v.id("members"),
+        organization_id: v.id("organizations"),
+        sms_opt_out: v.optional(v.boolean()),
+        email_opt_out: v.optional(v.boolean()),
+        quiet_start: v.optional(v.string()), // "22:00"
+        quiet_end: v.optional(v.string()), // "07:00"
+    })
+        .index("by_member", ["member_id"])
+        .index("by_org", ["organization_id"]),
+
+    // In-app inbox (send_in_app action + member portal).
+    in_app_notifications: defineTable({
+        organization_id: v.id("organizations"),
+        member_id: v.id("members"),
+        title: v.string(),
+        body: v.string(),
+        category: v.string(),
+        rule_id: v.optional(v.id("automation_rules")),
+        read: v.boolean(),
+        created_at: v.string(),
+    })
+        .index("by_member_and_read", ["member_id", "read"])
+        .index("by_org", ["organization_id"]),
 });

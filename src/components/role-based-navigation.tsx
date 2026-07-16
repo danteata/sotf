@@ -18,6 +18,7 @@ import {
   Building2,
   ClipboardList,
   QrCode,
+  Zap,
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { Capability, hasCapability } from "@/lib/permissions"
@@ -95,6 +96,13 @@ export function RoleBasedNavigation() {
       icon: Shield,
       badge: "Admin",
       capability: "user_management",
+    },
+    {
+      title: "Automations",
+      href: "/automations",
+      icon: Zap,
+      badge: "Pro",
+      capability: "automations",
     },
     {
       title: "Settings",

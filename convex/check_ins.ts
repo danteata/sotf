@@ -16,6 +16,50 @@ import {
     markMemberPresent,
     assertEventAppliesToMember,
 } from "./attendance";
+import { emitEventSafe } from "./automation/events";
+
+/**
+ * Fire automation triggers for a completed member check-in: always
+ * "checkin.completed", plus "checkin.late" when past the grace period. Skips
+ * duplicate check-ins. Never throws into the check-in flow.
+ */
+async function emitCheckinEvents(
+    ctx: MutationCtx,
+    args: {
+        session: Doc<"check_in_sessions">;
+        member: Doc<"members">;
+        source: string;
+        isLate: boolean;
+        minutesLate?: number;
+        alreadyCheckedIn: boolean;
+    },
+) {
+    if (args.alreadyCheckedIn) return;
+    const eventType = await ctx.db.get(args.session.event_type_id);
+    const payload = {
+        event_type_id: args.session.event_type_id,
+        event_type_value: (eventType as any)?.value,
+        label: (eventType as any)?.label,
+        date: args.session.date,
+        source: args.source,
+        is_late: args.isLate,
+        minutes_late: args.minutesLate,
+    };
+    await emitEventSafe(ctx, {
+        orgId: args.session.organization_id,
+        triggerKey: "checkin.completed",
+        memberId: args.member._id,
+        payload,
+    });
+    if (args.isLate) {
+        await emitEventSafe(ctx, {
+            orgId: args.session.organization_id,
+            triggerKey: "checkin.late",
+            memberId: args.member._id,
+            payload,
+        });
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Token helpers
@@ -644,6 +688,15 @@ export const kioskCheckIn = mutation({
             });
         }
 
+        await emitCheckinEvents(ctx, {
+            session,
+            member,
+            source: "kiosk",
+            isLate: late.isLate,
+            minutesLate: late.minutesLate,
+            alreadyCheckedIn: result.alreadyCheckedIn,
+        });
+
         return {
             status: result.alreadyCheckedIn ? ("already_checked_in" as const) : ("checked_in" as const),
             member_name: member.name,
@@ -1085,6 +1138,15 @@ export const checkInWithToken = mutation({
             method,
             outcome: "success",
             device_info: args.device_info,
+        });
+
+        await emitCheckinEvents(ctx, {
+            session,
+            member,
+            source: method,
+            isLate: late.isLate,
+            minutesLate: late.minutesLate,
+            alreadyCheckedIn: false,
         });
 
         return {
