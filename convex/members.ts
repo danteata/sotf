@@ -6,6 +6,7 @@ import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, isSuperAdmin }
 import { getUnitIdsAdministeredBy } from "./unit_admins";
 import { requireWriteAccess, getAdministeredUnitIds } from "./scope";
 import { api } from "./_generated/api";
+import { emitEventSafe } from "./automation/events";
 
 // Helper to format member with details (typed)
 async function formatMember(ctx: any, member: Doc<"members">): Promise<any> {
@@ -587,6 +588,17 @@ export const create = mutation({
 
         const member = await ctx.db.get(memberId);
         if (!member) throw new Error("Member not found");
+
+        // Automation: fire the "new member added" trigger.
+        const emitOrg = orgId ?? memberData.organization_id;
+        if (emitOrg) {
+            await emitEventSafe(ctx, {
+                orgId: emitOrg,
+                triggerKey: "member.created",
+                memberId,
+            });
+        }
+
         return await formatMember(ctx, member);
     },
 });
