@@ -9,6 +9,7 @@
 
 import { Doc, Id } from "../_generated/dataModel";
 import { MutationCtx } from "../_generated/server";
+import { orgIsPro } from "../entitlements";
 import { ConditionNode, FactContext, RuleAction, categoryForAction, getActionSpec } from "./catalog";
 import { evaluateCondition } from "./conditions";
 import { renderTemplate } from "./templating";
@@ -112,6 +113,17 @@ export async function queueRuleActions(
                 missing: r.missing,
             })),
         };
+    }
+
+    // 1b. Plan gate — defense in depth so a rule enabled before a Pro->Free
+    // downgrade stops firing immediately, without a separate sweep job. This
+    // runs from the scanner/event processor (no user identity in scope), so
+    // it checks the org's plan directly rather than going through
+    // requireFeature. Simulate (above) is exempt: it never sends anything,
+    // so previewing is fine on Free (a taste of the feature); real delivery
+    // requires Pro.
+    if (!(await orgIsPro(ctx, rule.organization_id))) {
+        return { matched: true, queued: 0, skippedReason: "plan_required" };
     }
 
     // 2. Cooldown (skip re-firing the same rule at the same member too soon).

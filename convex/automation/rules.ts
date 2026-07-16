@@ -6,10 +6,11 @@
 // =============================================================================
 
 import { v } from "convex/values";
-import { api } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 import { mutation, query } from "../_generated/server";
 import { requireOrgAccess, requireOrgAdmin, resolveOrgId } from "../auth";
+import { requireFeature } from "../entitlements";
 import {
     ACTION_CATALOG,
     TRIGGER_CATALOG,
@@ -99,6 +100,7 @@ export const createRule = mutation({
         const user = await requireOrgAdmin(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         if (!orgId) throw new Error("Organization not set");
+        await requireFeature(ctx, "automations", orgId);
         validateRuleShape(args.trigger_key, args.actions);
 
         const now = new Date().toISOString();
@@ -123,7 +125,7 @@ export const createRule = mutation({
             created_at: now,
         });
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "automation.rule_created",
             entity_type: "automation_rule",
             entity_id: id,
@@ -185,6 +187,9 @@ export const setRuleStatus = mutation({
         if (!["draft", "enabled", "paused"].includes(args.status)) {
             throw new Error("Invalid status");
         }
+        if (args.status === "enabled") {
+            await requireFeature(ctx, "automations", rule.organization_id);
+        }
 
         const patch: Partial<Doc<"automation_rules">> = {
             status: args.status,
@@ -193,7 +198,7 @@ export const setRuleStatus = mutation({
         if (args.dry_run !== undefined) patch.dry_run = args.dry_run;
         await ctx.db.patch(args.id, patch);
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: `automation.rule_${args.status}`,
             entity_type: "automation_rule",
             entity_id: args.id,
@@ -217,7 +222,7 @@ export const deleteRule = mutation({
         await requireOrgAccess(ctx, rule.organization_id);
         await ctx.db.delete(args.id);
 
-        await ctx.runMutation(api.audit.logEvent, {
+        await ctx.runMutation(internal.audit.logEvent, {
             action: "automation.rule_deleted",
             entity_type: "automation_rule",
             entity_id: args.id,
@@ -248,6 +253,7 @@ export const simulateRule = mutation({
     handler: async (ctx, args) => {
         const rule = await ctx.db.get(args.id);
         if (!rule) throw new Error("Rule not found");
+        await requireOrgAdmin(ctx);
         await requireOrgAccess(ctx, rule.organization_id);
 
         if (!isDerivedTrigger(rule.trigger_key)) {

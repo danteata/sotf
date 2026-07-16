@@ -14,6 +14,7 @@ import { Doc, Id } from "../_generated/dataModel";
 import { MutationCtx, internalMutation } from "../_generated/server";
 import { FactContext, MemberFacts, OrgFacts, StreakFacts, isDerivedTrigger } from "./catalog";
 import { queueRuleActions } from "./engine";
+import { isAutomationEnabled } from "./guardrails";
 import {
     OrgAttendanceContext,
     buildMemberFacts,
@@ -39,6 +40,8 @@ const ORG_BATCH = 200;
 export const run = internalMutation({
     args: {},
     handler: async (ctx) => {
+        if (!(await isAutomationEnabled(ctx))) return { orgs: 0, disabled: true };
+
         const orgs = await ctx.db.query("organizations").take(ORG_BATCH);
         for (const org of orgs) {
             if (org.active === false) continue;

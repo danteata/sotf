@@ -19,7 +19,8 @@ export type ProFeature =
     | "audit_trail"
     | "advanced_exports"
     | "map"
-    | "unlimited_members";
+    | "unlimited_members"
+    | "automations";
 
 export const FREE_MEMBER_LIMIT = 200;
 
@@ -151,6 +152,8 @@ function proFeatureMessage(feature: ProFeature): string {
             return "Advanced CSV/XLSX exports are a Pro feature.";
         case "map":
             return "Member map is a Pro feature.";
+        case "automations":
+            return "Automations (if-this-then-that rules) are a Pro feature. Upgrade to create and enable rules.";
         case "unlimited_members":
             return `Free plan is limited to ${FREE_MEMBER_LIMIT} members. Upgrade to Pro for unlimited members.`;
         default:
@@ -176,6 +179,7 @@ export async function getEntitlementsForOrg(
             advanced_exports: isPro,
             map: isPro,
             unlimited_members: isPro,
+            automations: isPro,
             qr_check_in: true,
             attendance: true,
             financial: true,

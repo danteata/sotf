@@ -1,10 +1,28 @@
 // =============================================================================
-// Guardrail helpers — quiet hours + rate caps.
+// Guardrail helpers — kill switch, quiet hours + rate caps.
 //
 // The time math is factored into pure functions so it can be unit-verified
 // independently of the DB. The dispatcher wires these to member/org config and
 // the message_log.
 // =============================================================================
+
+import { MutationCtx, QueryCtx } from "../_generated/server";
+
+/**
+ * Global kill switch: `app_config` row with key "automation.enabled" and
+ * `value: { enabled: boolean }`. Missing row = enabled (opt-out, not opt-in),
+ * so the automation engine works out of the box without any config seeding.
+ */
+export async function isAutomationEnabled(
+    ctx: MutationCtx | QueryCtx,
+): Promise<boolean> {
+    const cfg = await ctx.db
+        .query("app_config")
+        .withIndex("by_key", (q) => q.eq("key", "automation.enabled"))
+        .unique();
+    if (!cfg) return true;
+    return (cfg.value as { enabled?: boolean } | undefined)?.enabled !== false;
+}
 
 // SMS rate caps (from the enhancement plan's throttling table).
 export const SMS_HOURLY_CAP = 3;

@@ -26,6 +26,7 @@ export const getMyEntitlements = query({
                     advanced_exports: false,
                     map: false,
                     unlimited_members: false,
+                    automations: false,
                     qr_check_in: true,
                     attendance: true,
                     financial: true,
@@ -45,6 +46,7 @@ export const getMyEntitlements = query({
                     advanced_exports: true,
                     map: true,
                     unlimited_members: true,
+                    automations: true,
                     qr_check_in: true,
                     attendance: true,
                     financial: true,
@@ -68,6 +70,7 @@ export const getMyEntitlements = query({
                     advanced_exports: false,
                     map: false,
                     unlimited_members: false,
+                    automations: false,
                     qr_check_in: true,
                     attendance: true,
                     financial: true,
@@ -90,6 +93,7 @@ export const getMyEntitlements = query({
                     advanced_exports: true,
                     map: true,
                     unlimited_members: true,
+                    automations: true,
                 },
             };
         }

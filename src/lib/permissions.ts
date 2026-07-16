@@ -27,6 +27,7 @@ export type Capability =
   | "settings"
   | "billing"
   | "audit_trail"
+  | "automations"
 
 const ORG_ADMINS: AppRole[] = ["super_admin", "organization_admin", "admin"]
 const UNIT_LEADERS: AppRole[] = [
@@ -68,6 +69,7 @@ export const CAPABILITY_ROLES: Record<Capability, AppRole[]> = {
   settings: ORG_ADMINS,
   billing: ORG_ADMINS,
   audit_trail: ["super_admin", "organization_admin", "admin"],
+  automations: ORG_ADMINS,
 }
 
 export function normalizeRole(role: string | null | undefined): AppRole {

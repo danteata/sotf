@@ -18,6 +18,7 @@ import { categoryForAction } from "./catalog";
 import { isRealPhone } from "./facts";
 import {
     checkSmsRate,
+    isAutomationEnabled,
     isWithinWindow,
     localMinutesNow,
     parseHHMM,
@@ -38,6 +39,8 @@ const TRANSACTIONAL_CHANNELS = ["in_app", "internal", "email"] as const;
 export const drain = internalMutation({
     args: {},
     handler: async (ctx) => {
+        if (!(await isAutomationEnabled(ctx))) return { disabled: true };
+
         const nowIso = new Date().toISOString();
 
         // 1. Promote deferred tasks whose backoff has elapsed back to pending.
@@ -216,6 +219,8 @@ export const runExternal = internalAction({
 export const claimSmsBatch = internalMutation({
     args: { limit: v.number() },
     handler: async (ctx, args): Promise<ClaimedSms[]> => {
+        if (!(await isAutomationEnabled(ctx))) return [];
+
         const nowMs = Date.now();
         const pending = await ctx.db
             .query("automation_tasks")
@@ -446,6 +451,32 @@ async function removeLabel(ctx: MutationCtx, memberId: Id<"members">, labelId: I
     }
 }
 
+/**
+ * Resolve the Clerk user id behind a member record, if any (member.user_id ->
+ * users, falling back to an email match — mirrors scope.ts's getLinkedMember
+ * in the opposite direction). Unit leaders are always app users, but a
+ * member's `user_id` link isn't always backfilled, so both paths are tried.
+ */
+async function resolveClerkUserIdForMember(
+    ctx: MutationCtx,
+    memberId: Id<"members">,
+): Promise<string | null> {
+    const member = await ctx.db.get(memberId);
+    if (!member) return null;
+    if (member.user_id) {
+        const user = await ctx.db.get(member.user_id);
+        if (user) return user.clerk_user_id;
+    }
+    if (member.email) {
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", member.email))
+            .first();
+        if (user) return user.clerk_user_id;
+    }
+    return null;
+}
+
 async function notifyLeaders(ctx: MutationCtx, task: Doc<"automation_tasks">, body: string): Promise<number> {
     if (!task.member_id) return 0;
     const memberUnits = await ctx.db
@@ -473,6 +504,21 @@ async function notifyLeaders(ctx: MutationCtx, task: Doc<"automation_tasks">, bo
             category: "alert",
             ruleId: task.rule_id,
         });
+
+        // in_app_notifications has no UI consumer yet (no member-portal inbox).
+        // Leaders are always logged-in app users, so also surface this in the
+        // admin notification bell (clerk_user_id-keyed) so it's actually seen.
+        const clerkUserId = await resolveClerkUserIdForMember(ctx, leaderId as Id<"members">);
+        if (clerkUserId) {
+            await ctx.db.insert("notifications", {
+                clerk_user_id: clerkUserId,
+                organization_id: task.organization_id,
+                type: "care",
+                title: "Automation alert",
+                body,
+                created_at: new Date().toISOString(),
+            });
+        }
     }
     return leaderMemberIds.size;
 }
