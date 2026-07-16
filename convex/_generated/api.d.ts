@@ -24,6 +24,7 @@ import type * as automation_providers from "../automation/providers.js";
 import type * as automation_rules from "../automation/rules.js";
 import type * as automation_scan from "../automation/scan.js";
 import type * as automation_templating from "../automation/templating.js";
+import type * as care_tasks from "../care_tasks.js";
 import type * as check_ins from "../check_ins.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   "automation/rules": typeof automation_rules;
   "automation/scan": typeof automation_scan;
   "automation/templating": typeof automation_templating;
+  care_tasks: typeof care_tasks;
   check_ins: typeof check_ins;
   crons: typeof crons;
   dashboard: typeof dashboard;

@@ -25,6 +25,7 @@ export type FieldKey =
   | "days"
   | "days_before"
   | "notify_leaders"
+  | "assign_task"
   | "active_only"
   | "cooldown_days"
 
@@ -40,6 +41,7 @@ export interface RuleFormValues {
   days: number
   days_before: number
   notify_leaders: boolean
+  assign_task: boolean
   active_only: boolean
   cooldown_days: number
 }
@@ -65,7 +67,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
       "Reach out when a member misses several services in a row so no one slips through the cracks.",
     icon: HeartHandshake,
     triggerKey: "member.consecutive_absences",
-    fields: ["event_type_value", "threshold", "channel", "message", "notify_leaders", "active_only", "cooldown_days"],
+    fields: ["event_type_value", "threshold", "channel", "message", "notify_leaders", "assign_task", "active_only", "cooldown_days"],
     defaults: {
       name: "Absence follow-up",
       threshold: 3,
@@ -74,6 +76,7 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
       cooldown_days: 30,
       active_only: true,
       notify_leaders: true,
+      assign_task: true,
     },
     inAppTitle: "We miss you",
     dedupBucket: "week",
@@ -150,6 +153,7 @@ export const DEFAULT_FORM_VALUES: RuleFormValues = {
   days: 30,
   days_before: 0,
   notify_leaders: false,
+  assign_task: false,
   active_only: true,
   cooldown_days: 0,
 }
@@ -219,6 +223,12 @@ export function buildRulePayload(
       params: { template: "{{member.name}} triggered “" + values.name + "”." },
     })
   }
+  if (template.fields.includes("assign_task") && values.assign_task) {
+    actions.push({
+      key: "create_follow_up_task",
+      params: { note: "{{member.name}} triggered “" + values.name + "” — needs follow-up." },
+    })
+  }
 
   // Conditions.
   const children: any[] = []
@@ -266,6 +276,7 @@ export function ruleToFormValues(rule: any): { template?: AutomationTemplate; va
     days: params.days ?? DEFAULT_FORM_VALUES.days,
     days_before: params.days_before ?? 0,
     notify_leaders: actions.some((a) => a.key === "notify_leaders"),
+    assign_task: actions.some((a) => a.key === "create_follow_up_task"),
     active_only: activeOnly,
     cooldown_days: rule.cooldown_days ?? 0,
   }

@@ -173,6 +173,14 @@ export const ACTION_CATALOG: readonly ActionSpec[] = [
         description: "Alert the member's unit leaders/admins (in-app in Phase 0).",
         params: { template: "string" },
     },
+    {
+        key: "create_follow_up_task",
+        label: "Create follow-up task",
+        kind: "transactional",
+        channel: "internal",
+        description: "Assign a tracked follow-up task to the member's unit leader (pending/contacted/resolved).",
+        params: { note: "string" },
+    },
 ] as const;
 
 export function getActionSpec(key: string): ActionSpec | undefined {
@@ -284,6 +292,8 @@ export function categoryForAction(key: string): string {
             return "follow_up";
         case "notify_leaders":
             return "alert";
+        case "create_follow_up_task":
+            return "follow_up";
         default:
             return "info";
     }

@@ -55,6 +55,12 @@ function renderAction(action: RuleAction, facts: FactContext): { payload: Record
         payload.title = r.text;
         missing.push(...r.missing);
     }
+    if (typeof p.note === "string") {
+        const r = renderTemplate(p.note, facts);
+        payload.note = r.text;
+        missing.push(...r.missing);
+        if (!preview) preview = r.text;
+    }
     if (p.template_id) payload.template_id = p.template_id;
     if (p.label_id) payload.label_id = p.label_id;
     if (p.category) payload.category = p.category;

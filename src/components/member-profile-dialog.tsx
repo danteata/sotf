@@ -1,6 +1,6 @@
 
 import { format } from "date-fns"
-import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
+import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
@@ -59,6 +59,10 @@ export function MemberProfileDialog({
   )
 
   const allUnits = useQuery(api.units.list, open ? {} : "skip")
+
+  const careTasks = useQuery(api.care_tasks.listForMember,
+    open && member?._id ? { member_id: member._id as Id<"members"> } : "skip"
+  )
 
   const loading = attendanceSummary === undefined || memberLabels === undefined
 
@@ -318,6 +322,59 @@ export function MemberProfileDialog({
                     <div className="p-4 text-center">
                       <XCircle className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">No attendance records yet</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Follow-up History */}
+              <section>
+                <SectionLabel icon={HeartHandshake}>FOLLOW-UP HISTORY</SectionLabel>
+                <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+                  {careTasks === undefined ? (
+                    <div className="p-4 flex items-center justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : careTasks.length > 0 ? (
+                    <div className="max-h-64 overflow-y-auto divide-y divide-border">
+                      {careTasks.map((task) => (
+                        <div key={task._id} className="px-4 py-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-foreground">
+                              Assigned to {task.assignee_name}
+                              {task.source === "automation" && (
+                                <span className="text-xs text-muted-foreground"> · automated</span>
+                              )}
+                            </p>
+                            <Badge
+                              variant={task.status === "resolved" ? "default" : task.status === "contacted" ? "secondary" : "outline"}
+                              className="text-[10px] capitalize"
+                            >
+                              {task.status}
+                            </Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {format(new Date(task.created_at), 'MMM d, yyyy')}
+                          </p>
+                          {task.notes?.length > 0 && (
+                            <div className="mt-2 space-y-1.5 pl-3 border-l border-border">
+                              {task.notes.map((n) => (
+                                <div key={n._id} className="text-xs">
+                                  {n.note && <p className="text-foreground">{n.note}</p>}
+                                  <p className="text-muted-foreground">
+                                    {n.created_by_name || "Someone"} · {format(new Date(n.created_at), 'MMM d, yyyy')}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center">
+                      <HeartHandshake className="h-8 w-8 text-muted-foreground/50 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No follow-up tasks yet</p>
                     </div>
                   )}
                 </div>

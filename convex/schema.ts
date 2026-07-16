@@ -667,4 +667,45 @@ export default defineSchema({
     })
         .index("by_member_and_read", ["member_id", "read"])
         .index("by_org", ["organization_id"]),
+
+    // =======================================================================
+    // CARE PIPELINE — assignment tracking
+    //
+    // Ownership tracking on top of the automation engine's detection/notify
+    // path: who is following up on an at-risk/absent member, and what
+    // happened. Created manually (absent-members UI) or by the automation
+    // engine's create_follow_up_task action.
+    // =======================================================================
+
+    // One row per follow-up assignment, tracked to resolution.
+    care_tasks: defineTable({
+        organization_id: v.id("organizations"),
+        member_id: v.id("members"), // who needs follow-up
+        assigned_to: v.id("members"), // the leader/care-taker
+        status: v.string(), // "pending" | "contacted" | "resolved"
+        source: v.string(), // "manual" | "automation"
+        rule_id: v.optional(v.id("automation_rules")),
+        created_by: v.optional(v.string()), // clerk_user_id, manual creation only
+        created_at: v.string(),
+        updated_at: v.string(),
+        resolved_at: v.optional(v.string()),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_member", ["member_id"])
+        .index("by_assigned_to_and_status", ["assigned_to", "status"])
+        .index("by_org_and_status", ["organization_id", "status"]),
+
+    // Outcome/status-change log per task — this is the member timeline entry.
+    // The first row (status "pending") captures why the task was created.
+    care_task_notes: defineTable({
+        care_task_id: v.id("care_tasks"),
+        organization_id: v.id("organizations"),
+        status: v.string(), // status as of this entry
+        note: v.optional(v.string()),
+        created_by: v.optional(v.string()), // clerk_user_id; absent for automation-sourced entries
+        created_by_name: v.optional(v.string()), // display fallback, e.g. "Automation"
+        created_at: v.string(),
+    })
+        .index("by_task", ["care_task_id"])
+        .index("by_org", ["organization_id"]),
 });

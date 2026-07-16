@@ -23,6 +23,7 @@ import { MemberProfileDialog } from "./member-profile-dialog"
 import type { Member } from "@/types/database"
 import { useOrganization } from "@/hooks/use-organization"
 import { ShareAbsentLinkDialog } from "@/components/share-absent-link-dialog"
+import { AssignFollowUpDialog } from "@/components/assign-follow-up-dialog"
 
 type AttendanceRecord = {
   _id: string
@@ -546,9 +547,12 @@ export function AbsentMembers() {
           <Button size="sm" variant="outline">
             Send Text Message
           </Button>
-          <Button size="sm" variant="outline">
-            Assign for Follow-up
-          </Button>
+          {organization?._id && (
+            <AssignFollowUpDialog
+              organizationId={organization._id}
+              members={sortedMembers.map((m) => ({ id: m.id, name: m.name }))}
+            />
+          )}
           <Button size="sm" variant="outline">
             Print Contact List
           </Button>

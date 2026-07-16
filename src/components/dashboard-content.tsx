@@ -9,6 +9,7 @@ import { UpcomingEvents } from "@/components/upcoming-events"
 import { BirthdayWidget } from "@/components/birthday-widget"
 import { FinancialWidget } from "@/components/financial-widget"
 import { ServiceSummaryWidget } from "@/components/service-summary-widget"
+import { MyCareTasksWidget } from "@/components/my-care-tasks-widget"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -187,6 +188,10 @@ export function DashboardContent() {
         </CardContent>
       </Card>
     </div>
+    <div className="mt-6">
+      <MyCareTasksWidget />
+    </div>
+
     <div className="mt-6">
       <BirthdayWidget members={birthdayMembers as any} />
     </div>

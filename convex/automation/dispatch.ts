@@ -95,7 +95,7 @@ export const drain = internalMutation({
 
 async function processTask(ctx: MutationCtx, task: Doc<"automation_tasks">) {
     const rendered = (task.rendered || {}) as Record<string, any>;
-    const preview: string | undefined = rendered.body ?? rendered.subject ?? rendered.tag;
+    const preview: string | undefined = rendered.body ?? rendered.subject ?? rendered.tag ?? rendered.note;
 
     if (task.dry_run) {
         await finish(ctx, task, "dry_run", "dry_run", preview);
@@ -146,6 +146,49 @@ async function processTask(ctx: MutationCtx, task: Doc<"automation_tasks">) {
             if (!task.member_id) return void (await finish(ctx, task, "failed", "failed", preview, "no member"));
             const count = await notifyLeaders(ctx, task, rendered.body || "");
             await finish(ctx, task, "sent", "sent", `${preview ?? ""} (${count} leaders)`);
+            return;
+        }
+
+        case "create_follow_up_task": {
+            if (!task.member_id) return void (await finish(ctx, task, "failed", "failed", preview, "no member"));
+            const leaderId = await resolvePrimaryLeader(ctx, task.member_id);
+            if (!leaderId) {
+                return void (await finish(ctx, task, "failed", "failed", preview, "no assignable leader"));
+            }
+
+            const now = new Date().toISOString();
+            const careTaskId = await ctx.db.insert("care_tasks", {
+                organization_id: task.organization_id,
+                member_id: task.member_id,
+                assigned_to: leaderId,
+                status: "pending",
+                source: "automation",
+                rule_id: task.rule_id,
+                created_at: now,
+                updated_at: now,
+            });
+            await ctx.db.insert("care_task_notes", {
+                care_task_id: careTaskId,
+                organization_id: task.organization_id,
+                status: "pending",
+                note: rendered.note,
+                created_by_name: "Automation",
+                created_at: now,
+            });
+
+            const clerkUserId = await resolveClerkUserIdForMember(ctx, leaderId);
+            if (clerkUserId) {
+                await ctx.db.insert("notifications", {
+                    clerk_user_id: clerkUserId,
+                    organization_id: task.organization_id,
+                    type: "care",
+                    title: "New follow-up assigned",
+                    body: rendered.note || preview || "A member needs follow-up.",
+                    created_at: now,
+                });
+            }
+
+            await finish(ctx, task, "sent", "sent", preview);
             return;
         }
 
@@ -521,6 +564,36 @@ async function notifyLeaders(ctx: MutationCtx, task: Doc<"automation_tasks">, bo
         }
     }
     return leaderMemberIds.size;
+}
+
+/**
+ * Resolve one best assignee for a follow-up task (ownership needs a single
+ * owner, unlike notifyLeaders' broadcast-to-all). Prefers the primary leader
+ * ("leader" role) of the member's units, falling back to the first active
+ * admin; null if the member is in no unit or the unit has no active admin.
+ */
+async function resolvePrimaryLeader(
+    ctx: MutationCtx,
+    memberId: Id<"members">,
+): Promise<Id<"members"> | null> {
+    const memberUnits = await ctx.db
+        .query("member_units")
+        .withIndex("by_member", (q) => q.eq("member_id", memberId))
+        .collect();
+
+    let fallbackAdmin: Id<"members"> | null = null;
+    for (const mu of memberUnits) {
+        const admins = await ctx.db
+            .query("unit_admins")
+            .withIndex("by_unit", (q) => q.eq("unit_id", mu.unit_id))
+            .collect();
+        for (const a of admins) {
+            if (a.is_active === false) continue;
+            if (a.role === "leader") return a.member_id;
+            if (!fallbackAdmin) fallbackAdmin = a.member_id;
+        }
+    }
+    return fallbackAdmin;
 }
 
 // ---------------------------------------------------------------------------

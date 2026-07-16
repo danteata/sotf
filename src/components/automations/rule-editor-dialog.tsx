@@ -239,6 +239,18 @@ export function RuleEditorDialog({ open, onOpenChange, template, existingRule }:
             </div>
           )}
 
+          {fields.includes("assign_task") && (
+            <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
+              <div>
+                <Label className="cursor-pointer">Create a follow-up task</Label>
+                <p className="text-xs text-muted-foreground">
+                  Assign the member's unit leader a tracked task (pending/contacted/resolved).
+                </p>
+              </div>
+              <Switch checked={values.assign_task} onCheckedChange={(c) => set("assign_task", c)} />
+            </div>
+          )}
+
           {fields.includes("active_only") && (
             <div className="flex items-center justify-between rounded-lg border border-border/60 p-3">
               <div>
