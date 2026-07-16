@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { EventTypesManagement } from "@/components/event-types-management"
 import { DeleteConfirmDialog } from "@/components/delete-confirm-dialog"
+import { EmptyState } from "@/components/ui/empty-state"
+import { LoadingState } from "@/components/ui/loading-state"
 import { toast } from "sonner"
 import { useOrganization } from "@/hooks/use-organization"
 
@@ -91,12 +93,7 @@ export function AdminContent() {
   )
 
   if (isLoading) {
-    return (
-      <div className="w-full flex flex-col items-center justify-center py-20 gap-4 animate-in fade-in duration-500">
-        <RefreshCw className="h-10 w-10 animate-spin text-primary/50" />
-        <p className="text-muted-foreground text-sm">Synchronizing configuration...</p>
-      </div>
-    )
+    return <LoadingState message="Synchronizing configuration..." />
   }
 
   return (
@@ -242,16 +239,15 @@ export function AdminContent() {
                   ))}
                   {filteredUnits.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                        <div className="flex flex-col items-center gap-2">
-                          <Database className="h-8 w-8 opacity-20" />
-                          <p className="text-sm">
-                            {unitTypeFilter === 'all'
+                      <TableCell colSpan={6} className="h-32">
+                        <EmptyState
+                          icon={Database}
+                          title={
+                            unitTypeFilter === 'all'
                               ? "No organizational units found"
                               : `No ${unitTypeFilter} units found`
-                            }
-                          </p>
-                        </div>
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   )}

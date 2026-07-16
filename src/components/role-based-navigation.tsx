@@ -19,7 +19,8 @@ import {
   DollarSign,
   Building2,
   ClipboardList,
-  QrCode
+  QrCode,
+  Zap
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useTerminology } from "@/hooks/use-terminology"
@@ -96,6 +97,13 @@ export function RoleBasedNavigation() {
       title: "User Management",
       href: "/user-management",
       icon: Shield,
+      badge: "Admin",
+      roles: ["admin"]
+    },
+    {
+      title: "Automations",
+      href: "/automations",
+      icon: Zap,
       badge: "Admin",
       roles: ["admin"]
     },

@@ -29,6 +29,7 @@ const AbsentMembersSharePage = lazy(() => import("@/pages/share/AbsentMembersSha
 const MapPage = lazy(() => import("@/pages/map/Map"));
 const ReportsPage = lazy(() => import("@/pages/reports/Reports"));
 const AuditTrailPage = lazy(() => import("@/pages/admin/AuditTrail"));
+const AutomationsPage = lazy(() => import("@/pages/automations/Automations"));
 
 // Member-facing check-in + portal
 const CheckInPage = lazy(() => import("@/pages/check-in/CheckIn"));
@@ -209,6 +210,16 @@ export default function App() {
             <Protected>
               <Suspense fallback={<PageLoader />}>
                 <UserManagementPage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/automations"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <AutomationsPage />
               </Suspense>
             </Protected>
           }
