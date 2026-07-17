@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowUpDown, Phone, Tag, Users, Building2, Eye, Edit, Trash2, SlidersHorizontal, Archive, RotateCcw } from "lucide-react"
+import { ArrowUpDown, Phone, Tag, Users, Building2, Home, Eye, Edit, Trash2, SlidersHorizontal, Archive, RotateCcw } from "lucide-react"
 import { useTerminology } from "@/hooks/use-terminology"
 import {
   DropdownMenu,
@@ -31,6 +31,7 @@ import { MemberEditDialog } from "@/components/member-edit-dialog"
 import { MemberProfileDialog } from "@/components/member-profile-dialog"
 import { BulkLabelDialog } from "@/components/bulk-label-manager"
 import { BulkAddToUnitDialog } from "@/components/bulk-add-to-unit-dialog"
+import { BulkAddToHouseholdDialog } from "@/components/bulk-add-to-household-dialog"
 import { BulkStatusDialog } from "@/components/bulk-status-dialog"
 import { MemberLabels } from "@/components/label-selector"
 import { Member } from "@/types/database"
@@ -230,6 +231,19 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
                 <Button variant="outline" size="sm" className="gap-2 border-blue-300 hover:bg-blue-100 dark:border-blue-700 dark:hover:bg-blue-900/50">
                   <Building2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Add to Unit
+                </Button>
+              }
+              onSuccess={() => {
+                setSelectedMembers([]);
+                onMemberUpdate?.();
+              }}
+            />
+            <BulkAddToHouseholdDialog
+              selectedMembers={members.filter((m: any) => selectedMembers.includes(m.id || ''))}
+              trigger={
+                <Button variant="outline" size="sm" className="gap-2 border-blue-300 hover:bg-blue-100 dark:border-blue-700 dark:hover:bg-blue-900/50">
+                  <Home className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  Add to Household
                 </Button>
               }
               onSuccess={() => {

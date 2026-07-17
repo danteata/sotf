@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Download, Filter, Plus, Upload, Users, Building2, Tag, X } from "lucide-react"
+import { Download, Filter, Plus, Upload, Users, Building2, Home, Tag, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery, useMutation } from "convex/react"
@@ -26,17 +26,23 @@ interface MembersContentProps {
   onViewChange?: (view: 'active' | 'archived') => void
 }
 
+// Sentinel household-filter value for "not in any household" — distinct from
+// any real Id<"households"> so it can sit in the same string[] filter state.
+const NO_HOUSEHOLD = "__none__"
+
 export function MembersContent({ initialMembers, view = 'active', onViewChange }: MembersContentProps) {
   const { trackEvent } = useAnalytics()
   const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [unitFilters, setUnitFilters] = useState<string[]>([])
   const [labelFilters, setLabelFilters] = useState<string[]>([])
+  const [householdFilters, setHouseholdFilters] = useState<string[]>([])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
   const { organization } = useOrganization()
   const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
   const labelsData = useQuery(api.labels.list, {});
+  const householdsData = useQuery(api.households.list, organization?._id ? { organization_id: organization._id } : "skip");
   const mergeDuplicates = useMutation(api.members.mergeDuplicatesByNamePhone)
   const { isAdmin } = useUserRole()
   const { toast } = useToast()
@@ -66,8 +72,18 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
       });
     }
 
+    // Households: member is in ANY selected household (or unassigned, via NO_HOUSEHOLD)
+    if (householdFilters.length > 0) {
+      filtered = filtered.filter(member => {
+        const householdId = member.household_id as string | undefined;
+        return householdFilters.some(f =>
+          f === NO_HOUSEHOLD ? !householdId : householdId === f
+        );
+      });
+    }
+
     return filtered;
-  }, [initialMembers, statusFilters, unitFilters, labelFilters])
+  }, [initialMembers, statusFilters, unitFilters, labelFilters, householdFilters])
 
   // Filter helpers
   const addFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
@@ -78,11 +94,15 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
     setStatusFilters([])
     setUnitFilters([])
     setLabelFilters([])
+    setHouseholdFilters([])
   }
 
   const unitName = (id: string) => unitsData?.find(u => u._id === id)?.name ?? id
   const labelName = (id: string) => (labelsData as any)?.find((l: any) => l._id === id)?.name ?? id
-  const activeFilterCount = statusFilters.length + unitFilters.length + labelFilters.length
+  const householdName = (id: string) =>
+    id === NO_HOUSEHOLD ? "No household" : (householdsData?.find(h => h._id === id)?.name ?? id)
+  const activeFilterCount =
+    statusFilters.length + unitFilters.length + labelFilters.length + householdFilters.length
 
   const totalMembers = filteredMembers.length
 
@@ -243,7 +263,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* key remounts the trigger after each pick so it resets to placeholder */}
             <Select key={`status-${statusFilters.length}`} onValueChange={(v) => addFilter(setStatusFilters, v)}>
               <SelectTrigger className="rounded-lg w-full">
@@ -284,6 +304,24 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 ))}
               </SelectContent>
             </Select>
+            <Select key={`household-${householdFilters.length}`} onValueChange={(v) => addFilter(setHouseholdFilters, v)}>
+              <SelectTrigger className="rounded-lg w-full">
+                <Home className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Household" />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
+                {!householdFilters.includes(NO_HOUSEHOLD) && (
+                  <SelectItem value={NO_HOUSEHOLD} className="italic text-muted-foreground">
+                    No household
+                  </SelectItem>
+                )}
+                {householdsData?.filter(h => !householdFilters.includes(h._id)).map((h) => (
+                  <SelectItem key={h._id} value={h._id}>
+                    {h.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Active filters + count */}
@@ -309,6 +347,14 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 <Badge key={`l-${id}`} variant="secondary" className="gap-1 pl-2.5 font-normal">
                   {labelName(id)}
                   <button type="button" onClick={() => removeFilter(setLabelFilters, id)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {householdFilters.map(id => (
+                <Badge key={`h-${id}`} variant="secondary" className="gap-1 pl-2.5 font-normal">
+                  {householdName(id)}
+                  <button type="button" onClick={() => removeFilter(setHouseholdFilters, id)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>

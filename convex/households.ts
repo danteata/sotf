@@ -179,52 +179,86 @@ export const update = mutation({
     },
 });
 
+/**
+ * Shared core for adding one member to a household: org match, scope check,
+ * the household_id patch, and address auto-populate (only when the
+ * household doesn't already have one set — never overwrites an address
+ * someone already entered for the family). Re-fetches `household` itself so
+ * repeated calls in a bulk loop see each other's auto-populated address.
+ */
+async function addMemberToHousehold(
+    ctx: MutationCtx,
+    user: Doc<"users">,
+    householdId: Id<"households">,
+    memberId: Id<"members">,
+): Promise<void> {
+    const household = await ctx.db.get(householdId);
+    if (!household) throw new Error("Household not found");
+    const member = await ctx.db.get(memberId);
+    if (!member) throw new Error("Member not found");
+    if (member.organization_id !== household.organization_id) {
+        throw new Error("Member must be in the same organization as the household");
+    }
+
+    if (!isOrgAdmin(user)) {
+        const scope = await resolveManagedMemberIds(ctx);
+        if (!memberIdInScope(memberId, member.organization_id, scope, callerOrgId(ctx, user))) {
+            throw new Error("Forbidden");
+        }
+    }
+
+    await ctx.db.patch(memberId, { household_id: householdId });
+
+    const householdHasAddress = household.address || household.city || household.plus_code;
+    const patch: Partial<Doc<"households">> = { updated_at: new Date().toISOString() };
+    if (!householdHasAddress && (member.address || member.city || member.plus_code)) {
+        patch.address = member.address;
+        patch.city = member.city;
+        patch.state = member.state;
+        patch.zip = member.zip;
+        patch.country = member.country;
+        patch.plus_code = member.plus_code;
+        patch.latitude = member.latitude;
+        patch.longitude = member.longitude;
+    }
+    await ctx.db.patch(householdId, patch);
+}
+
 export const addMember = mutation({
     args: { household_id: v.id("households"), member_id: v.id("members") },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
+        await addMemberToHousehold(ctx, user, args.household_id, args.member_id);
+        return { ok: true };
+    },
+});
+
+/**
+ * Bulk-add members to a household (mirrors members.bulkAddToUnit). Skips
+ * members already in *any* household — including this one — rather than
+ * silently reassigning them; the caller can remove them from their current
+ * household first if a move is really intended.
+ */
+export const bulkAddMembers = mutation({
+    args: { household_id: v.id("households"), member_ids: v.array(v.id("members")) },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
         const household = await ctx.db.get(args.household_id);
         if (!household) throw new Error("Household not found");
-        const member = await ctx.db.get(args.member_id);
-        if (!member) throw new Error("Member not found");
-        if (member.organization_id !== household.organization_id) {
-            throw new Error("Member must be in the same organization as the household");
-        }
 
-        if (!isOrgAdmin(user)) {
-            const scope = await resolveManagedMemberIds(ctx);
-            if (
-                !memberIdInScope(
-                    args.member_id,
-                    member.organization_id,
-                    scope,
-                    callerOrgId(ctx, user),
-                )
-            ) {
-                throw new Error("Forbidden");
+        let added = 0;
+        let skipped = 0;
+        for (const memberId of args.member_ids) {
+            const member = await ctx.db.get(memberId);
+            if (!member || member.household_id) {
+                skipped++;
+                continue;
             }
+            await addMemberToHousehold(ctx, user, args.household_id, memberId);
+            added++;
         }
 
-        await ctx.db.patch(args.member_id, { household_id: args.household_id });
-
-        // Auto-populate the household's address from this member's, but only
-        // when the household doesn't already have one set — never overwrite
-        // an address someone already entered for the family.
-        const householdHasAddress =
-            household.address || household.city || household.plus_code;
-        const patch: Partial<Doc<"households">> = { updated_at: new Date().toISOString() };
-        if (!householdHasAddress && (member.address || member.city || member.plus_code)) {
-            patch.address = member.address;
-            patch.city = member.city;
-            patch.state = member.state;
-            patch.zip = member.zip;
-            patch.country = member.country;
-            patch.plus_code = member.plus_code;
-            patch.latitude = member.latitude;
-            patch.longitude = member.longitude;
-        }
-        await ctx.db.patch(args.household_id, patch);
-        return { ok: true };
+        return { added, skipped };
     },
 });
 
