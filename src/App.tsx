@@ -36,11 +36,13 @@ const CommandCenterPage = lazy(() => import("@/pages/command-center/CommandCente
 // Member-facing check-in + portal
 const CheckInPage = lazy(() => import("@/pages/check-in/CheckIn"));
 const KioskPage = lazy(() => import("@/pages/check-in/Kiosk"));
+const GivePage = lazy(() => import("@/pages/give/Give"));
 const PortalLayout = lazy(() => import("@/pages/portal/PortalLayout"));
 const PortalDashboard = lazy(() => import("@/pages/portal/Portal"));
 const PortalAttendance = lazy(() => import("@/pages/portal/PortalAttendance"));
 const PortalProfile = lazy(() => import("@/pages/portal/PortalProfile"));
 const PortalLink = lazy(() => import("@/pages/portal/PortalLink"));
+const PortalGiving = lazy(() => import("@/pages/portal/PortalGiving"));
 
 function PageLoader() {
   return (
@@ -162,6 +164,16 @@ export default function App() {
           }
         />
 
+        {/* Public giving link — no login required, auth handled inside the page */}
+        <Route
+          path="/give/:organizationId"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <GivePage />
+            </Suspense>
+          }
+        />
+
         {/* Steward/kiosk route (admin-authenticated device at the door) */}
         <Route
           path="/kiosk/:sessionId"
@@ -189,6 +201,7 @@ export default function App() {
           <Route path="attendance" element={<PortalAttendance />} />
           <Route path="profile" element={<PortalProfile />} />
           <Route path="link" element={<PortalLink />} />
+          <Route path="giving" element={<PortalGiving />} />
         </Route>
 
         {/* Protected Routes */}

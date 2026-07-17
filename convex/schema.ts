@@ -317,7 +317,25 @@ export default defineSchema({
         notes: v.optional(v.string()),
         receipt_url: v.optional(v.string()),
         organization_id: v.optional(v.id("organizations")),
-    }).index("by_org", ["organization_id"]).index("by_date", ["date"]),
+        // Online giving (Paystack checkout). Absent/undefined on every
+        // manually-entered row = "completed", for backward compatibility —
+        // only rows created by the online-giving checkout flow start as
+        // "pending" and are flipped by the webhook, or "voided" via
+        // voidTransaction (financial.ts no longer hard-deletes real money).
+        status: v.optional(v.string()), // "pending" | "completed" | "failed" | "voided"
+        payment_reference: v.optional(v.string()), // Paystack transaction reference
+        voided_at: v.optional(v.string()),
+        voided_by: v.optional(v.string()), // clerk_user_id
+        void_reason: v.optional(v.string()),
+        // Guest giver info (public /give link, no member record required).
+        giver_name: v.optional(v.string()),
+        giver_email: v.optional(v.string()),
+        giver_phone: v.optional(v.string()),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_date", ["date"])
+        .index("by_member", ["member_id"])
+        .index("by_payment_reference", ["payment_reference"]),
 
     service_financial_summaries: defineTable({
         service_date: v.string(),

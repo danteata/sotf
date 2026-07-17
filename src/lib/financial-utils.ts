@@ -29,6 +29,23 @@ export function formatCurrency(amount: number): string {
     }).format(amount)
 }
 
+/** Online giving is GHS-only (see convex/paystack.ts) — format accordingly,
+ *  rather than reusing formatCurrency's hardcoded USD. */
+export function formatGHS(amount: number): string {
+    return new Intl.NumberFormat('en-GB', {
+        style: 'currency',
+        currency: 'GHS'
+    }).format(amount)
+}
+
+// Online gifts can sit as "pending" (checkout started, not yet confirmed) or
+// "failed"/"voided" — none of those represent money actually in hand, so
+// every total/report calculation must exclude them. Manually-entered rows
+// have no `status` at all (undefined), which counts as completed.
+export function isCountedTransaction(t: { status?: string }): boolean {
+    return (t.status ?? 'completed') === 'completed'
+}
+
 export function calculateTransactionTotals(transactions: FinancialTransaction[]) {
     const totals = {
         income: 0,
@@ -42,7 +59,7 @@ export function calculateTransactionTotals(transactions: FinancialTransaction[])
         totals.byCategory[category as TransactionCategory] = { income: 0, expense: 0, net: 0 }
     })
 
-    transactions.forEach(transaction => {
+    transactions.filter(isCountedTransaction).forEach(transaction => {
         if (transaction.type === 'income') {
             totals.income += transaction.amount
             totals.byCategory[transaction.category].income += transaction.amount
@@ -65,6 +82,7 @@ export function calculateTransactionTotals(transactions: FinancialTransaction[])
 export function calculateBudgetVariance(budgets: BudgetCategory[], transactions: FinancialTransaction[]) {
     const variances = budgets.map(budget => {
         const categoryTransactions = transactions.filter(t =>
+            isCountedTransaction(t) &&
             t.category === budget.category &&
             new Date(t.date).getMonth() === budget.month - 1 &&
             new Date(t.date).getFullYear() === budget.fiscal_year
@@ -107,7 +125,7 @@ export function getTransactionsByPeriod(transactions: FinancialTransaction[], pe
 }
 
 export function getTopTransactionCategories(transactions: FinancialTransaction[], limit = 5) {
-    const categoryTotals = transactions.reduce((acc, transaction) => {
+    const categoryTotals = transactions.filter(isCountedTransaction).reduce((acc, transaction) => {
         if (!acc[transaction.category]) {
             acc[transaction.category] = 0
         }

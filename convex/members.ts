@@ -1,6 +1,6 @@
 
 import { v } from "convex/values";
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { mutation, query, internalQuery, QueryCtx, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { requireOrgAdmin, requireUser, resolveOrgId, getUserSafe, isSuperAdmin, normalizeOrgId } from "./auth";
 import {
@@ -9,6 +9,7 @@ import {
     resolveManagedMemberIds,
     memberIdInScope,
     callerOrgId,
+    getLinkedMember,
 } from "./scope";
 import { assertMemberLimit } from "./entitlements";
 import { internal } from "./_generated/api";
@@ -16,6 +17,25 @@ import { emitEventSafe } from "./automation/events";
 
 // Re-export so existing imports of resolveManagedMemberIds from members keep working.
 export { resolveManagedMemberIds } from "./scope";
+
+/**
+ * Resolve the member linked to a Clerk user id, for server-side code that
+ * only has an identity (e.g. the giving-checkout action) and needs to trust
+ * the *server's* view of "who this is" rather than a client-supplied id.
+ */
+export const getLinkedMemberInternal = internalQuery({
+    args: { clerk_user_id: v.string() },
+    handler: async (ctx, args) => {
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", args.clerk_user_id))
+            .unique();
+        if (!user) return null;
+        const member = await getLinkedMember(ctx, user);
+        if (!member) return null;
+        return { _id: member._id, name: member.name, email: member.email };
+    },
+});
 
 type Ctx = QueryCtx | MutationCtx;
 

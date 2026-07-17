@@ -75,6 +75,21 @@ export const getById = query({
     },
 });
 
+/**
+ * Deliberately public (no auth) — the only org data the public /give giving
+ * link and its checkout action need: enough to render "Giving to <name>" and
+ * to confirm the org can currently accept gifts. Nothing else from the
+ * organizations table is exposed here.
+ */
+export const getPublicGivingInfo = query({
+    args: { id: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const org = await ctx.db.get(args.id);
+        if (!org) return null;
+        return { name: org.name, active: org.active !== false };
+    },
+});
+
 export const current = query({
     handler: async (ctx) => {
         const identity = await ctx.auth.getUserIdentity();

@@ -66,6 +66,18 @@ export async function requireOrgAdmin(ctx: Ctx) {
     return user;
 }
 
+/**
+ * Org admins plus the "treasurer" role — the gate for recording/voiding
+ * financial transactions. The client-side capability matrix
+ * (permissions.ts's `financial` capability) already lists treasurer;
+ * without this, requireOrgAdmin silently 403s anyone with that role.
+ */
+export async function requireFinancialAccess(ctx: Ctx) {
+    const user = await requireUser(ctx);
+    if (!isOrgAdmin(user) && user.role !== "treasurer") throw new Error("Forbidden");
+    return user;
+}
+
 export function normalizeOrgId(
     ctx: Ctx,
     orgId?: string | Id<"organizations"> | null,

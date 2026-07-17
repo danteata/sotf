@@ -1589,6 +1589,7 @@ export const getMyProfile = query({
             state: member.state,
             country: member.country,
             joined_date: member.joined_date,
+            organization_id: member.organization_id ?? null,
             organization_name: org?.name ?? null,
             unit_names: unitNames,
         };

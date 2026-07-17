@@ -14,6 +14,9 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { MemberLabels } from "./label-selector"
 import type { Member } from "@/types/database"
+import { useUserRole } from "@/hooks/use-user-role"
+import { hasCapability } from "@/lib/permissions"
+import { formatGHS } from "@/lib/financial-utils"
 
 interface MemberProfileDialogProps {
   member: Member | null
@@ -110,6 +113,12 @@ export function MemberProfileDialog({
 
   const careTasks = useQuery(api.care_tasks.listForMember,
     open && member?._id ? { member_id: member._id as Id<"members"> } : "skip"
+  )
+
+  const { role } = useUserRole()
+  const canViewGiving = hasCapability(role, "financial")
+  const giving = useQuery(api.financial.listMemberGiving,
+    open && member?._id && canViewGiving ? { member_id: member._id as Id<"members"> } : "skip"
   )
 
   const loading = attendanceSummary === undefined || memberLabels === undefined
@@ -321,8 +330,39 @@ export function MemberProfileDialog({
                     </p>
                     <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5 italic">
                       <CircleDollarSign className="h-3 w-3" />
-                      Giving: not available yet
+                      Giving signal: not yet factored into this score
                     </p>
+                  </div>
+                </section>
+              )}
+
+              {canViewGiving && (
+                <section>
+                  <SectionLabel icon={CircleDollarSign}>GIVING</SectionLabel>
+                  <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
+                    {giving === undefined ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : giving.length === 0 ? (
+                      <span className="text-xs text-muted-foreground italic">No gifts recorded yet</span>
+                    ) : (
+                      <>
+                        <p className="text-sm font-medium text-foreground">
+                          {formatGHS(giving.reduce((sum, g) => sum + g.amount, 0))} total
+                        </p>
+                        <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                          {giving.slice(0, 10).map((g) => (
+                            <div key={g._id} className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground capitalize">
+                                {g.category} &middot; {g.date}
+                              </span>
+                              <span className="font-medium text-foreground">{formatGHS(g.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </section>
               )}

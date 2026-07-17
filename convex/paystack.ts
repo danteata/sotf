@@ -18,11 +18,12 @@
  */
 
 import { action, query, internalQuery, internalMutation } from './_generated/server'
-import { internal } from './_generated/api'
+import { api, internal } from './_generated/api'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
 import { isOrgAdmin } from './auth'
 import { isProActive } from './entitlements'
+import { GIVING_CATEGORIES } from './financial'
 
 const PAYSTACK_API = 'https://api.paystack.co'
 
@@ -126,6 +127,159 @@ export const initializeCheckout = action({
             authorizationUrl: data.authorization_url,
             reference: data.reference,
             accessCode: data.access_code,
+        }
+    },
+})
+
+// ---------------------------------------------------------------------------
+// Member giving — a fundamentally different flow from subscription billing:
+// no plan, no requireOrg (must work for unauthenticated guests giving via a
+// public link, not just signed-in org admins), and the destination table is
+// financial_transactions, not subscriptions. Reuses the same paystack<T>()/
+// secretKey() plumbing and "action initializes -> webhook confirms" shape.
+// ---------------------------------------------------------------------------
+
+const GIVING_AMOUNT_CEILING = 1_000_000 // GHS sanity guardrail, not a business rule
+
+function assertValidGivingAmount(amount: number) {
+    if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error('Enter a valid amount greater than zero.')
+    }
+    if (amount > GIVING_AMOUNT_CEILING) {
+        throw new Error(`That amount is larger than a single gift can be (max ${GIVING_AMOUNT_CEILING}).`)
+    }
+}
+
+/**
+ * Paystack's /transaction/initialize requires an `email` field on every
+ * request, regardless of which channel the giver ends up paying with on the
+ * hosted checkout (card, mobile money, bank transfer). Most Ghanaian givers
+ * will pay via MOMO from their phone and have no reason to type an email —
+ * so email stays optional in the UI, and this placeholder satisfies
+ * Paystack's API without adding friction to that flow. Uses example.com
+ * (RFC 2606-reserved for documentation, guaranteed never to deliver) rather
+ * than the more obviously-fake .invalid TLD, which Paystack's own validator
+ * rejects outright ("Invalid Email Address Passed"). The *real* giver_email
+ * (if any) is still stored on the ledger row untouched.
+ */
+function paystackPlaceholderEmail(reference: string): string {
+    return `giving+${reference}@example.com`
+}
+
+/** Opaque reference for a giving checkout attempt (not a secret, just an id). */
+function generateGivingReference(): string {
+    const bytes = new Uint8Array(16)
+    crypto.getRandomValues(bytes)
+    const hex = Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    return `give_${hex}`
+}
+
+/**
+ * Start a one-off giving checkout. No auth required — works for a signed-in
+ * portal member (auto-attached to their member record, server-resolved, not
+ * trusted from the client) and for an anonymous guest on the public /give
+ * link. All giver_* fields are optional, including email — most givers will
+ * pay via mobile money from their phone and shouldn't need to type one; see
+ * paystackPlaceholderEmail for how Paystack's own email requirement is
+ * satisfied without that friction. Inserts the ledger row as "pending"
+ * before ever calling Paystack, so there's always a local record even if the
+ * Paystack call itself fails.
+ */
+export const initializeGivingCheckout = action({
+    args: {
+        organization_id: v.id('organizations'),
+        amount: v.number(),
+        category: v.string(),
+        member_id: v.optional(v.id('members')),
+        giver_name: v.optional(v.string()),
+        giver_email: v.optional(v.string()),
+        giver_phone: v.optional(v.string()),
+        note: v.optional(v.string()),
+        callback_url: v.optional(v.string()),
+    },
+    handler: async (ctx, args): Promise<{ authorizationUrl: string; reference: string }> => {
+        assertValidGivingAmount(args.amount)
+        if (!(GIVING_CATEGORIES as readonly string[]).includes(args.category)) {
+            throw new Error('Invalid giving category.')
+        }
+
+        const org = await ctx.runQuery(api.organizations.getPublicGivingInfo, {
+            id: args.organization_id,
+        })
+        if (!org || !org.active) {
+            throw new Error('This organization cannot currently accept gifts.')
+        }
+
+        const identity = await ctx.auth.getUserIdentity()
+        let memberId = args.member_id
+        let giverName = args.giver_name
+        let giverEmail = args.giver_email ?? identity?.email
+        let recordedBy = 'public_giving_link'
+        let recordedByName = args.giver_name?.trim() || 'Guest giver'
+
+        if (identity) {
+            recordedBy = identity.subject
+            // Server-resolved, not client-trusted: a signed-in member can't
+            // attribute their gift to someone else's member_id by mistake.
+            const linked = await ctx.runQuery(internal.members.getLinkedMemberInternal, {
+                clerk_user_id: identity.subject,
+            })
+            if (linked) {
+                memberId = linked._id
+                giverName = linked.name
+                recordedByName = linked.name
+                giverEmail = giverEmail ?? linked.email ?? identity.email
+            }
+        }
+
+        const reference = generateGivingReference()
+        const paystackEmail = giverEmail ?? paystackPlaceholderEmail(reference)
+
+        const transactionId: Id<'financial_transactions'> = await ctx.runMutation(
+            internal.financial.createPendingGivingTransaction,
+            {
+                organization_id: args.organization_id,
+                amount: args.amount,
+                category: args.category,
+                member_id: memberId,
+                member_name: giverName,
+                giver_name: giverName,
+                giver_email: giverEmail,
+                giver_phone: args.giver_phone,
+                notes: args.note,
+                payment_reference: reference,
+                recorded_by: recordedBy,
+                recorded_by_name: recordedByName,
+            },
+        )
+
+        try {
+            const data = await paystack<{
+                authorization_url: string
+                access_code: string
+                reference: string
+            }>('/transaction/initialize', 'POST', {
+                email: paystackEmail,
+                amount: Math.round(args.amount * 100), // GHS major units -> pesewas
+                currency: 'GHS',
+                reference,
+                callback_url: args.callback_url ?? process.env.PAYSTACK_CALLBACK_URL,
+                metadata: {
+                    type: 'donation',
+                    organizationId: args.organization_id,
+                    transactionId,
+                    member_id: memberId,
+                },
+            })
+            return { authorizationUrl: data.authorization_url, reference: data.reference }
+        } catch (err) {
+            await ctx.runMutation(internal.financial.markGivingTransactionFailed, {
+                id: transactionId,
+                reason: err instanceof Error ? err.message : 'Paystack initialization failed',
+            })
+            throw err
         }
     },
 })

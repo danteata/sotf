@@ -1,11 +1,12 @@
 import { Outlet, NavLink } from "react-router-dom"
-import { User, Calendar, QrCode } from "lucide-react"
+import { User, Calendar, QrCode, HeartHandshake } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 
 const portalNav = [
     { to: "/portal", label: "My Check-in", icon: QrCode, end: true },
     { to: "/portal/attendance", label: "My Attendance", icon: Calendar },
+    { to: "/portal/giving", label: "My Giving", icon: HeartHandshake },
     { to: "/portal/profile", label: "My Profile", icon: User },
 ]
 

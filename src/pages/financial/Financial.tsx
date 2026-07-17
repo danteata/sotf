@@ -35,7 +35,7 @@ import {
     Filter,
     Download,
     Edit,
-    Trash2,
+    Ban,
     DollarSign,
     Calendar as CalendarIcon,
     ArrowUpRight,
@@ -81,7 +81,7 @@ export default function FinancialPage() {
     // Convex Mutations
     const createTransaction = useMutation(api.financial.createTransaction)
     const updateTransaction = useMutation(api.financial.updateTransaction)
-    const removeTransaction = useMutation(api.financial.removeTransaction)
+    const voidTransaction = useMutation(api.financial.voidTransaction)
 
     const handleSaveTransaction = async (transactionData: any) => {
         try {
@@ -105,11 +105,18 @@ export default function FinancialPage() {
         }
     }
 
-    const handleDeleteTransaction = async (transactionId: string) => {
-        if (!confirm('Are you sure you want to delete this transaction?')) return
+    const handleVoidTransaction = async (transactionId: string) => {
+        // Financial records are never deleted once entered — voiding keeps
+        // the row (audit-preserving) but excludes it from totals/reports.
+        const reason = window.prompt('Reason for voiding this transaction:')
+        if (reason === null) return
+        if (!reason.trim()) {
+            toast({ title: "Void cancelled", description: "A reason is required.", variant: "destructive" })
+            return
+        }
         try {
-            await removeTransaction({ id: transactionId as Id<"financial_transactions"> })
-            toast({ title: "Success", description: "Transaction deleted" })
+            await voidTransaction({ id: transactionId as Id<"financial_transactions">, reason: reason.trim() })
+            toast({ title: "Success", description: "Transaction voided" })
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" })
         }
@@ -362,23 +369,38 @@ export default function FinancialPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredTransactions.map((transaction) => (
-                                        <TableRow key={transaction._id} className="hover:bg-muted/30 border-b border-border/50 transition-colors">
+                                    {filteredTransactions.map((transaction) => {
+                                        const isVoided = transaction.status === 'voided'
+                                        const isPending = transaction.status === 'pending'
+                                        const isFailed = transaction.status === 'failed'
+                                        return (
+                                        <TableRow key={transaction._id} className={cn("hover:bg-muted/30 border-b border-border/50 transition-colors", isVoided && "opacity-50")}>
                                             <TableCell className="pl-6 text-sm text-muted-foreground">
                                                 {new Date(transaction.date).toLocaleDateString()}
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col gap-1">
-                                                    <Badge variant="outline" className="w-fit text-[10px] bg-muted/50 border-border/50 text-muted-foreground">
-                                                        {transaction.category}
-                                                    </Badge>
-                                                    <span className="font-medium text-sm text-foreground truncate max-w-[200px]">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Badge variant="outline" className="w-fit text-[10px] bg-muted/50 border-border/50 text-muted-foreground">
+                                                            {transaction.category}
+                                                        </Badge>
+                                                        {isVoided && (
+                                                            <Badge variant="destructive" className="text-[10px]" title={transaction.void_reason}>Voided</Badge>
+                                                        )}
+                                                        {isPending && (
+                                                            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/30">Pending</Badge>
+                                                        )}
+                                                        {isFailed && (
+                                                            <Badge variant="outline" className="text-[10px] text-muted-foreground">Failed</Badge>
+                                                        )}
+                                                    </div>
+                                                    <span className={cn("font-medium text-sm text-foreground truncate max-w-[200px]", isVoided && "line-through")}>
                                                         {transaction.description}
                                                     </span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-sm">
-                                                {transaction.member_name || transaction.event_name || <span className="text-muted-foreground italic">System</span>}
+                                                {transaction.member_name || transaction.giver_name || transaction.event_name || <span className="text-muted-foreground italic">System</span>}
                                             </TableCell>
                                             <TableCell>
                                                 <Badge
@@ -399,6 +421,7 @@ export default function FinancialPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
+                                                        disabled={isVoided}
                                                         onClick={() => {
                                                             setEditingTransaction(transaction)
                                                             setShowTransactionDialog(true)
@@ -410,14 +433,16 @@ export default function FinancialPage() {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                                                        onClick={() => transaction._id && handleDeleteTransaction(transaction._id)}
+                                                        disabled={isVoided}
+                                                        onClick={() => transaction._id && handleVoidTransaction(transaction._id)}
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Ban className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                        )
+                                    })}
                                 </TableBody>
                             </Table>
                             {filteredTransactions.length === 0 && (

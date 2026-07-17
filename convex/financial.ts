@@ -1,8 +1,39 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId } from "./auth";
-import { api, internal } from "./_generated/api";
+import {
+    isOrgAdmin,
+    isSuperAdmin,
+    requireFinancialAccess,
+    requireOrgAccess,
+    requireOrgAdmin,
+    requireSuperAdmin,
+    requireUser,
+    resolveOrgId,
+} from "./auth";
+import { getLinkedMember } from "./scope";
+import { internal } from "./_generated/api";
+
+// Categories that count as "giving" (member-attributed income), as opposed
+// to generic income/expense bookkeeping. Mirrors src/lib/financial-utils.ts's
+// TRANSACTION_CATEGORIES subset — keep both in sync if this list changes.
+export const GIVING_CATEGORIES = ["tithe", "offering", "donation", "mission"] as const;
+
+/** Positive, finite amounts only. No existing convention to reuse — this is
+ *  the first amount validation anywhere in the codebase. */
+function assertPositiveAmount(amount: number) {
+    if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error("Amount must be a positive number.");
+    }
+}
+
+function isCompletedGivingRow(row: { type: string; category: string; status?: string }): boolean {
+    return (
+        row.type === "income" &&
+        (GIVING_CATEGORIES as readonly string[]).includes(row.category) &&
+        (row.status ?? "completed") === "completed"
+    );
+}
 
 // --- Transactions ---
 
@@ -41,7 +72,8 @@ export const createTransaction = mutation({
         organization_id: v.optional(v.id("organizations")),
     },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        assertPositiveAmount(args.amount);
+        const user = await requireFinancialAccess(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         const transactionId = await ctx.db.insert("financial_transactions", {
             ...args,
@@ -91,11 +123,15 @@ export const updateTransaction = mutation({
         receipt_url: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        assertPositiveAmount(args.amount);
+        const user = await requireFinancialAccess(ctx);
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Transaction not found");
         if (existing.organization_id) {
             await requireOrgAccess(ctx, existing.organization_id);
+        }
+        if (existing.status === "voided") {
+            throw new Error("Cannot edit a voided transaction.");
         }
         const { id, ...data } = args;
 
@@ -129,10 +165,17 @@ export const updateTransaction = mutation({
     },
 });
 
+/**
+ * Hard delete — a rare escape hatch (e.g. a genuine test/mistaken entry with
+ * no real money behind it), tightened to super_admin only. For anything that
+ * represents real money once recorded, use voidTransaction instead: this
+ * table has no reversal/void concept until now, and financial records should
+ * never just disappear.
+ */
 export const removeTransaction = mutation({
     args: { id: v.id("financial_transactions") },
     handler: async (ctx, args) => {
-        const user = await requireOrgAdmin(ctx);
+        const user = await requireSuperAdmin(ctx);
         const existing = await ctx.db.get(args.id);
         if (!existing) throw new Error("Transaction not found");
         if (existing.organization_id) {
@@ -161,6 +204,226 @@ export const removeTransaction = mutation({
         });
 
         await ctx.db.delete(args.id);
+    },
+});
+
+/**
+ * Void a transaction: keeps the row (audit-preserving) but marks it excluded
+ * from ledger totals via `status: "voided"`. This is the normal way to
+ * correct/reverse a financial record — org admins and treasurers both use
+ * this day-to-day, unlike removeTransaction above.
+ */
+export const voidTransaction = mutation({
+    args: { id: v.id("financial_transactions"), reason: v.string() },
+    handler: async (ctx, args) => {
+        const user = await requireFinancialAccess(ctx);
+        const existing = await ctx.db.get(args.id);
+        if (!existing) throw new Error("Transaction not found");
+        if (existing.organization_id) {
+            await requireOrgAccess(ctx, existing.organization_id);
+        }
+        if (existing.status === "voided") {
+            throw new Error("Transaction is already voided.");
+        }
+        const reason = args.reason.trim();
+        if (!reason) throw new Error("A reason is required to void a transaction.");
+
+        await ctx.db.patch(args.id, {
+            status: "voided",
+            voided_at: new Date().toISOString(),
+            voided_by: user.clerk_user_id,
+            void_reason: reason,
+        });
+
+        await ctx.runMutation(internal.audit.logEvent, {
+            action: "financial.transaction_voided",
+            entity_type: "financial_transaction",
+            entity_id: args.id,
+            entity_name: `${existing.type}: ${existing.description} - ${existing.amount}`,
+            performed_by: user.clerk_user_id,
+            performed_by_name: user.name || "Unknown",
+            performed_by_role: user.role,
+            organization_id: existing.organization_id,
+            changes: { void_reason: reason, previous_status: existing.status ?? "completed" },
+        });
+    },
+});
+
+// --- Member giving ---
+
+/** A member's own completed giving history — powers the portal view. */
+export const getMyGiving = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await requireUser(ctx);
+        const member = await getLinkedMember(ctx, user);
+        if (!member) return [];
+        const rows = await ctx.db
+            .query("financial_transactions")
+            .withIndex("by_member", (q) => q.eq("member_id", member._id))
+            .order("desc")
+            .collect();
+        return rows.filter(isCompletedGivingRow);
+    },
+});
+
+/** A specific member's completed giving history — treasurer/org-admin view. */
+export const listMemberGiving = query({
+    args: { member_id: v.id("members") },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+        if (!isOrgAdmin(user) && user.role !== "treasurer") throw new Error("Forbidden");
+        const member = await ctx.db.get(args.member_id);
+        if (!member) return [];
+        if (member.organization_id) {
+            await requireOrgAccess(ctx, member.organization_id);
+        }
+        const rows = await ctx.db
+            .query("financial_transactions")
+            .withIndex("by_member", (q) => q.eq("member_id", args.member_id))
+            .order("desc")
+            .collect();
+        return rows.filter(isCompletedGivingRow);
+    },
+});
+
+// --- Online giving (Paystack) ---
+//
+// initializeGivingCheckout (convex/paystack.ts) inserts the pending row via
+// createPendingGivingTransaction BEFORE calling Paystack, so there's always a
+// local record even if the Paystack call itself fails. The webhook
+// (convex/http.ts) then calls applyDonationEvent, which is idempotent by
+// payment_reference — a retried webhook for an already-completed gift is a
+// no-op, never a double-count.
+
+export const createPendingGivingTransaction = internalMutation({
+    args: {
+        organization_id: v.id("organizations"),
+        amount: v.number(),
+        category: v.string(),
+        member_id: v.optional(v.id("members")),
+        member_name: v.optional(v.string()),
+        giver_name: v.optional(v.string()),
+        giver_email: v.optional(v.string()),
+        giver_phone: v.optional(v.string()),
+        notes: v.optional(v.string()),
+        payment_reference: v.string(),
+        recorded_by: v.string(),
+        recorded_by_name: v.string(),
+    },
+    handler: async (ctx, args) => {
+        return await ctx.db.insert("financial_transactions", {
+            type: "income",
+            category: args.category,
+            amount: args.amount,
+            description: args.giver_name
+                ? `Online gift via Paystack — ${args.giver_name}`
+                : "Online gift via Paystack",
+            date: new Date().toISOString().slice(0, 10),
+            payment_method: "online",
+            member_id: args.member_id,
+            member_name: args.member_name,
+            giver_name: args.giver_name,
+            giver_email: args.giver_email,
+            giver_phone: args.giver_phone,
+            recorded_by: args.recorded_by,
+            recorded_by_name: args.recorded_by_name,
+            notes: args.notes,
+            organization_id: args.organization_id,
+            status: "pending",
+            payment_reference: args.payment_reference,
+        });
+    },
+});
+
+export const markGivingTransactionFailed = internalMutation({
+    args: { id: v.id("financial_transactions"), reason: v.string() },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db.get(args.id);
+        if (!existing) return;
+        const note = `Checkout initialization failed: ${args.reason}`;
+        await ctx.db.patch(args.id, {
+            status: "failed",
+            notes: existing.notes ? `${existing.notes}\n${note}` : note,
+        });
+    },
+});
+
+/**
+ * Apply a donation webhook event. Idempotent by payment_reference: a Paystack
+ * retry for an already-resolved (completed/failed) reference is a no-op, so
+ * this is safe to call more than once for the same event. Never throws —
+ * mirrors the webhook's "always 200, log anomalies instead of failing" contract.
+ */
+export const applyDonationEvent = internalMutation({
+    args: {
+        reference: v.string(),
+        outcome: v.union(v.literal("success"), v.literal("failed")),
+        chargedAmountMinorUnits: v.optional(v.number()),
+        paidAt: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const existing = await ctx.db
+            .query("financial_transactions")
+            .withIndex("by_payment_reference", (q) => q.eq("payment_reference", args.reference))
+            .first();
+
+        if (!existing) {
+            await ctx.runMutation(internal.audit.logEvent, {
+                action: "financial.giving_webhook_unknown_reference",
+                entity_type: "financial_transaction",
+                entity_id: args.reference,
+                performed_by: "paystack_webhook",
+                performed_by_name: "Paystack",
+                performed_by_role: "system",
+                metadata: { reference: args.reference, outcome: args.outcome },
+            });
+            return;
+        }
+
+        // Idempotent: already resolved, a retried webhook is a no-op.
+        if (existing.status === "completed" || existing.status === "failed") return;
+
+        if (args.outcome === "failed") {
+            await ctx.db.patch(existing._id, { status: "failed" });
+            return;
+        }
+
+        // Paystack's reported charge is authoritative for what actually
+        // moved; flag (never silently swallow) any mismatch against what we
+        // initialized the checkout with.
+        const chargedAmount =
+            args.chargedAmountMinorUnits != null ? args.chargedAmountMinorUnits / 100 : existing.amount;
+        if (Math.abs(chargedAmount - existing.amount) > 0.01) {
+            await ctx.runMutation(internal.audit.logEvent, {
+                action: "financial.giving_amount_mismatch",
+                entity_type: "financial_transaction",
+                entity_id: existing._id,
+                performed_by: "paystack_webhook",
+                performed_by_name: "Paystack",
+                performed_by_role: "system",
+                organization_id: existing.organization_id,
+                changes: { initialized_amount: existing.amount, charged_amount: chargedAmount },
+            });
+        }
+
+        await ctx.db.patch(existing._id, {
+            status: "completed",
+            amount: chargedAmount,
+            date: (args.paidAt ?? new Date().toISOString()).slice(0, 10),
+        });
+
+        await ctx.runMutation(internal.audit.logEvent, {
+            action: "financial.giving_confirmed",
+            entity_type: "financial_transaction",
+            entity_id: existing._id,
+            entity_name: `${existing.category}: ${chargedAmount}`,
+            performed_by: "paystack_webhook",
+            performed_by_name: "Paystack",
+            performed_by_role: "system",
+            organization_id: existing.organization_id,
+            changes: { amount: chargedAmount, status: "completed" },
+        });
     },
 });
 

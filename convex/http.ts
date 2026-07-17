@@ -113,6 +113,37 @@ function normalizePaystackEvent(event: {
     }
 }
 
+/**
+ * Donation events carry `metadata.type === 'donation'` (set by
+ * initializeGivingCheckout) and update financial_transactions, not
+ * subscriptions — routed here before normalizePaystackEvent even runs, since
+ * that function's `charge.success` branch explicitly discards any charge
+ * without a plan/subscription code (exactly what a one-off gift looks like).
+ */
+async function handleDonationEvent(
+    ctx: { runMutation: (ref: any, args: any) => Promise<any> },
+    event: { event?: string; data?: Record<string, any> },
+): Promise<void> {
+    const reference = event.data?.reference
+    if (typeof reference !== 'string' || !reference) return
+
+    if (event.event === 'charge.success') {
+        await ctx.runMutation(internal.financial.applyDonationEvent, {
+            reference,
+            outcome: 'success',
+            chargedAmountMinorUnits:
+                typeof event.data?.amount === 'number' ? event.data.amount : undefined,
+            paidAt: event.data?.paid_at,
+        })
+    } else if (event.event === 'charge.failed') {
+        await ctx.runMutation(internal.financial.applyDonationEvent, {
+            reference,
+            outcome: 'failed',
+        })
+    }
+    // Any other event type for a donation reference is ignored, not an error.
+}
+
 const paystackWebhook = httpAction(async (ctx, request) => {
     const secret = process.env.PAYSTACK_SECRET_KEY
     if (!secret) {
@@ -132,6 +163,11 @@ const paystackWebhook = httpAction(async (ctx, request) => {
         event = JSON.parse(raw)
     } catch {
         return new Response('Bad JSON', { status: 400 })
+    }
+
+    if (event.data?.metadata?.type === 'donation') {
+        await handleDonationEvent(ctx, event)
+        return new Response('ok', { status: 200 })
     }
 
     const normalized = normalizePaystackEvent(event)

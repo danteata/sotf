@@ -251,6 +251,16 @@ export interface FinancialTransaction {
   organization_id: string
   created_at?: string | number
   updated_at?: string | number
+  // Online giving (Paystack). Undefined status = a manually-entered row,
+  // treated as completed.
+  status?: 'pending' | 'completed' | 'failed' | 'voided'
+  payment_reference?: string
+  voided_at?: string
+  voided_by?: string
+  void_reason?: string
+  giver_name?: string
+  giver_email?: string
+  giver_phone?: string
 }
 
 export interface BudgetCategory {
