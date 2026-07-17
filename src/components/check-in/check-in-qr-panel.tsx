@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { Link } from "react-router-dom"
-import QRCode from "qrcode"
 import { QrCode, RefreshCw, Lock, Unlock, Loader2, Users, Clock, Monitor } from "lucide-react"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../../convex/_generated/api"
@@ -14,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { SessionQrCode } from "@/components/check-in/session-qr-code"
 
 type SessionState = {
     sessionId: string | null
@@ -35,7 +35,6 @@ export function CheckInQrPanel({ eventTypes }: { eventTypes: { _id: string; labe
         display_name: null,
         status: null,
     })
-    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
     const [creating, setCreating] = useState(false)
 
     const createOrOpen = useMutation(api.check_ins.createOrOpenSession)
@@ -45,21 +44,6 @@ export function CheckInQrPanel({ eventTypes }: { eventTypes: { _id: string; labe
         api.check_ins.getLiveSessionStats,
         session.sessionId ? { sessionId: session.sessionId as any } : "skip",
     )
-
-    // Generate the QR data URL whenever the token changes.
-    useEffect(() => {
-        if (!session.qrUrl) {
-            setQrDataUrl(null)
-            return
-        }
-        let cancelled = false
-        QRCode.toDataURL(session.qrUrl, { width: 512, margin: 2, errorCorrectionLevel: "M" })
-            .then((url) => {
-                if (!cancelled) setQrDataUrl(url)
-            })
-            .catch((err) => console.error("QR generation failed", err))
-        return () => { cancelled = true }
-    }, [session.qrUrl])
 
     const canCreate = useMemo(
         () => !!selectedEventTypeId && !!date && !creating,
@@ -209,11 +193,9 @@ export function CheckInQrPanel({ eventTypes }: { eventTypes: { _id: string; labe
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center gap-4">
-                    {qrDataUrl ? (
+                    {session.qrUrl ? (
                         <>
-                            <div className="rounded-lg border border-border/50 bg-white p-4">
-                                <img src={qrDataUrl} alt="Check-in QR code" className="w-56 h-56" />
-                            </div>
+                            <SessionQrCode qrUrl={session.qrUrl} />
                             <p className="text-xs text-muted-foreground text-center max-w-xs">
                                 Members scan this with their phone camera. They must be signed in to check in.
                             </p>

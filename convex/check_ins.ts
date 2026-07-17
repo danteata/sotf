@@ -445,6 +445,162 @@ export const listRecentSessions = query({
     },
 });
 
+const BENIGN_AUDIT_OUTCOMES = new Set(["success", "already_checked_in"]);
+
+export const getCommandCenterSummary = query({
+    args: {
+        organization_id: v.optional(v.id("organizations")),
+        date: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+        const orgId = (isSuperAdmin(user)
+            ? args.organization_id
+            : await resolveOrgId(ctx, args.organization_id)) as Id<"organizations"> | undefined;
+        if (!orgId) {
+            return {
+                sessions: [],
+                totalHeadcount: 0,
+                firstTimersToday: 0,
+                lateArrivals: { count: 0, list: [] },
+                recentFailures: [],
+                openableEventTypes: [],
+            };
+        }
+
+        // Today's sessions, enriched with event type label/color, open-first.
+        const rawSessions = await ctx.db
+            .query("check_in_sessions")
+            .withIndex("by_org_and_date", (q) =>
+                q.eq("organization_id", orgId).eq("date", args.date),
+            )
+            .collect();
+
+        const sessions = await Promise.all(
+            rawSessions.map(async (s) => {
+                const eventType = await ctx.db.get(s.event_type_id);
+                return {
+                    ...s,
+                    event_type_label: eventType?.label ?? null,
+                    event_type_value: eventType?.value ?? null,
+                    event_type_color: eventType?.color ?? null,
+                };
+            }),
+        );
+        sessions.sort((a, b) => {
+            if (a.status === "open" && b.status !== "open") return -1;
+            if (a.status !== "open" && b.status === "open") return 1;
+            return 0;
+        });
+
+        const totalHeadcount = sessions.reduce(
+            (sum, s) => sum + (s.check_in_count ?? 0),
+            0,
+        );
+
+        // First-timers: visitors created today (UTC day boundaries, matching
+        // the date-string convention used across the app).
+        const dayStart = `${args.date}T00:00:00.000Z`;
+        const dayEnd = `${args.date}T23:59:59.999Z`;
+        const orgMembers = await ctx.db
+            .query("members")
+            .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+            .collect();
+        const firstTimersToday = orgMembers.filter(
+            (m) =>
+                m.status === "visitor" &&
+                !m.archived_at &&
+                m.created_at &&
+                m.created_at >= dayStart &&
+                m.created_at <= dayEnd,
+        ).length;
+
+        // Late arrivals across today's attendance records for this org.
+        const attendanceRecords = await ctx.db
+            .query("attendance")
+            .withIndex("by_org_and_date", (q) =>
+                q.eq("organization_id", orgId).eq("date", args.date),
+            )
+            .collect();
+        const lateList: Array<{
+            member_id: Id<"members">;
+            member_name: string | null;
+            event_type_label: string | null;
+            minutes_late: number | undefined;
+        }> = [];
+        for (const record of attendanceRecords) {
+            const relations = await ctx.db
+                .query("member_attendance")
+                .withIndex("by_attendance", (q) => q.eq("attendance_id", record._id))
+                .collect();
+            const eventType = record.event_type_id
+                ? await ctx.db.get(record.event_type_id)
+                : null;
+            for (const r of relations) {
+                if (!r.is_late) continue;
+                const member = await ctx.db.get(r.member_id);
+                lateList.push({
+                    member_id: r.member_id,
+                    member_name: member?.name ?? null,
+                    event_type_label: eventType?.label ?? null,
+                    minutes_late: r.minutes_late,
+                });
+            }
+        }
+
+        // Recent check-in failures today, via the org+timestamp index.
+        const auditRows = await ctx.db
+            .query("check_in_audit")
+            .withIndex("by_org_timestamp", (q) =>
+                q
+                    .eq("organization_id", orgId)
+                    .gte("timestamp", dayStart)
+                    .lte("timestamp", dayEnd),
+            )
+            .order("desc")
+            .collect();
+        const recentFailures = auditRows
+            .filter((a) => !BENIGN_AUDIT_OUTCOMES.has(a.outcome))
+            .slice(0, 20)
+            .map((a) => ({
+                member_name: a.member_name ?? null,
+                method: a.method,
+                outcome: a.outcome,
+                reason: a.reason ?? null,
+                timestamp: a.timestamp,
+            }));
+
+        // Event types with no session yet today, to power "Start a session".
+        // Mirrors event_types.getAll's org-override merge: an org-specific
+        // row with the same `value` takes precedence over the global default.
+        const sessionEventTypeIds = new Set(
+            sessions.map((s) => s.event_type_id as string),
+        );
+        const allEventTypes = await ctx.db.query("event_types").collect();
+        const visibleEventTypes = allEventTypes.filter(
+            (et) => !et.organization_id || et.organization_id === orgId,
+        );
+        const byValue = new Map<string, Doc<"event_types">>();
+        for (const et of visibleEventTypes) {
+            const existing = byValue.get(et.value);
+            if (!existing || et.organization_id === orgId) byValue.set(et.value, et);
+        }
+        const openableEventTypes = Array.from(byValue.values())
+            .filter((et) => et.is_active && !sessionEventTypeIds.has(et._id as string))
+            .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+            .map((et) => ({ _id: et._id, label: et.label, value: et.value }));
+
+        return {
+            sessions,
+            totalHeadcount,
+            firstTimersToday,
+            lateArrivals: { count: lateList.length, list: lateList },
+            recentFailures,
+            openableEventTypes,
+        };
+    },
+});
+
 // ---------------------------------------------------------------------------
 // Kiosk / steward functions
 //

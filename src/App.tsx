@@ -31,6 +31,7 @@ const ReportsPage = lazy(() => import("@/pages/reports/Reports"));
 const AuditTrailPage = lazy(() => import("@/pages/admin/AuditTrail"));
 const AutomationsPage = lazy(() => import("@/pages/automations/Automations"));
 const CareTasksPage = lazy(() => import("@/pages/care/CareTasks"));
+const CommandCenterPage = lazy(() => import("@/pages/command-center/CommandCenter"));
 
 // Member-facing check-in + portal
 const CheckInPage = lazy(() => import("@/pages/check-in/CheckIn"));
@@ -328,6 +329,16 @@ export default function App() {
             <Protected>
               <Suspense fallback={<PageLoader />}>
                 <AttendancePage />
+              </Suspense>
+            </Protected>
+          }
+        />
+        <Route
+          path="/command-center"
+          element={
+            <Protected>
+              <Suspense fallback={<PageLoader />}>
+                <CommandCenterPage />
               </Suspense>
             </Protected>
           }

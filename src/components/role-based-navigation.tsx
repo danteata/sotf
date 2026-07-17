@@ -20,6 +20,7 @@ import {
   QrCode,
   Zap,
   HeartHandshake,
+  Radio,
 } from "lucide-react"
 import { useUserRole } from "@/hooks/use-user-role"
 import { Capability, hasCapability } from "@/lib/permissions"
@@ -72,6 +73,12 @@ export function RoleBasedNavigation() {
       href: "/attendance",
       icon: UserCheck,
       capability: "attendance",
+    },
+    {
+      title: "Command Center",
+      href: "/command-center",
+      icon: Radio,
+      capability: "command_center",
     },
     {
       title: "Care Tasks",
