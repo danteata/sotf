@@ -286,12 +286,12 @@ function ManageHouseholdDialog({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg flex flex-col max-h-[90vh] overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{household.name || "Manage household"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
           <div className="space-y-2">
             <label className="text-sm font-medium">Members</label>
             <div className="rounded-md border divide-y">
@@ -411,7 +411,7 @@ function ManageHouseholdDialog({
           </div>
         </div>
 
-        <DialogFooter className="justify-between sm:justify-between">
+        <DialogFooter className="shrink-0 justify-between sm:justify-between">
           <Button
             variant="ghost"
             className="text-destructive hover:text-destructive"
