@@ -243,53 +243,47 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-3">
-              {/* key remounts the trigger after each pick so it resets to placeholder */}
-              <Select key={`status-${statusFilters.length}`} onValueChange={(v) => addFilter(setStatusFilters, v)}>
-                <SelectTrigger className="rounded-lg">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg shadow-lg border-border/50">
-                  {["active", "inactive", "visitor"].filter(s => !statusFilters.includes(s)).map(s => (
-                    <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
-                  ))}
-                  {statusFilters.length === 3 && (
-                    <div className="px-2 py-1.5 text-xs text-muted-foreground">All statuses selected</div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-4">
-              <Select key={`unit-${unitFilters.length}`} onValueChange={(v) => addFilter(setUnitFilters, v)}>
-                <SelectTrigger className="rounded-lg">
-                  <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Unit" />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
-                  {unitsData?.filter(u => !unitFilters.includes(u._id)).map((unit) => (
-                    <SelectItem key={unit._id} value={unit._id}>
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-5">
-              <Select key={`label-${labelFilters.length}`} onValueChange={(v) => addFilter(setLabelFilters, v)}>
-                <SelectTrigger className="rounded-lg">
-                  <Tag className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Label" />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
-                  {labelsData?.filter((l: any) => !labelFilters.includes(l._id)).map((label: any) => (
-                    <SelectItem key={label._id} value={label._id}>
-                      {label.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* key remounts the trigger after each pick so it resets to placeholder */}
+            <Select key={`status-${statusFilters.length}`} onValueChange={(v) => addFilter(setStatusFilters, v)}>
+              <SelectTrigger className="rounded-lg w-full">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg shadow-lg border-border/50">
+                {["active", "inactive", "visitor"].filter(s => !statusFilters.includes(s)).map(s => (
+                  <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
+                ))}
+                {statusFilters.length === 3 && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">All statuses selected</div>
+                )}
+              </SelectContent>
+            </Select>
+            <Select key={`unit-${unitFilters.length}`} onValueChange={(v) => addFilter(setUnitFilters, v)}>
+              <SelectTrigger className="rounded-lg w-full">
+                <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Unit" />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
+                {unitsData?.filter(u => !unitFilters.includes(u._id)).map((unit) => (
+                  <SelectItem key={unit._id} value={unit._id}>
+                    {unit.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select key={`label-${labelFilters.length}`} onValueChange={(v) => addFilter(setLabelFilters, v)}>
+              <SelectTrigger className="rounded-lg w-full">
+                <Tag className="w-4 h-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="Label" />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg shadow-lg border-border/50 max-h-[300px]">
+                {labelsData?.filter((l: any) => !labelFilters.includes(l._id)).map((label: any) => (
+                  <SelectItem key={label._id} value={label._id}>
+                    {label.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Active filters + count */}
@@ -325,9 +319,15 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 </Button>
               )}
             </div>
-            <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full shrink-0">
-              {totalMembers.toLocaleString()} member{totalMembers !== 1 ? 's' : ''}
-            </span>
+            {/* Only shown when status/unit/label filters narrow the currently
+                loaded page further — otherwise this would just repeat the
+                authoritative total shown above the table (Members.tsx), which
+                already accounts for search across the whole org. */}
+            {activeFilterCount > 0 && (
+              <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full shrink-0">
+                {totalMembers.toLocaleString()} match{totalMembers === 1 ? '' : 'es'} filter{totalMembers !== 1 ? 's' : ''} (of loaded)
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
