@@ -240,11 +240,6 @@ function ManageHouseholdDialog({
   const [addSearch, setAddSearch] = useState("")
   const [address, setAddress] = useState<{ address?: string; city?: string; plus_code?: string } | null>(null)
 
-  const memberIds = useMemo(
-    () => new Set((household?.members ?? []).map((m) => m._id as string)),
-    [household],
-  )
-
   const runOrToastError = async (action: () => Promise<unknown>) => {
     try {
       await action()
@@ -257,29 +252,36 @@ function ManageHouseholdDialog({
     }
   }
 
-  // Same-surname suggestions: members not yet in this household who share a
-  // last name with someone already in it — the common case (kids, spouse)
-  // when the family hasn't all been grouped yet.
+  // Members not already in *any* household (not just this one) — adding
+  // someone who already belongs elsewhere would silently move them, so they
+  // shouldn't show up as a suggestion or search result at all. To reassign
+  // someone, remove them from their current household first.
+  const unassignedMembers = useMemo(
+    () => (allMembers ?? []).filter((m) => !m.household_id),
+    [allMembers],
+  )
+
+  // Same-surname suggestions: unassigned members who share a last name with
+  // someone already in this household — the common case (kids, spouse) when
+  // the family hasn't all been grouped yet.
   const surnameSuggestions = useMemo(() => {
-    if (!allMembers || !household || household.members.length === 0) return []
+    if (!household || household.members.length === 0) return []
     const surnames = new Set(
       household.members.map((m) => surnameOf(m.name)).filter(Boolean),
     )
     if (surnames.size === 0) return []
-    return allMembers
-      .filter((m) => !memberIds.has((m._id ?? m.id) as string))
+    return unassignedMembers
       .filter((m) => surnames.has(surnameOf(m.name)))
       .slice(0, 8)
-  }, [allMembers, household, memberIds])
+  }, [unassignedMembers, household])
 
   const addCandidates = useMemo(() => {
-    if (!allMembers || addSearch.trim().length < 2) return []
+    if (addSearch.trim().length < 2) return []
     const q = addSearch.toLowerCase()
-    return allMembers
-      .filter((m) => !memberIds.has((m._id ?? m.id) as string))
+    return unassignedMembers
       .filter((m) => m.name?.toLowerCase().includes(q))
       .slice(0, 8)
-  }, [allMembers, addSearch, memberIds])
+  }, [unassignedMembers, addSearch])
 
   if (household === undefined) {
     return (

@@ -42,9 +42,10 @@ interface MembersTableProps {
   isArchivedView?: boolean;
 }
 
-import { useMutation } from "convex/react"
+import { useMutation, useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useToast } from "@/components/ui/use-toast"
+import { useOrganization } from "@/hooks/use-organization"
 
 export function MembersTable({ members, onMemberUpdate, isArchivedView = false }: MembersTableProps) {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -61,9 +62,19 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
     units: true,
     labels: true,
     lastAttendance: true,
+    household: true,
   });
   const { terminology } = useTerminology()
   const { toast } = useToast()
+  const { organization } = useOrganization()
+
+  const households = useQuery(
+    api.households.list,
+    organization ? { organization_id: organization._id } : "skip",
+  )
+  const householdNameById = new Map(
+    (households ?? []).map((h) => [h._id as string, h.name || "Unnamed household"]),
+  )
 
   const deleteMember = useMutation(api.members.remove);
   const archiveMember = useMutation(api.members.archive);
@@ -265,6 +276,7 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
             {([
               ["contact", "Contact"],
               ["address", "Address"],
+              ["household", "Household"],
               ["units", "Units"],
               ["labels", "Labels"],
               ["lastAttendance", "Last attendance"],
@@ -301,6 +313,7 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
               </TableHead>
               {visibleCols.contact && <TableHead className="hidden md:table-cell">Contact</TableHead>}
               {visibleCols.address && <TableHead className="hidden md:table-cell">Address</TableHead>}
+              {visibleCols.household && <TableHead className="hidden md:table-cell">Household</TableHead>}
               <TableHead>
                 <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("status")}>
                   <span className="font-bold">Status</span>
@@ -366,6 +379,17 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
                 {visibleCols.address && (
                   <TableCell className="hidden md:table-cell max-w-[160px] truncate text-sm text-muted-foreground">
                     {member.address || member.city || '—'}
+                  </TableCell>
+                )}
+                {visibleCols.household && (
+                  <TableCell className="hidden md:table-cell">
+                    {member.household_id ? (
+                      <Badge variant="outline" className="text-xs">
+                        {householdNameById.get(member.household_id as string) ?? "Household"}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60">Not in a household</span>
+                    )}
                   </TableCell>
                 )}
                 <TableCell>{getStatusBadge(member.status)}</TableCell>
