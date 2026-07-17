@@ -11,6 +11,13 @@ const crons = cronJobs();
 // when an admin forgets to close them.
 crons.interval("expire-check-in-sessions", { minutes: 15 }, internal.check_ins.expireSessions, {});
 
+// Daily: recompute engagement/at-risk scores (Pro orgs only). Rules on
+// member.engagement_score_below read whatever the last recompute wrote — at
+// most a day stale, which is fine for a daily-cadence signal. Fans out per
+// org, walks members in bounded batches, self-rescheduling — same shape as
+// automation-daily-scan below.
+crons.interval("engagement-score-recompute", { hours: 24 }, internal.engagement.recompute.run, {});
+
 // Daily: automation engine scan for derived triggers (consecutive absences,
 // no-attendance-for-N-days, birthdays). Fans out per org and walks members in
 // bounded batches, self-rescheduling. See AUTOMATION_ENGINE_PLAN.md.

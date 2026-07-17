@@ -153,6 +153,15 @@ export default defineSchema({
         // Household this member belongs to (optional; members without one
         // behave exactly as before households existed).
         household_id: v.optional(v.id("households")),
+        // Engagement/at-risk score (Pro feature), recomputed daily by
+        // convex/engagement/recompute.ts. Denormalized so members.listPage's
+        // in-memory sort/filter can use it cheaply — see engagement_score's
+        // by_org_and_engagement_score index below. Undefined on Free orgs
+        // (the recompute job skips them) and until the first run completes.
+        engagement_score: v.optional(v.number()), // 0-100, higher = more engaged
+        engagement_risk_level: v.optional(v.string()), // "low" | "medium" | "high" | "new"
+        engagement_breakdown: v.optional(v.string()), // JSON: per-signal sub-scores, for the profile UI
+        engagement_computed_at: v.optional(v.string()), // ISO timestamp
         // Timestamps
         created_at: v.optional(v.string()), // ISO timestamp
         updated_at: v.optional(v.string()), // ISO timestamp
@@ -165,7 +174,8 @@ export default defineSchema({
         .index("by_org_status", ["organization_id", "status"])
         .index("by_user_id", ["user_id"])
         .index("by_org_and_phone", ["organization_id", "phone"])
-        .index("by_household", ["household_id"]),
+        .index("by_household", ["household_id"])
+        .index("by_org_and_engagement_score", ["organization_id", "engagement_score"]),
 
     // Admins/leaders of a unit (many-to-many). Source of truth for unit-level
     // admin access. Always contains the primary leader (role "leader") plus any

@@ -86,6 +86,8 @@ export async function buildMemberFacts(ctx: Ctx, member: Doc<"members">): Promis
         label_ids: memberLabels.map((ml) => ml.label_id as string),
         age: computeAge(member),
         years_as_member: computeYearsAsMember(member),
+        engagement_score: member.engagement_score,
+        engagement_risk_level: member.engagement_risk_level,
     };
 }
 
@@ -168,6 +170,24 @@ export async function loadMemberAttendedIds(
 }
 
 /**
+ * Filter org attendance records to those applicable to a member: unit-scoped
+ * (an event type with no unit_ids applies to everyone) and, optionally, to a
+ * single event_type_value. Shared by computeStreak and the engagement-score
+ * window helpers below, so every attendance-derived signal agrees on scoping.
+ */
+function applicableAttendanceRecords(
+    orgAttendance: OrgAttendanceContext,
+    memberUnitIds: Set<string>,
+    eventTypeValue?: string,
+): OrgAttendanceRecord[] {
+    return orgAttendance.records.filter((r) => {
+        if (eventTypeValue && r.event_type_value !== eventTypeValue) return false;
+        if (r.unit_ids.length === 0) return true; // applies to all
+        return r.unit_ids.some((u) => memberUnitIds.has(u));
+    });
+}
+
+/**
  * Pure streak computation. Mirrors attendance.getMemberSummary:665.
  * - Filters org records to those applicable to the member (unit scoping) and,
  *   optionally, to a specific event_type_value.
@@ -179,11 +199,7 @@ export function computeStreak(
     memberUnitIds: Set<string>,
     eventTypeValue?: string,
 ): StreakFacts {
-    const applicable = orgAttendance.records.filter((r) => {
-        if (eventTypeValue && r.event_type_value !== eventTypeValue) return false;
-        if (r.unit_ids.length === 0) return true; // applies to all
-        return r.unit_ids.some((u) => memberUnitIds.has(u));
-    });
+    const applicable = applicableAttendanceRecords(orgAttendance, memberUnitIds, eventTypeValue);
 
     // Records are already newest-first from the index; keep that order.
     const sorted = [...applicable].sort((a, b) => b.date.localeCompare(a.date));
@@ -208,6 +224,42 @@ export function computeStreak(
     }
 
     return { count, last_present_date: lastPresentDate, days_since_last: daysSinceLast };
+}
+
+export type AttendanceWindowCounts = {
+    attended: number; // applicable services attended within the window
+    applicable: number; // applicable services that occurred within the window
+};
+
+/**
+ * Count applicable-services-attended vs. applicable-services-that-happened
+ * within a trailing window ending `endDaysAgo` days ago. Used by engagement
+ * scoring for both a rate ("consistency": attended/applicable over ~12 weeks)
+ * and a trend (comparing two consecutive windows) without re-deriving the
+ * unit-scoping logic computeStreak already has.
+ */
+export function computeAttendanceWindowCounts(
+    orgAttendance: OrgAttendanceContext,
+    attendedIds: Set<string>,
+    memberUnitIds: Set<string>,
+    windowDays: number,
+    endDaysAgo: number = 0,
+    eventTypeValue?: string,
+): AttendanceWindowCounts {
+    const applicableRecords = applicableAttendanceRecords(orgAttendance, memberUnitIds, eventTypeValue);
+    const now = Date.now();
+    const windowEnd = now - endDaysAgo * 24 * 3600 * 1000;
+    const windowStart = windowEnd - windowDays * 24 * 3600 * 1000;
+
+    let attended = 0;
+    let applicable = 0;
+    for (const rec of applicableRecords) {
+        const t = new Date(rec.date).getTime();
+        if (isNaN(t) || t < windowStart || t > windowEnd) continue;
+        applicable++;
+        if (attendedIds.has(rec.id as string)) attended++;
+    }
+    return { attended, applicable };
 }
 
 /** Convenience: compute a single member's streak by loading everything (event path). */

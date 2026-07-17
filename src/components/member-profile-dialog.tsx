@@ -1,6 +1,6 @@
 
 import { format } from "date-fns"
-import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake, Home, Star } from "lucide-react"
+import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake, Home, Star, Activity, CircleDollarSign } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
@@ -33,6 +33,44 @@ function StatusBadge({ status }: { status: string }) {
           {status}
         </Badge>
       )
+  }
+}
+
+function RiskBadge({ level }: { level: string }) {
+  switch (level) {
+    case "low":
+      return <Badge className="bg-green-500 text-white rounded-md text-[10px] py-0 px-2 tracking-wider">Low risk</Badge>
+    case "medium":
+      return (
+        <Badge variant="outline" className="rounded-md text-[10px] py-0 px-2 tracking-wider text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">
+          Medium risk
+        </Badge>
+      )
+    case "high":
+      return <Badge variant="destructive" className="rounded-md text-[10px] py-0 px-2 tracking-wider">High risk</Badge>
+    case "new":
+      return <Badge variant="secondary" className="rounded-md text-[10px] py-0 px-2 tracking-wider">New member</Badge>
+    default:
+      return null
+  }
+}
+
+type EngagementBreakdown = {
+  recency: number
+  trend: number
+  consistency: number
+  involvement: number
+  giving: number | null
+  days_since_last?: number
+  is_new_member: boolean
+}
+
+function parseEngagementBreakdown(raw?: string): EngagementBreakdown | null {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as EngagementBreakdown
+  } catch {
+    return null
   }
 }
 
@@ -94,6 +132,11 @@ export function MemberProfileDialog({
 
   const consecutiveAbsences = (attendanceSummary as any)?.consecutive_absences || 0
   const hasAbsenceStreak = !loading && consecutiveAbsences > 0
+
+  const engagementBreakdown = parseEngagementBreakdown(member.engagement_breakdown)
+  const lastResolvedCareContact = careTasks
+    ?.filter((t) => t.status === "resolved" && t.resolved_at)
+    .reduce<string | undefined>((latest, t) => (!latest || t.resolved_at! > latest ? t.resolved_at! : latest), undefined)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -248,6 +291,41 @@ export function MemberProfileDialog({
                   </div>
                 </div>
               </section>
+
+              {member.engagement_score !== undefined && (
+                <section>
+                  <SectionLabel icon={Activity}>ENGAGEMENT</SectionLabel>
+                  <div className="bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-semibold text-foreground">{member.engagement_score}</span>
+                      {member.engagement_risk_level && <RiskBadge level={member.engagement_risk_level} />}
+                    </div>
+                    {engagementBreakdown && (
+                      <>
+                        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                          <div className="flex justify-between"><span>Recency</span><span className="font-medium text-foreground">{engagementBreakdown.recency}</span></div>
+                          <div className="flex justify-between"><span>Trend</span><span className="font-medium text-foreground">{engagementBreakdown.trend}</span></div>
+                          <div className="flex justify-between"><span>Consistency</span><span className="font-medium text-foreground">{engagementBreakdown.consistency}</span></div>
+                          <div className="flex justify-between"><span>Involvement</span><span className="font-medium text-foreground">{engagementBreakdown.involvement}</span></div>
+                        </div>
+                        {typeof engagementBreakdown.days_since_last === "number" && (
+                          <p className="text-xs text-muted-foreground">
+                            Last attended {engagementBreakdown.days_since_last} day{engagementBreakdown.days_since_last === 1 ? "" : "s"} ago
+                          </p>
+                        )}
+                      </>
+                    )}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <HeartHandshake className="h-3 w-3" />
+                      Last care contact: {lastResolvedCareContact ? format(new Date(lastResolvedCareContact), 'MMM d, yyyy') : 'None yet'}
+                    </p>
+                    <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5 italic">
+                      <CircleDollarSign className="h-3 w-3" />
+                      Giving: not available yet
+                    </p>
+                  </div>
+                </section>
+              )}
 
               {households !== undefined && (
                 <section>

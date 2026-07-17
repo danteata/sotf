@@ -87,6 +87,11 @@ export function RuleEditorDialog({ open, onOpenChange, template, existingRule }:
       return "Threshold must be at least 1."
     if (activeTemplate.triggerKey === "member.no_attendance_for_days" && values.days < 1)
       return "Days must be at least 1."
+    if (
+      activeTemplate.triggerKey === "member.engagement_score_below" &&
+      (values.threshold < 1 || values.threshold > 100)
+    )
+      return "Threshold must be between 1 and 100."
     return null
   }
 
@@ -169,8 +174,18 @@ export function RuleEditorDialog({ open, onOpenChange, template, existingRule }:
 
           {fields.includes("threshold") && (
             <div className="space-y-2">
-              <Label>After how many consecutive absences?</Label>
-              <Input type="number" min={1} value={values.threshold} onChange={(e) => set("threshold", Number(e.target.value))} />
+              <Label>
+                {activeTemplate.triggerKey === "member.engagement_score_below"
+                  ? "Below what engagement score (0-100)?"
+                  : "After how many consecutive absences?"}
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={activeTemplate.triggerKey === "member.engagement_score_below" ? 100 : undefined}
+                value={values.threshold}
+                onChange={(e) => set("threshold", Number(e.target.value))}
+              />
             </div>
           )}
 

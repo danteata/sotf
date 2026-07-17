@@ -64,6 +64,7 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
     labels: true,
     lastAttendance: true,
     household: true,
+    score: true,
   });
   const { terminology } = useTerminology()
   const { toast } = useToast()
@@ -175,6 +176,10 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
           valueA = new Date(a.last_attendance);
           valueB = new Date(b.last_attendance);
           break;
+        case "score":
+          valueA = a.engagement_score ?? -1;
+          valueB = b.engagement_score ?? -1;
+          break;
         default:
           return 0;
       }
@@ -197,6 +202,25 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
         );
       case "visitor":
         return <Badge variant="secondary">Visitor</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const getRiskBadge = (level?: string) => {
+    switch (level) {
+      case "low":
+        return <Badge className="bg-green-500 text-[10px]">Low</Badge>;
+      case "medium":
+        return (
+          <Badge variant="outline" className="text-amber-500 border-amber-500 text-[10px]">
+            Medium
+          </Badge>
+        );
+      case "high":
+        return <Badge variant="destructive" className="text-[10px]">High</Badge>;
+      case "new":
+        return <Badge variant="secondary" className="text-[10px]">New</Badge>;
       default:
         return null;
     }
@@ -294,6 +318,7 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
               ["units", "Units"],
               ["labels", "Labels"],
               ["lastAttendance", "Last attendance"],
+              ["score", "Engagement score"],
             ] as const).map(([key, label]) => (
               <DropdownMenuCheckboxItem
                 key={key}
@@ -354,6 +379,14 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
                 <TableHead className="hidden lg:table-cell">
                   <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("last_attendance")}>
                     <span className="font-bold whitespace-nowrap">Last Attendance</span>
+                    <ArrowUpDown className="h-4 w-4" />
+                  </div>
+                </TableHead>
+              )}
+              {visibleCols.score && (
+                <TableHead className="hidden lg:table-cell">
+                  <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("score")}>
+                    <span className="font-bold whitespace-nowrap">Engagement</span>
                     <ArrowUpDown className="h-4 w-4" />
                   </div>
                 </TableHead>
@@ -429,6 +462,18 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
                 )}
                 {visibleCols.lastAttendance && (
                   <TableCell className="hidden lg:table-cell font-medium">{member.last_attendance}</TableCell>
+                )}
+                {visibleCols.score && (
+                  <TableCell className="hidden lg:table-cell">
+                    {member.engagement_score !== undefined ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{member.engagement_score}</span>
+                        {getRiskBadge(member.engagement_risk_level)}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">—</span>
+                    )}
+                  </TableCell>
                 )}
                 <TableCell className="sticky right-0 z-10 bg-card group-hover:bg-muted/50 shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.1)]">
                   <div className="flex items-center justify-end gap-1">

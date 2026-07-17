@@ -20,7 +20,8 @@ export type ProFeature =
     | "advanced_exports"
     | "map"
     | "unlimited_members"
-    | "automations";
+    | "automations"
+    | "engagement_scoring";
 
 export const FREE_MEMBER_LIMIT = 200;
 
@@ -154,6 +155,8 @@ function proFeatureMessage(feature: ProFeature): string {
             return "Member map is a Pro feature.";
         case "automations":
             return "Automations (if-this-then-that rules) are a Pro feature. Upgrade to create and enable rules.";
+        case "engagement_scoring":
+            return "Engagement/at-risk scoring is a Pro feature. Upgrade to see who needs outreach.";
         case "unlimited_members":
             return `Free plan is limited to ${FREE_MEMBER_LIMIT} members. Upgrade to Pro for unlimited members.`;
         default:
@@ -180,6 +183,7 @@ export async function getEntitlementsForOrg(
             map: isPro,
             unlimited_members: isPro,
             automations: isPro,
+            engagement_scoring: isPro,
             qr_check_in: true,
             attendance: true,
             financial: true,

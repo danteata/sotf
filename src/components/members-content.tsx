@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Download, Filter, Plus, Upload, Users, Building2, Home, Tag, X } from "lucide-react"
+import { Download, Filter, Plus, Upload, Users, Building2, Home, Tag, X, ShieldAlert } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery, useMutation } from "convex/react"
@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { useOrganization } from "@/hooks/use-organization"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useToast } from "@/hooks/use-toast"
+import { useSubscription } from "@/providers/SubscriptionProvider"
 
 interface MembersContentProps {
   initialMembers: Member[]
@@ -36,6 +37,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
   const [unitFilters, setUnitFilters] = useState<string[]>([])
   const [labelFilters, setLabelFilters] = useState<string[]>([])
   const [householdFilters, setHouseholdFilters] = useState<string[]>([])
+  const [riskFilters, setRiskFilters] = useState<string[]>([])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
 
@@ -46,6 +48,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
   const mergeDuplicates = useMutation(api.members.mergeDuplicatesByNamePhone)
   const { isAdmin } = useUserRole()
   const { toast } = useToast()
+  const { isPro } = useSubscription()
 
   const filteredMembers = useMemo(() => {
     let filtered = [...initialMembers]
@@ -82,8 +85,13 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
       });
     }
 
+    // Risk level: member's engagement risk bucket is ANY selected level
+    if (riskFilters.length > 0) {
+      filtered = filtered.filter(member => riskFilters.includes(member.engagement_risk_level || ""))
+    }
+
     return filtered;
-  }, [initialMembers, statusFilters, unitFilters, labelFilters, householdFilters])
+  }, [initialMembers, statusFilters, unitFilters, labelFilters, householdFilters, riskFilters])
 
   // Filter helpers
   const addFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
@@ -95,14 +103,17 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
     setUnitFilters([])
     setLabelFilters([])
     setHouseholdFilters([])
+    setRiskFilters([])
   }
 
   const unitName = (id: string) => unitsData?.find(u => u._id === id)?.name ?? id
   const labelName = (id: string) => (labelsData as any)?.find((l: any) => l._id === id)?.name ?? id
   const householdName = (id: string) =>
     id === NO_HOUSEHOLD ? "No household" : (householdsData?.find(h => h._id === id)?.name ?? id)
+  const RISK_LABELS: Record<string, string> = { low: "Low risk", medium: "Medium risk", high: "High risk", new: "New member" }
+  const riskLabel = (level: string) => RISK_LABELS[level] ?? level
   const activeFilterCount =
-    statusFilters.length + unitFilters.length + labelFilters.length + householdFilters.length
+    statusFilters.length + unitFilters.length + labelFilters.length + householdFilters.length + riskFilters.length
 
   const totalMembers = filteredMembers.length
 
@@ -263,7 +274,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", isPro ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
             {/* key remounts the trigger after each pick so it resets to placeholder */}
             <Select key={`status-${statusFilters.length}`} onValueChange={(v) => addFilter(setStatusFilters, v)}>
               <SelectTrigger className="rounded-lg w-full">
@@ -322,6 +333,19 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 ))}
               </SelectContent>
             </Select>
+            {isPro && (
+              <Select key={`risk-${riskFilters.length}`} onValueChange={(v) => addFilter(setRiskFilters, v)}>
+                <SelectTrigger className="rounded-lg w-full">
+                  <ShieldAlert className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Risk level" />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg shadow-lg border-border/50">
+                  {Object.keys(RISK_LABELS).filter(l => !riskFilters.includes(l)).map(level => (
+                    <SelectItem key={level} value={level}>{riskLabel(level)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Active filters + count */}
@@ -355,6 +379,14 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 <Badge key={`h-${id}`} variant="secondary" className="gap-1 pl-2.5 font-normal">
                   {householdName(id)}
                   <button type="button" onClick={() => removeFilter(setHouseholdFilters, id)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              {riskFilters.map(level => (
+                <Badge key={`r-${level}`} variant="secondary" className="gap-1 pl-2.5 font-normal">
+                  {riskLabel(level)}
+                  <button type="button" onClick={() => removeFilter(setRiskFilters, level)} className="ml-0.5 rounded-full p-0.5 hover:bg-foreground/10">
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>

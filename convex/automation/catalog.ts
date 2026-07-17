@@ -30,6 +30,8 @@ export type MemberFacts = {
     label_ids: string[];
     age?: number;
     years_as_member?: number;
+    engagement_score?: number; // 0-100, higher = more engaged. Undefined on Free orgs.
+    engagement_risk_level?: string; // "low" | "medium" | "high" | "new"
 };
 
 export type StreakFacts = {
@@ -87,6 +89,8 @@ export const ALLOWED_FIELDS: readonly string[] = [
     "member.years_as_member",
     "member.has_sms",
     "member.has_email",
+    "member.engagement_score",
+    "member.engagement_risk_level",
     "streak.count",
     "streak.days_since_last",
     "event.event_type_value",
@@ -228,6 +232,14 @@ export const TRIGGER_CATALOG: readonly TriggerSpec[] = [
         kind: "derived",
         description: "Fires on (or `days_before` before) a member's birthday.",
         params: { days_before: "number?" },
+        facts: ["member", "org"],
+    },
+    {
+        key: "member.engagement_score_below",
+        label: "Engagement score drops below N",
+        kind: "derived",
+        description: "Fires when a member's engagement/at-risk score is below `threshold`. Requires the Engagement Scoring Pro feature (scores are recomputed daily).",
+        params: { threshold: "number" },
         facts: ["member", "org"],
     },
     // --- Event (emitted from existing mutations) ---

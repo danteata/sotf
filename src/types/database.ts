@@ -44,6 +44,10 @@ export interface Member extends BaseResource {
   organization_id?: Id<"organizations">
   archived_at?: string
   archived_by?: string
+  // Pro feature; undefined on Free orgs or before the first daily recompute.
+  engagement_score?: number
+  engagement_risk_level?: 'low' | 'medium' | 'high' | 'new'
+  engagement_breakdown?: string
 }
 
 // Unit interface now handles all organizational units

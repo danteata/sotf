@@ -11,6 +11,7 @@ import {
   CalendarHeart,
   Clock,
   HeartHandshake,
+  TrendingDown,
   UserPlus,
   UserX,
   type LucideIcon,
@@ -96,6 +97,26 @@ export const AUTOMATION_TEMPLATES: AutomationTemplate[] = [
       active_only: true,
     },
     inAppTitle: "We'd love to see you",
+    dedupBucket: "week",
+  },
+  {
+    id: "low-engagement",
+    title: "Low engagement score",
+    description:
+      "Reach out when a member's engagement score drops below a threshold — catches gradual decline, not just missed streaks. Requires Engagement Scoring (Pro).",
+    icon: TrendingDown,
+    triggerKey: "member.engagement_score_below",
+    fields: ["threshold", "channel", "message", "notify_leaders", "assign_task", "active_only", "cooldown_days"],
+    defaults: {
+      name: "Low engagement follow-up",
+      threshold: 40,
+      message: "Hi {{member.first_name}}, we've noticed you around less lately — we'd love to reconnect. — {{org.name}}",
+      cooldown_days: 30,
+      active_only: true,
+      notify_leaders: true,
+      assign_task: true,
+    },
+    inAppTitle: "We'd love to reconnect",
     dedupBucket: "week",
   },
   {
@@ -205,6 +226,8 @@ export function buildRulePayload(
     trigger_params.days = values.days
   } else if (template.triggerKey === "member.birthday") {
     trigger_params.days_before = values.days_before
+  } else if (template.triggerKey === "member.engagement_score_below") {
+    trigger_params.threshold = values.threshold
   }
 
   // Primary send action.

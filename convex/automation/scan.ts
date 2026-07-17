@@ -163,6 +163,14 @@ export function matchMemberAgainstDerivedRule(input: {
     } else if (rule.trigger_key === "member.birthday") {
         const daysBefore = Number(params.days_before ?? 0);
         matched = isBirthdayMatch(member, org.timezone, daysBefore);
+    } else if (rule.trigger_key === "member.engagement_score_below") {
+        // Reads the field the daily engagement recompute already wrote —
+        // no attendance walk needed here, unlike the streak-based triggers.
+        const threshold = Number(params.threshold ?? 0);
+        matched =
+            threshold > 0 &&
+            memberFacts.engagement_score !== undefined &&
+            memberFacts.engagement_score < threshold;
     }
 
     return { matched, facts: { org, member: memberFacts, streak } };

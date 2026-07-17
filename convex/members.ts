@@ -1234,13 +1234,20 @@ export const getInsights = query({
         const inactiveThreshold = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
         const inactiveThresholdStr = formatDate(inactiveThreshold);
 
+        // Latest attendance date per member, across all history — reused both
+        // to decide "potentially inactive" and to populate lastSeen below
+        // (previously hardcoded to null and never actually computed).
+        const memberLastAttendance = new Map<string, string>();
+        memberAttendanceRecords.forEach(ma => {
+            const att = attendanceRecords.find(a => a._id === ma.attendance_id);
+            if (!att) return;
+            const existing = memberLastAttendance.get(ma.member_id);
+            if (!existing || att.date > existing) memberLastAttendance.set(ma.member_id, att.date);
+        });
+
         const potentiallyInactive = activeMembers.filter(m => {
-            const memberAtt = memberAttendanceRecords.filter(ma => ma.member_id === m._id);
-            const recentAtt = memberAtt.filter(ma => {
-                const att = attendanceRecords.find(a => a._id === ma.attendance_id);
-                return att && att.date >= inactiveThresholdStr;
-            });
-            return recentAtt.length === 0;
+            const lastSeen = memberLastAttendance.get(m._id);
+            return !lastSeen || lastSeen < inactiveThresholdStr;
         });
 
         const newMembersThisMonth = members.filter(m => {
@@ -1300,7 +1307,7 @@ export const getInsights = query({
             potentiallyInactive: potentiallyInactive.map(m => ({
                 id: m._id,
                 name: m.name,
-                lastSeen: null,
+                lastSeen: memberLastAttendance.get(m._id) ?? null,
                 unit_names: []
             })).slice(0, 10),
             demographics: {
