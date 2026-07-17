@@ -34,6 +34,7 @@ import type * as event_types from "../event_types.js";
 import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as financial from "../financial.js";
+import type * as households from "../households.js";
 import type * as http from "../http.js";
 import type * as invitations from "../invitations.js";
 import type * as labels from "../labels.js";
@@ -80,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   files: typeof files;
   financial: typeof financial;
+  households: typeof households;
   http: typeof http;
   invitations: typeof invitations;
   labels: typeof labels;

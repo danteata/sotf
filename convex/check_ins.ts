@@ -911,6 +911,280 @@ export const getSessionByToken = query({
     },
 });
 
+type CheckInArgs = {
+    token: string;
+    latitude?: number;
+    longitude?: number;
+    device_info?: string;
+};
+
+type OpenSessionResult =
+    | { ok: true; session: Doc<"check_in_sessions"> }
+    | {
+          ok: false;
+          result:
+              | { status: "invalid_token" }
+              | { status: "session_closed"; session_display_name?: string }
+              | { status: "outside_window" };
+      };
+
+/**
+ * Resolve+validate a check-in session by token: existence, status, and time
+ * window. Shared by every token-based check-in path (self and household) —
+ * none of this depends on which member is ultimately being checked in.
+ */
+async function resolveOpenSession(
+    ctx: MutationCtx,
+    args: CheckInArgs & { method: string },
+    identity: { subject: string },
+): Promise<OpenSessionResult> {
+    const tokenHash = await hashToken(args.token);
+
+    const session = await ctx.db
+        .query("check_in_sessions")
+        .withIndex("by_token_hash", (q) => q.eq("token_hash", tokenHash))
+        .unique();
+
+    if (!session) {
+        return { ok: false, result: { status: "invalid_token" } };
+    }
+
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+
+    if (session.status !== "open") {
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            clerk_user_id: identity.subject,
+            method: args.method,
+            outcome: session.status === "expired" ? "expired" : "session_closed",
+            reason: `status=${session.status}`,
+            device_info: args.device_info,
+        });
+        return {
+            ok: false,
+            result: { status: "session_closed", session_display_name: session.display_name },
+        };
+    }
+
+    if (nowMs < Date.parse(session.opens_at) || nowMs > Date.parse(session.closes_at)) {
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            clerk_user_id: identity.subject,
+            method: args.method,
+            outcome: "outside_window",
+            reason: `now=${nowIso} window=[${session.opens_at},${session.closes_at}]`,
+            device_info: args.device_info,
+        });
+        return { ok: false, result: { status: "outside_window" } };
+    }
+
+    return { ok: true, session };
+}
+
+/**
+ * Check `member` into an already-validated open `session`: org/unit/status/
+ * geofence gates, idempotent attendance write, audit, and event emission.
+ * Shared by self check-in and household-member check-in — by this point the
+ * caller has already established they're allowed to check `member` in.
+ */
+async function performTokenCheckIn(
+    ctx: MutationCtx,
+    opts: {
+        session: Doc<"check_in_sessions">;
+        member: Doc<"members">;
+        method: string;
+        args: CheckInArgs;
+        identity: { subject: string };
+    },
+) {
+    const { member, method, args, identity, session } = opts;
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+
+    // Org membership check.
+    if (member.organization_id !== session.organization_id) {
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            member_id: member._id,
+            member_name: member.name,
+            clerk_user_id: identity.subject,
+            method,
+            outcome: "wrong_org",
+            device_info: args.device_info,
+        });
+        return { status: "wrong_org" as const };
+    }
+
+    // Unit scoping check.
+    const applies = await assertEventAppliesToMember(ctx, {
+        member,
+        eventTypeId: session.event_type_id,
+    });
+    if (!applies) {
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            member_id: member._id,
+            member_name: member.name,
+            clerk_user_id: identity.subject,
+            method,
+            outcome: "event_not_applicable",
+            device_info: args.device_info,
+        });
+        return { status: "event_not_applicable" as const };
+    }
+
+    // Member status check (active or visitor).
+    if (member.status !== "active" && member.status !== "visitor") {
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            member_id: member._id,
+            member_name: member.name,
+            clerk_user_id: identity.subject,
+            method,
+            outcome: "member_inactive",
+            reason: `status=${member.status}`,
+            device_info: args.device_info,
+        });
+        return { status: "member_inactive" as const };
+    }
+
+    // Geofence (soft by default).
+    if (
+        session.location_mode &&
+        session.location_mode !== "none" &&
+        session.latitude != null &&
+        session.longitude != null &&
+        session.radius_meters != null &&
+        args.latitude != null &&
+        args.longitude != null
+    ) {
+        const distance = haversineMeters(
+            session.latitude,
+            session.longitude,
+            args.latitude,
+            args.longitude,
+        );
+        if (distance > session.radius_meters) {
+            if (session.location_mode === "strict") {
+                await logCheckInAudit(ctx, {
+                    session_id: session._id,
+                    organization_id: session.organization_id,
+                    member_id: member._id,
+                    member_name: member.name,
+                    clerk_user_id: identity.subject,
+                    method,
+                    outcome: "outside_geofence",
+                    reason: `distance=${Math.round(distance)}m radius=${session.radius_meters}m (strict)`,
+                    device_info: args.device_info,
+                });
+                return { status: "outside_geofence" as const };
+            }
+            // soft mode: log but allow
+            await logCheckInAudit(ctx, {
+                session_id: session._id,
+                organization_id: session.organization_id,
+                member_id: member._id,
+                member_name: member.name,
+                clerk_user_id: identity.subject,
+                method,
+                outcome: "outside_geofence",
+                reason: `distance=${Math.round(distance)}m radius=${session.radius_meters}m (soft)`,
+                device_info: args.device_info,
+            });
+        }
+    }
+
+    // Idempotent check-in.
+    const eventType = await ctx.db.get(session.event_type_id);
+    const late = computeLate(eventType, session.date, nowIso);
+
+    if (!session.attendance_id) {
+        // Defensive: ensure attendance exists.
+        const attendanceId = await ensureAttendanceRecord(ctx, {
+            orgId: session.organization_id,
+            eventTypeId: session.event_type_id,
+            date: session.date,
+            eventId: session.event_id ?? undefined,
+        });
+        await ctx.db.patch(session._id, { attendance_id: attendanceId });
+        session.attendance_id = attendanceId;
+    }
+
+    const result = await markMemberPresent(ctx, {
+        attendanceId: session.attendance_id,
+        memberId: member._id,
+        source: method as "qr" | "portal" | "kiosk" | "manual",
+        sessionId: session._id,
+        checkedInAt: nowIso,
+        isLate: late.isLate,
+        minutesLate: late.minutesLate,
+        deviceInfo: args.device_info,
+        lat: args.latitude,
+        long: args.longitude,
+    });
+
+    if (result.alreadyCheckedIn) {
+        await logCheckInAudit(ctx, {
+            session_id: session._id,
+            organization_id: session.organization_id,
+            member_id: member._id,
+            member_name: member.name,
+            clerk_user_id: identity.subject,
+            method,
+            outcome: "already_checked_in",
+            device_info: args.device_info,
+        });
+        return {
+            status: "already_checked_in" as const,
+            member_id: member._id,
+            member_name: member.name,
+            session_display_name: session.display_name,
+            attendance_id: session.attendance_id,
+        };
+    }
+
+    // Bump denormalized session counter.
+    await ctx.db.patch(session._id, {
+        check_in_count: (session.check_in_count ?? 0) + 1,
+    });
+
+    await logCheckInAudit(ctx, {
+        session_id: session._id,
+        organization_id: session.organization_id,
+        member_id: member._id,
+        member_name: member.name,
+        clerk_user_id: identity.subject,
+        method,
+        outcome: "success",
+        device_info: args.device_info,
+    });
+
+    await emitCheckinEvents(ctx, {
+        session,
+        member,
+        source: method,
+        isLate: late.isLate,
+        minutesLate: late.minutesLate,
+        alreadyCheckedIn: false,
+    });
+
+    return {
+        status: "checked_in" as const,
+        member_id: member._id,
+        member_name: member.name,
+        session_display_name: session.display_name,
+        is_late: late.isLate,
+        minutes_late: late.minutesLate,
+        attendance_id: session.attendance_id,
+    };
+}
+
 /**
  * Core member check-in. Transactional and idempotent. Every failure path
  * writes a check_in_audit row with the appropriate outcome.
@@ -926,46 +1200,10 @@ export const checkInWithToken = mutation({
     handler: async (ctx, args) => {
         const identity = await requireIdentity(ctx);
         const method = args.method ?? "qr";
-        const tokenHash = await hashToken(args.token);
 
-        const session = await ctx.db
-            .query("check_in_sessions")
-            .withIndex("by_token_hash", (q) => q.eq("token_hash", tokenHash))
-            .unique();
-
-        if (!session) {
-            return { status: "invalid_token" as const };
-        }
-
-        const nowMs = Date.now();
-        const nowIso = new Date(nowMs).toISOString();
-
-        // Validate session status + window.
-        if (session.status !== "open") {
-            await logCheckInAudit(ctx, {
-                session_id: session._id,
-                organization_id: session.organization_id,
-                clerk_user_id: identity.subject,
-                method,
-                outcome: session.status === "expired" ? "expired" : "session_closed",
-                reason: `status=${session.status}`,
-                device_info: args.device_info,
-            });
-            return { status: "session_closed" as const, session_display_name: session.display_name };
-        }
-
-        if (nowMs < Date.parse(session.opens_at) || nowMs > Date.parse(session.closes_at)) {
-            await logCheckInAudit(ctx, {
-                session_id: session._id,
-                organization_id: session.organization_id,
-                clerk_user_id: identity.subject,
-                method,
-                outcome: "outside_window",
-                reason: `now=${nowIso} window=[${session.opens_at},${session.closes_at}]`,
-                device_info: args.device_info,
-            });
-            return { status: "outside_window" as const };
-        }
+        const opened = await resolveOpenSession(ctx, { ...args, method }, identity);
+        if (!opened.ok) return opened.result;
+        const { session } = opened;
 
         // Resolve the linked member.
         const member = await resolveLinkedMember(ctx);
@@ -981,181 +1219,63 @@ export const checkInWithToken = mutation({
             return { status: "member_not_linked" as const };
         }
 
-        // Org membership check.
-        if (member.organization_id !== session.organization_id) {
+        return await performTokenCheckIn(ctx, { session, member, method, args, identity });
+    },
+});
+
+/**
+ * Check in another member of the CALLER's own household via the portal. The
+ * caller must have a linked member (like checkInWithToken) whose household_id
+ * matches the target member's — this is the only new trust rule households
+ * introduces: a portal user may act on behalf of a member only if that member
+ * shares their own household, never an arbitrary member.
+ */
+export const checkInHouseholdMemberWithToken = mutation({
+    args: {
+        token: v.string(),
+        member_id: v.id("members"),
+        method: v.optional(v.string()),
+        latitude: v.optional(v.number()),
+        longitude: v.optional(v.number()),
+        device_info: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const identity = await requireIdentity(ctx);
+        const method = args.method ?? "portal";
+
+        const opened = await resolveOpenSession(ctx, { ...args, method }, identity);
+        if (!opened.ok) return opened.result;
+        const { session } = opened;
+
+        const caller = await resolveLinkedMember(ctx);
+        if (!caller) {
             await logCheckInAudit(ctx, {
                 session_id: session._id,
                 organization_id: session.organization_id,
-                member_id: member._id,
-                member_name: member.name,
                 clerk_user_id: identity.subject,
                 method,
-                outcome: "wrong_org",
+                outcome: "member_not_linked",
                 device_info: args.device_info,
             });
-            return { status: "wrong_org" as const };
+            return { status: "member_not_linked" as const };
         }
 
-        // Unit scoping check.
-        const applies = await assertEventAppliesToMember(ctx, {
-            member,
-            eventTypeId: session.event_type_id,
-        });
-        if (!applies) {
+        const target = await ctx.db.get(args.member_id);
+        if (!target || !caller.household_id || target.household_id !== caller.household_id) {
             await logCheckInAudit(ctx, {
                 session_id: session._id,
                 organization_id: session.organization_id,
-                member_id: member._id,
-                member_name: member.name,
+                member_id: target?._id,
+                member_name: target?.name,
                 clerk_user_id: identity.subject,
                 method,
-                outcome: "event_not_applicable",
+                outcome: "not_in_household",
                 device_info: args.device_info,
             });
-            return { status: "event_not_applicable" as const };
+            return { status: "not_in_household" as const };
         }
 
-        // Member status check (active or visitor).
-        if (member.status !== "active" && member.status !== "visitor") {
-            await logCheckInAudit(ctx, {
-                session_id: session._id,
-                organization_id: session.organization_id,
-                member_id: member._id,
-                member_name: member.name,
-                clerk_user_id: identity.subject,
-                method,
-                outcome: "member_inactive",
-                reason: `status=${member.status}`,
-                device_info: args.device_info,
-            });
-            return { status: "member_inactive" as const };
-        }
-
-        // Geofence (soft by default).
-        if (
-            session.location_mode &&
-            session.location_mode !== "none" &&
-            session.latitude != null &&
-            session.longitude != null &&
-            session.radius_meters != null &&
-            args.latitude != null &&
-            args.longitude != null
-        ) {
-            const distance = haversineMeters(
-                session.latitude,
-                session.longitude,
-                args.latitude,
-                args.longitude,
-            );
-            if (distance > session.radius_meters) {
-                if (session.location_mode === "strict") {
-                    await logCheckInAudit(ctx, {
-                        session_id: session._id,
-                        organization_id: session.organization_id,
-                        member_id: member._id,
-                        member_name: member.name,
-                        clerk_user_id: identity.subject,
-                        method,
-                        outcome: "outside_geofence",
-                        reason: `distance=${Math.round(distance)}m radius=${session.radius_meters}m (strict)`,
-                        device_info: args.device_info,
-                    });
-                    return { status: "outside_geofence" as const };
-                }
-                // soft mode: log but allow
-                await logCheckInAudit(ctx, {
-                    session_id: session._id,
-                    organization_id: session.organization_id,
-                    member_id: member._id,
-                    member_name: member.name,
-                    clerk_user_id: identity.subject,
-                    method,
-                    outcome: "outside_geofence",
-                    reason: `distance=${Math.round(distance)}m radius=${session.radius_meters}m (soft)`,
-                    device_info: args.device_info,
-                });
-            }
-        }
-
-        // Idempotent check-in.
-        const eventType = await ctx.db.get(session.event_type_id);
-        const late = computeLate(eventType, session.date, nowIso);
-
-        if (!session.attendance_id) {
-            // Defensive: ensure attendance exists.
-            const attendanceId = await ensureAttendanceRecord(ctx, {
-                orgId: session.organization_id,
-                eventTypeId: session.event_type_id,
-                date: session.date,
-                eventId: session.event_id ?? undefined,
-            });
-            await ctx.db.patch(session._id, { attendance_id: attendanceId });
-            session.attendance_id = attendanceId;
-        }
-
-        const result = await markMemberPresent(ctx, {
-            attendanceId: session.attendance_id,
-            memberId: member._id,
-            source: method as "qr" | "portal" | "kiosk" | "manual",
-            sessionId: session._id,
-            checkedInAt: nowIso,
-            isLate: late.isLate,
-            minutesLate: late.minutesLate,
-            deviceInfo: args.device_info,
-            lat: args.latitude,
-            long: args.longitude,
-        });
-
-        if (result.alreadyCheckedIn) {
-            await logCheckInAudit(ctx, {
-                session_id: session._id,
-                organization_id: session.organization_id,
-                member_id: member._id,
-                member_name: member.name,
-                clerk_user_id: identity.subject,
-                method,
-                outcome: "already_checked_in",
-                device_info: args.device_info,
-            });
-            return {
-                status: "already_checked_in" as const,
-                member_name: member.name,
-                session_display_name: session.display_name,
-            };
-        }
-
-        // Bump denormalized session counter.
-        await ctx.db.patch(session._id, {
-            check_in_count: (session.check_in_count ?? 0) + 1,
-        });
-
-        await logCheckInAudit(ctx, {
-            session_id: session._id,
-            organization_id: session.organization_id,
-            member_id: member._id,
-            member_name: member.name,
-            clerk_user_id: identity.subject,
-            method,
-            outcome: "success",
-            device_info: args.device_info,
-        });
-
-        await emitCheckinEvents(ctx, {
-            session,
-            member,
-            source: method,
-            isLate: late.isLate,
-            minutesLate: late.minutesLate,
-            alreadyCheckedIn: false,
-        });
-
-        return {
-            status: "checked_in" as const,
-            member_name: member.name,
-            session_display_name: session.display_name,
-            is_late: late.isLate,
-            minutes_late: late.minutesLate,
-        };
+        return await performTokenCheckIn(ctx, { session, member: target, method, args, identity });
     },
 });
 

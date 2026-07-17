@@ -550,7 +550,7 @@ export function AbsentMembers() {
           {organization?._id && (
             <AssignFollowUpDialog
               organizationId={organization._id}
-              members={sortedMembers.map((m) => ({ id: m.id, name: m.name }))}
+              members={sortedMembers.map((m) => ({ id: m.id, name: m.name, household_id: m.household_id }))}
             />
           )}
           <Button size="sm" variant="outline">

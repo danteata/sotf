@@ -1,0 +1,474 @@
+"use client"
+
+import { useMemo, useState } from "react"
+import { useMutation, useQuery } from "convex/react"
+import { Home, Loader2, Plus, Star, Trash2, UserMinus, UserPlus } from "lucide-react"
+import { api } from "../../convex/_generated/api"
+import { Id } from "../../convex/_generated/dataModel"
+import { useOrganization } from "@/hooks/use-organization"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { EmptyState } from "@/components/ui/empty-state"
+import { LoadingState } from "@/components/ui/loading-state"
+import { useToast } from "@/hooks/use-toast"
+import { convertPlusCodeToLatLng } from "@/lib/google-maps-utils"
+
+/** Last whitespace-separated token of a "First Last" name; "" if unavailable. */
+function surnameOf(name: string | undefined): string {
+  if (!name) return ""
+  const parts = name.trim().split(/\s+/)
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : ""
+}
+
+export function HouseholdsContent() {
+  const { organization } = useOrganization()
+  const households = useQuery(
+    api.households.list,
+    organization ? { organization_id: organization._id } : "skip",
+  )
+  const [creating, setCreating] = useState(false)
+  const [managing, setManaging] = useState<Id<"households"> | null>(null)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Group family members under one address for the map, follow-up, and check-in.
+        </p>
+        <Button size="sm" onClick={() => setCreating(true)}>
+          <Plus className="mr-1.5 h-4 w-4" />
+          New Household
+        </Button>
+      </div>
+
+      {households === undefined ? (
+        <LoadingState />
+      ) : households.length === 0 ? (
+        <EmptyState
+          icon={Home}
+          title="No households yet"
+          description="Create one to group family members under a shared address."
+          action={
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Household
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {households.map((h) => (
+            <Card key={h._id} className="overflow-hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="truncate">{h.name || "Unnamed household"}</span>
+                  <Button variant="ghost" size="sm" onClick={() => setManaging(h._id)}>
+                    Manage
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {h.address ? (
+                  <p className="text-xs text-muted-foreground">
+                    {h.address}
+                    {h.city ? `, ${h.city}` : ""}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground/70">No address set</p>
+                )}
+                <div className="flex flex-wrap gap-1.5">
+                  {h.members.length === 0 && (
+                    <span className="text-xs text-muted-foreground/70">No members yet</span>
+                  )}
+                  {h.members.map((m) => (
+                    <Badge key={m._id} variant="secondary" className="text-[10px] gap-1">
+                      {m._id === h.head_of_household_id && <Star className="h-2.5 w-2.5" />}
+                      {m.name}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {creating && organization && (
+        <CreateHouseholdDialog
+          organizationId={organization._id}
+          onClose={() => setCreating(false)}
+        />
+      )}
+      {managing && (
+        <ManageHouseholdDialog
+          householdId={managing}
+          onClose={() => setManaging(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function CreateHouseholdDialog({
+  organizationId,
+  onClose,
+}: {
+  organizationId: Id<"organizations">
+  onClose: () => void
+}) {
+  const [name, setName] = useState("")
+  const [address, setAddress] = useState("")
+  const [city, setCity] = useState("")
+  const [plusCode, setPlusCode] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const create = useMutation(api.households.create)
+  const { toast } = useToast()
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    try {
+      const latLng = plusCode ? await convertPlusCodeToLatLng(plusCode) : null
+      await create({
+        organization_id: organizationId,
+        name: name || undefined,
+        address: address || undefined,
+        city: city || undefined,
+        plus_code: plusCode || undefined,
+        latitude: latLng?.lat,
+        longitude: latLng?.lng,
+      })
+      toast({ title: "Household created" })
+      onClose()
+    } catch (err) {
+      toast({
+        title: "Couldn't create household",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>New Household</DialogTitle>
+          <DialogDescription>
+            Add members and a head of household afterward from the Manage view.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Name (optional)</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. The Mensah Household" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Address</label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">City</label>
+            <Input value={city} onChange={(e) => setCity(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">Plus code (for the map pin)</label>
+            <Input
+              value={plusCode}
+              onChange={(e) => setPlusCode(e.target.value)}
+              placeholder="e.g. MVG6+G2 Ashaley Botwe, Ghana"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ManageHouseholdDialog({
+  householdId,
+  onClose,
+}: {
+  householdId: Id<"households">
+  onClose: () => void
+}) {
+  const household = useQuery(api.households.get, { id: householdId })
+  const { organization } = useOrganization()
+  const allMembers = useQuery(
+    api.members.getAll,
+    organization ? { organization_id: organization._id } : "skip",
+  )
+  const updateHousehold = useMutation(api.households.update)
+  const addMember = useMutation(api.households.addMember)
+  const removeMember = useMutation(api.households.removeMember)
+  const removeHousehold = useMutation(api.households.remove)
+  const { toast } = useToast()
+
+  const [addSearch, setAddSearch] = useState("")
+  const [address, setAddress] = useState<{ address?: string; city?: string; plus_code?: string } | null>(null)
+
+  const memberIds = useMemo(
+    () => new Set((household?.members ?? []).map((m) => m._id as string)),
+    [household],
+  )
+
+  const runOrToastError = async (action: () => Promise<unknown>) => {
+    try {
+      await action()
+    } catch (err) {
+      toast({
+        title: "Action failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Same-surname suggestions: members not yet in this household who share a
+  // last name with someone already in it — the common case (kids, spouse)
+  // when the family hasn't all been grouped yet.
+  const surnameSuggestions = useMemo(() => {
+    if (!allMembers || !household || household.members.length === 0) return []
+    const surnames = new Set(
+      household.members.map((m) => surnameOf(m.name)).filter(Boolean),
+    )
+    if (surnames.size === 0) return []
+    return allMembers
+      .filter((m) => !memberIds.has((m._id ?? m.id) as string))
+      .filter((m) => surnames.has(surnameOf(m.name)))
+      .slice(0, 8)
+  }, [allMembers, household, memberIds])
+
+  const addCandidates = useMemo(() => {
+    if (!allMembers || addSearch.trim().length < 2) return []
+    const q = addSearch.toLowerCase()
+    return allMembers
+      .filter((m) => !memberIds.has((m._id ?? m.id) as string))
+      .filter((m) => m.name?.toLowerCase().includes(q))
+      .slice(0, 8)
+  }, [allMembers, addSearch, memberIds])
+
+  if (household === undefined) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-lg">
+          <LoadingState />
+        </DialogContent>
+      </Dialog>
+    )
+  }
+  if (household === null) return null
+
+  const effectiveAddress = address ?? {
+    address: household.address,
+    city: household.city,
+    plus_code: household.plus_code,
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{household.name || "Manage household"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Members</label>
+            <div className="rounded-md border divide-y">
+              {household.members.length === 0 && (
+                <p className="p-3 text-sm text-muted-foreground">No members yet.</p>
+              )}
+              {household.members.map((m) => (
+                <div key={m._id} className="flex items-center justify-between p-2.5">
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className="text-[10px]">{m.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{m.name}</span>
+                    {m._id === household.head_of_household_id && (
+                      <Badge variant="outline" className="text-[10px] gap-1">
+                        <Star className="h-2.5 w-2.5" /> Head
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {m._id !== household.head_of_household_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          runOrToastError(() =>
+                            updateHousehold({ id: householdId, head_of_household_id: m._id }),
+                          )
+                        }
+                      >
+                        Make head
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => runOrToastError(() => removeMember({ member_id: m._id }))}
+                    >
+                      <UserMinus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Add a member</label>
+
+            {addSearch.trim().length === 0 && surnameSuggestions.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">
+                  Suggested — same surname as someone already in this household:
+                </p>
+                <div className="rounded-md border divide-y">
+                  {surnameSuggestions.map((m) => (
+                    <AddMemberRow
+                      key={m._id ?? m.id}
+                      member={m}
+                      onAdd={() =>
+                        runOrToastError(() =>
+                          addMember({
+                            household_id: householdId,
+                            member_id: (m._id ?? m.id) as Id<"members">,
+                          }),
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Input
+              value={addSearch}
+              onChange={(e) => setAddSearch(e.target.value)}
+              placeholder="Search members to add…"
+            />
+            {addCandidates.length > 0 && (
+              <div className="rounded-md border divide-y">
+                {addCandidates.map((m) => (
+                  <AddMemberRow
+                    key={m._id ?? m.id}
+                    member={m}
+                    onAdd={() =>
+                      runOrToastError(async () => {
+                        await addMember({
+                          household_id: householdId,
+                          member_id: (m._id ?? m.id) as Id<"members">,
+                        })
+                        setAddSearch("")
+                      })
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Address</label>
+            <Input
+              value={effectiveAddress.address ?? ""}
+              onChange={(e) => setAddress({ ...effectiveAddress, address: e.target.value })}
+              placeholder="Street address"
+            />
+            <Input
+              value={effectiveAddress.city ?? ""}
+              onChange={(e) => setAddress({ ...effectiveAddress, city: e.target.value })}
+              placeholder="City"
+            />
+            <Input
+              value={effectiveAddress.plus_code ?? ""}
+              onChange={(e) => setAddress({ ...effectiveAddress, plus_code: e.target.value })}
+              placeholder="Plus code (for the map pin)"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="justify-between sm:justify-between">
+          <Button
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            disabled={household.members.length > 0}
+            onClick={() =>
+              runOrToastError(async () => {
+                await removeHousehold({ id: householdId })
+                onClose()
+              })
+            }
+          >
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            Delete
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button
+              onClick={() =>
+                runOrToastError(async () => {
+                  if (address) {
+                    const latLng = address.plus_code
+                      ? await convertPlusCodeToLatLng(address.plus_code)
+                      : null
+                    await updateHousehold({
+                      id: householdId,
+                      ...address,
+                      latitude: latLng?.lat,
+                      longitude: latLng?.lng,
+                    })
+                  }
+                  onClose()
+                })
+              }
+            >
+              Save
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function AddMemberRow({
+  member,
+  onAdd,
+}: {
+  member: { _id?: string; id?: string; name: string }
+  onAdd: () => void
+}) {
+  return (
+    <button
+      className="w-full flex items-center justify-between p-2 text-left text-sm hover:bg-muted/50"
+      onClick={onAdd}
+    >
+      {member.name}
+      <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
+    </button>
+  )
+}

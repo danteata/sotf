@@ -150,6 +150,9 @@ export default defineSchema({
         user_id: v.optional(v.id("users")),
         joined_date: v.optional(v.string()),
         skills: v.optional(v.string()),
+        // Household this member belongs to (optional; members without one
+        // behave exactly as before households existed).
+        household_id: v.optional(v.id("households")),
         // Timestamps
         created_at: v.optional(v.string()), // ISO timestamp
         updated_at: v.optional(v.string()), // ISO timestamp
@@ -161,7 +164,8 @@ export default defineSchema({
         .index("by_email", ["email"])
         .index("by_org_status", ["organization_id", "status"])
         .index("by_user_id", ["user_id"])
-        .index("by_org_and_phone", ["organization_id", "phone"]),
+        .index("by_org_and_phone", ["organization_id", "phone"])
+        .index("by_household", ["household_id"]),
 
     // Admins/leaders of a unit (many-to-many). Source of truth for unit-level
     // admin access. Always contains the primary leader (role "leader") plus any
@@ -708,4 +712,31 @@ export default defineSchema({
     })
         .index("by_task", ["care_task_id"])
         .index("by_org", ["organization_id"]),
+
+    // =======================================================================
+    // HOUSEHOLDS — family groups
+    //
+    // Layers on top of the existing per-member address fields; additive only
+    // (members with no household_id behave exactly as before). One shared
+    // address for map/display purposes, an optional head of household, and
+    // a natural target for "family checked in" suggestions and household-wide
+    // care follow-up.
+    // =======================================================================
+    households: defineTable({
+        organization_id: v.id("organizations"),
+        name: v.optional(v.string()), // falls back to head's name if unset
+        head_of_household_id: v.optional(v.id("members")), // must be a member of this household
+        address: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+        country: v.optional(v.string()),
+        latitude: v.optional(v.number()),
+        longitude: v.optional(v.number()),
+        plus_code: v.optional(v.string()),
+        created_at: v.string(),
+        updated_at: v.string(),
+    })
+        .index("by_org", ["organization_id"])
+        .index("by_head", ["head_of_household_id"]),
 });

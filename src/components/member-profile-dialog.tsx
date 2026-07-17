@@ -1,6 +1,6 @@
 
 import { format } from "date-fns"
-import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake } from "lucide-react"
+import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake, Home, Star } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
@@ -59,6 +59,16 @@ export function MemberProfileDialog({
   )
 
   const allUnits = useQuery(api.units.list, open ? {} : "skip")
+
+  const households = useQuery(api.households.list,
+    open && member?.organization_id
+      ? { organization_id: member.organization_id }
+      : "skip"
+  )
+  const memberIdForHousehold = member ? (member._id ?? (member as { id?: string }).id) : undefined
+  const household = households?.find((h) =>
+    h.members.some((m) => m._id === memberIdForHousehold),
+  )
 
   const careTasks = useQuery(api.care_tasks.listForMember,
     open && member?._id ? { member_id: member._id as Id<"members"> } : "skip"
@@ -238,6 +248,46 @@ export function MemberProfileDialog({
                   </div>
                 </div>
               </section>
+
+              {households !== undefined && (
+                <section>
+                  <SectionLabel icon={Home}>HOUSEHOLD</SectionLabel>
+                  <div className="bg-card p-4 rounded-xl border border-border shadow-sm">
+                    {household ? (
+                      <>
+                        <p className="text-sm font-medium text-foreground">
+                          {household.name || "Unnamed household"}
+                        </p>
+                        {household.address && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {household.address}{household.city ? `, ${household.city}` : ""}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {household.members.map((m) => (
+                            <Badge key={m._id} variant="outline" className="text-[10px] gap-1">
+                              {m._id === household.head_of_household_id && (
+                                <Star className="h-2.5 w-2.5" />
+                              )}
+                              {m.name}
+                            </Badge>
+                          ))}
+                        </div>
+                        {household.head_anniversary && (
+                          <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+                            <HeartHandshake className="h-3 w-3" />
+                            Anniversary: {household.head_anniversary}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">
+                        Not part of a household yet
+                      </span>
+                    )}
+                  </div>
+                </section>
+              )}
             </div>
 
             {/* Right Column: Contact & Attendance History */}

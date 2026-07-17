@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { convertPlusCodeToLatLng } from "@/lib/google-maps-utils"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import { Id } from "../../convex/_generated/dataModel"
 import { useOrganization } from "@/hooks/use-organization"
 
 import {
@@ -39,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Member, UserRole, Unit } from "@/types/database"
 import { Badge } from "./ui/badge"
 import { MemberLabels, LabelSelector } from "./label-selector"
+import { HouseholdPicker } from "./household-picker"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { FileUploader } from "@/components/file-uploader"
 import { UnitPicker } from "@/components/unit-picker"
@@ -251,11 +253,12 @@ export function MemberEditDialog({
                 unit list). */}
             <div className="px-6 pb-6 flex-1 min-h-0 overflow-y-auto">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-5 h-12 p-1 rounded-xl mb-6">
+                <TabsList className="grid w-full grid-cols-6 h-12 p-1 rounded-xl mb-6">
                   <TabsTrigger value="basic" className="rounded-lg text-xs">Basic</TabsTrigger>
                   <TabsTrigger value="contact" className="rounded-lg text-xs">Contact</TabsTrigger>
                   <TabsTrigger value="photo" className="rounded-lg text-xs">Photo</TabsTrigger>
                   <TabsTrigger value="unit" className="rounded-lg text-xs">{unitLabels.single}</TabsTrigger>
+                  <TabsTrigger value="household" className="rounded-lg text-xs">Household</TabsTrigger>
                   <TabsTrigger value="labels" className="rounded-lg text-xs">Labels</TabsTrigger>
                 </TabsList>
 
@@ -645,6 +648,19 @@ export function MemberEditDialog({
                     <p className="text-[10px] text-muted-foreground mt-3">
                       Leadership assignments are managed in Unit Management.
                     </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="household" className="space-y-4 mt-0">
+                  <div className="border border-border rounded-2xl p-5 bg-card">
+                    {organization?._id ? (
+                      <HouseholdPicker
+                        memberId={((member as any)._id || (member as any).id) as Id<"members">}
+                        organizationId={organization._id}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No organization set.</p>
+                    )}
                   </div>
                 </TabsContent>
 

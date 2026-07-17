@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type { FunctionReturnType } from "convex/server"
 import { MembersContent } from "@/components/members-content"
+import { HouseholdsContent } from "@/components/households-content"
 import type { Member } from "@/types/database"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import { useOrganization } from "@/hooks/use-organization"
@@ -8,7 +9,9 @@ import { useQuery } from "convex/react"
 import { api } from "../../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
+import { Search, Users, Home } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 type MemberRow = FunctionReturnType<typeof api.members.listPage>["page"][number]
 
@@ -86,44 +89,77 @@ export default function MembersPage() {
 
     return (
         <LayoutWrapper>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative max-w-md w-full">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        value={searchInput}
-                        onChange={(e) => setSearchInput(e.target.value)}
-                        placeholder="Search name, email, or phone…"
-                        className="pl-9"
-                    />
-                </div>
-                {typeof totalCount === "number" && (
-                    <p className="text-sm text-muted-foreground">
-                        {totalCount.toLocaleString()} member
-                        {totalCount === 1 ? "" : "s"}
-                        {search ? " matching" : ""}
-                    </p>
-                )}
-            </div>
-
-            <MembersContent
-                initialMembers={members as unknown as Member[]}
-                view={view}
-                onViewChange={setView}
-            />
-
-            {!isDone && (
-                <div className="mt-4 flex justify-center">
-                    <Button
-                        variant="outline"
-                        disabled={page === undefined}
-                        onClick={() => {
-                            if (page?.nextCursor) setCursor(page.nextCursor)
-                        }}
+            <Tabs defaultValue="directory" className="w-full space-y-4">
+                <TabsList className="bg-muted/50 p-1 rounded-lg h-auto gap-0.5">
+                    <TabsTrigger
+                        value="directory"
+                        className={cn(
+                            "h-8 px-3 rounded-md text-sm gap-1.5",
+                            "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+                            "text-muted-foreground",
+                        )}
                     >
-                        {page === undefined ? "Loading…" : "Load more"}
-                    </Button>
-                </div>
-            )}
+                        <Users className="h-3.5 w-3.5" />
+                        Directory
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="households"
+                        className={cn(
+                            "h-8 px-3 rounded-md text-sm gap-1.5",
+                            "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
+                            "text-muted-foreground",
+                        )}
+                    >
+                        <Home className="h-3.5 w-3.5" />
+                        Households
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="directory" className="space-y-4 outline-none">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="relative max-w-md w-full">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={searchInput}
+                                onChange={(e) => setSearchInput(e.target.value)}
+                                placeholder="Search name, email, or phone…"
+                                className="pl-9"
+                            />
+                        </div>
+                        {typeof totalCount === "number" && (
+                            <p className="text-sm text-muted-foreground">
+                                {totalCount.toLocaleString()} member
+                                {totalCount === 1 ? "" : "s"}
+                                {search ? " matching" : ""}
+                            </p>
+                        )}
+                    </div>
+
+                    <MembersContent
+                        initialMembers={members as unknown as Member[]}
+                        view={view}
+                        onViewChange={setView}
+                    />
+
+                    {!isDone && (
+                        <div className="mt-4 flex justify-center">
+                            <Button
+                                variant="outline"
+                                disabled={page === undefined}
+                                onClick={() => {
+                                    if (page?.nextCursor) setCursor(page.nextCursor)
+                                }}
+                            >
+                                {page === undefined ? "Loading…" : "Load more"}
+                            </Button>
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="households" className="outline-none">
+                    <HouseholdsContent />
+                </TabsContent>
+            </Tabs>
         </LayoutWrapper>
     )
 }

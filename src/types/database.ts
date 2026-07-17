@@ -40,6 +40,8 @@ export interface Member extends BaseResource {
   latitude?: number
   longitude?: number
   plus_code?: string
+  household_id?: Id<"households">
+  organization_id?: Id<"organizations">
   archived_at?: string
   archived_by?: string
 }

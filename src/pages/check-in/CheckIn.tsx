@@ -4,8 +4,10 @@ import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useConvexAuth, useMutation, useQuery } from "convex/react"
 import { SignIn } from "@clerk/clerk-react"
-import { CheckCircle2, Clock, AlertCircle, Loader2, QrCode, UserX, ShieldOff, CalendarOff, MapPinOff } from "lucide-react"
+import { CheckCircle2, Clock, AlertCircle, Loader2, QrCode, UserX, ShieldOff, CalendarOff, MapPinOff, UserCheck } from "lucide-react"
+import type { FunctionReturnType } from "convex/server"
 import { api } from "../../../convex/_generated/api"
+import { Id } from "../../../convex/_generated/dataModel"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
@@ -14,8 +16,22 @@ type CheckInResult =
     | { status: "invalid_token" }
     | { status: "needs_auth" }
     | { status: "checking_in" }
-    | { status: "checked_in"; member_name: string; session_display_name: string; is_late: boolean; minutes_late: number }
-    | { status: "already_checked_in"; member_name: string; session_display_name: string }
+    | {
+          status: "checked_in"
+          member_id?: Id<"members">
+          member_name: string
+          session_display_name: string
+          is_late: boolean
+          minutes_late: number
+          attendance_id?: Id<"attendance">
+      }
+    | {
+          status: "already_checked_in"
+          member_id?: Id<"members">
+          member_name: string
+          session_display_name: string
+          attendance_id?: Id<"attendance">
+      }
     | { status: "session_closed" }
     | { status: "outside_window" }
     | { status: "member_not_linked" }
@@ -36,6 +52,7 @@ export default function CheckInPage() {
         token ? { token } : "skip",
     )
     const checkIn = useMutation(api.check_ins.checkInWithToken)
+    const checkInHouseholdMember = useMutation(api.check_ins.checkInHouseholdMemberWithToken)
 
     // Run the check-in once authenticated and session is valid.
     useEffect(() => {
@@ -52,17 +69,21 @@ export default function CheckInPage() {
                     case "checked_in":
                         setResult({
                             status: "checked_in",
+                            member_id: res.member_id,
                             member_name: res.member_name,
                             session_display_name: res.session_display_name ?? sessionInfo.display_name,
                             is_late: res.is_late,
                             minutes_late: res.minutes_late,
+                            attendance_id: res.attendance_id,
                         })
                         break
                     case "already_checked_in":
                         setResult({
                             status: "already_checked_in",
+                            member_id: res.member_id,
                             member_name: res.member_name,
                             session_display_name: res.session_display_name ?? sessionInfo.display_name,
+                            attendance_id: res.attendance_id,
                         })
                         break
                     case "session_closed":
@@ -163,6 +184,14 @@ export default function CheckInPage() {
                             Checked in {result.minutes_late} min late
                         </p>
                     )}
+                    {token && result.member_id && result.attendance_id && (
+                        <HouseholdSuggestions
+                            token={token}
+                            memberId={result.member_id}
+                            attendanceId={result.attendance_id}
+                            checkInHouseholdMember={checkInHouseholdMember}
+                        />
+                    )}
                     <div className="mt-6 flex gap-2">
                         <Link to="/portal/attendance" className="flex-1">
                             <Button variant="outline" className="w-full">View my attendance</Button>
@@ -182,6 +211,14 @@ export default function CheckInPage() {
                     description={result.session_display_name}
                     tone="muted"
                 >
+                    {token && result.member_id && result.attendance_id && (
+                        <HouseholdSuggestions
+                            token={token}
+                            memberId={result.member_id}
+                            attendanceId={result.attendance_id}
+                            checkInHouseholdMember={checkInHouseholdMember}
+                        />
+                    )}
                     <div className="mt-6 flex gap-2">
                         <Link to="/portal/attendance" className="flex-1">
                             <Button variant="outline" className="w-full">View my attendance</Button>
@@ -264,5 +301,69 @@ function ResultCard({
                 {children}
             </CardContent>
         </Card>
+    )
+}
+
+/**
+ * "Also check in" suggestions for other members of the checked-in member's
+ * household — lets a parent check in their kids (or a spouse) in one tap
+ * without each needing their own device/QR scan.
+ */
+function HouseholdSuggestions({
+    token,
+    memberId,
+    attendanceId,
+    checkInHouseholdMember,
+}: {
+    token: string
+    memberId: Id<"members">
+    attendanceId: Id<"attendance">
+    checkInHouseholdMember: (args: {
+        token: string
+        member_id: Id<"members">
+    }) => Promise<FunctionReturnType<typeof api.check_ins.checkInHouseholdMemberWithToken>>
+}) {
+    const suggestions = useQuery(api.households.getUncheckedHouseholdMembers, {
+        member_id: memberId,
+        attendance_id: attendanceId,
+    })
+    const [checkedIn, setCheckedIn] = useState<Set<string>>(new Set())
+    const [pending, setPending] = useState<string | null>(null)
+
+    if (!suggestions || suggestions.length === 0) return null
+
+    return (
+        <div className="mt-4 rounded-lg border border-dashed p-3 text-left">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Also check in:</p>
+            <div className="flex flex-wrap gap-2">
+                {suggestions.map((s) => {
+                    const isChecked = checkedIn.has(s.id)
+                    return (
+                        <Button
+                            key={s.id}
+                            size="sm"
+                            variant={isChecked ? "secondary" : "outline"}
+                            disabled={isChecked || pending === s.id}
+                            onClick={async () => {
+                                setPending(s.id)
+                                try {
+                                    await checkInHouseholdMember({ token, member_id: s.id })
+                                    setCheckedIn((prev) => new Set(prev).add(s.id))
+                                } finally {
+                                    setPending(null)
+                                }
+                            }}
+                        >
+                            {isChecked ? (
+                                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                            ) : (
+                                <UserCheck className="mr-1.5 h-3.5 w-3.5" />
+                            )}
+                            {s.name}
+                        </Button>
+                    )
+                })}
+            </div>
+        </div>
     )
 }

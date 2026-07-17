@@ -338,3 +338,90 @@ export const addNote = mutation({
         return { ok: true };
     },
 });
+
+/**
+ * Fan out a follow-up task to every active member of a household, all to the
+ * same assignee. Skips members who already have an unresolved task with that
+ * assignee, so re-running this on a household already being followed up on
+ * doesn't create duplicates.
+ */
+export const createForHousehold = mutation({
+    args: {
+        household_id: v.id("households"),
+        assigned_to: v.id("members"),
+        note: v.optional(v.string()),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+        const household = await ctx.db.get(args.household_id);
+        if (!household) throw new Error("Household not found");
+
+        const assignee = await ctx.db.get(args.assigned_to);
+        if (!assignee || assignee.organization_id !== household.organization_id) {
+            throw new Error("Assignee must be a member of the same organization");
+        }
+
+        const members = await ctx.db
+            .query("members")
+            .withIndex("by_household", (q) => q.eq("household_id", args.household_id))
+            .collect();
+        const active = members.filter((m) => !m.archived_at);
+        if (active.length === 0) throw new Error("Household has no active members");
+
+        if (!isOrgAdmin(user)) {
+            const scope = await resolveManagedMemberIds(ctx);
+            const callerOrg = callerOrgId(ctx, user);
+            const hasAccess = active.some((m) =>
+                memberIdInScope(m._id, m.organization_id, scope, callerOrg),
+            );
+            if (!hasAccess) throw new Error("Forbidden");
+        }
+
+        const now = new Date().toISOString();
+        let created = 0;
+        for (const member of active) {
+            const existing = await ctx.db
+                .query("care_tasks")
+                .withIndex("by_member", (q) => q.eq("member_id", member._id))
+                .collect();
+            const hasOpenTask = existing.some(
+                (t) => t.assigned_to === args.assigned_to && t.status !== "resolved",
+            );
+            if (hasOpenTask) continue;
+
+            const taskId = await ctx.db.insert("care_tasks", {
+                organization_id: household.organization_id,
+                member_id: member._id,
+                assigned_to: args.assigned_to,
+                status: "pending",
+                source: "manual",
+                created_by: user.clerk_user_id,
+                created_at: now,
+                updated_at: now,
+            });
+            await ctx.db.insert("care_task_notes", {
+                care_task_id: taskId,
+                organization_id: household.organization_id,
+                status: "pending",
+                note: args.note,
+                created_by: user.clerk_user_id,
+                created_by_name: user.name || user.email || undefined,
+                created_at: now,
+            });
+            created++;
+        }
+
+        if (created > 0) {
+            const label = household.name || "a household";
+            await notifyAssignee(ctx, {
+                orgId: household.organization_id,
+                assignedTo: args.assigned_to,
+                memberName: label,
+                title: "New household follow-up assigned",
+                body: `You've been asked to follow up with ${created} member${created === 1 ? "" : "s"} of ${label}.${args.note ? ` "${args.note}"` : ""}`,
+            });
+        }
+
+        return { created, skipped: active.length - created };
+    },
+});

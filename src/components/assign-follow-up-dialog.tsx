@@ -28,7 +28,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface AssignFollowUpDialogProps {
   organizationId: Id<"organizations">
-  members: Array<{ id: string; name: string }>
+  members: Array<{ id: string; name: string; household_id?: string }>
   trigger?: React.ReactNode
 }
 
@@ -41,6 +41,7 @@ export function AssignFollowUpDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [assignedTo, setAssignedTo] = useState<string>("")
   const [note, setNote] = useState("")
+  const [includeHousehold, setIncludeHousehold] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
@@ -53,6 +54,9 @@ export function AssignFollowUpDialog({
     open ? { organization_id: organizationId } : "skip",
   )
   const createTask = useMutation(api.care_tasks.create)
+  const createTaskForHousehold = useMutation(api.care_tasks.createForHousehold)
+
+  const hasAnyHousehold = members.some((m) => m.household_id)
 
   const assigneeOptions = useMemo(() => {
     if (!unitAdmins || !allMembers) return []
@@ -79,6 +83,7 @@ export function AssignFollowUpDialog({
       setSelected(new Set(members.map((m) => m.id)))
       setAssignedTo("")
       setNote("")
+      setIncludeHousehold(false)
     }
   }
 
@@ -95,18 +100,41 @@ export function AssignFollowUpDialog({
     if (!assignedTo || selected.size === 0) return
     setIsSubmitting(true)
     try {
-      await Promise.all(
-        Array.from(selected).map((memberId) =>
-          createTask({
-            member_id: memberId as Id<"members">,
-            assigned_to: assignedTo as Id<"members">,
-            note: note || undefined,
-          }),
-        ),
-      )
+      const membersById = new Map(members.map((m) => [m.id, m]))
+      const handledHouseholds = new Set<string>()
+      const calls: Promise<unknown>[] = []
+
+      for (const memberId of selected) {
+        const member = membersById.get(memberId)
+        const householdId = includeHousehold ? member?.household_id : undefined
+
+        if (householdId) {
+          if (handledHouseholds.has(householdId)) continue
+          handledHouseholds.add(householdId)
+          calls.push(
+            createTaskForHousehold({
+              household_id: householdId as Id<"households">,
+              assigned_to: assignedTo as Id<"members">,
+              note: note || undefined,
+            }),
+          )
+        } else {
+          calls.push(
+            createTask({
+              member_id: memberId as Id<"members">,
+              assigned_to: assignedTo as Id<"members">,
+              note: note || undefined,
+            }),
+          )
+        }
+      }
+
+      await Promise.all(calls)
       toast({
         title: "Follow-up assigned",
-        description: `${selected.size} member${selected.size === 1 ? "" : "s"} assigned for follow-up.`,
+        description: `${selected.size} member${selected.size === 1 ? "" : "s"} assigned for follow-up.${
+          includeHousehold && handledHouseholds.size > 0 ? " Household members included." : ""
+        }`,
       })
       setOpen(false)
     } catch (err) {
@@ -184,6 +212,16 @@ export function AssignFollowUpDialog({
               </p>
             )}
           </div>
+
+          {hasAnyHousehold && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox
+                checked={includeHousehold}
+                onCheckedChange={(c) => setIncludeHousehold(c === true)}
+              />
+              Also include their household members
+            </label>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Note (optional)</label>

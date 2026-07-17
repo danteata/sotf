@@ -16,6 +16,7 @@ import {
     UserCheck,
 } from "lucide-react"
 import { api } from "../../../convex/_generated/api"
+import { Id } from "../../../convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -58,6 +59,7 @@ export default function KioskPage() {
     const [search, setSearch] = useState("")
     const [showVisitorForm, setShowVisitorForm] = useState(false)
     const [lastCheckIn, setLastCheckIn] = useState<{
+        memberId: string
         name: string
         status: string
         is_late: boolean
@@ -75,6 +77,36 @@ export default function KioskPage() {
 
     const checkInMember = useMutation(api.check_ins.kioskCheckIn)
     const checkInVisitor = useMutation(api.check_ins.kioskCheckInVisitor)
+
+    // "Also check in" suggestions: other household members not yet present
+    // for this session. Convex reactivity drops a member from this list the
+    // moment they're checked in, so no manual state juggling is needed.
+    const householdSuggestions = useQuery(
+        api.households.getUncheckedHouseholdMembers,
+        lastCheckIn?.memberId && session?.attendance_id
+            ? {
+                  member_id: lastCheckIn.memberId as Id<"members">,
+                  attendance_id: session.attendance_id as Id<"attendance">,
+              }
+            : "skip",
+    )
+
+    const handleCheckInSuggested = async (suggestion: { id: string; name: string }) => {
+        if (!sessionId) return
+        try {
+            const res: any = await checkInMember({
+                sessionId: sessionId as any,
+                memberId: suggestion.id as any,
+            })
+            if (res.status === "checked_in" || res.status === "already_checked_in") {
+                toast.success(`Checked in: ${res.member_name ?? suggestion.name}`)
+            } else {
+                toast.error(res.status ?? "Check-in failed")
+            }
+        } catch (err: any) {
+            toast.error(err?.message ?? "Check-in failed")
+        }
+    }
 
     // Big QR for the kiosk screen — kiosk needs the token, so we regenerate one
     // for display. Simpler: derive a short-lived display URL via regenerate is
@@ -96,7 +128,7 @@ export default function KioskPage() {
                 sessionId: sessionId as any,
                 memberId: member.member_id as any,
             })
-            handleResult(res, member.name)
+            handleResult(res, member.name, member.member_id)
             setSearch("")
             searchInputRef.current?.focus()
         } catch (err: any) {
@@ -104,9 +136,10 @@ export default function KioskPage() {
         }
     }
 
-    const handleResult = (res: any, fallbackName: string) => {
+    const handleResult = (res: any, fallbackName: string, memberId?: string) => {
         if (res.status === "checked_in") {
             setLastCheckIn({
+                memberId: memberId ?? "",
                 name: res.member_name ?? fallbackName,
                 status: "checked_in",
                 is_late: res.is_late,
@@ -115,6 +148,7 @@ export default function KioskPage() {
             toast.success(`Checked in: ${res.member_name ?? fallbackName}`)
         } else if (res.status === "already_checked_in") {
             setLastCheckIn({
+                memberId: memberId ?? "",
                 name: res.member_name ?? fallbackName,
                 status: "already_checked_in",
                 is_late: res.is_late,
@@ -217,6 +251,23 @@ export default function KioskPage() {
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
+
+                    {householdSuggestions && householdSuggestions.length > 0 && (
+                        <div className="mt-2 rounded-xl border border-dashed p-3 flex items-center gap-3 flex-wrap">
+                            <span className="text-sm text-muted-foreground">Also check in:</span>
+                            {householdSuggestions.map((s) => (
+                                <Button
+                                    key={s.id}
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleCheckInSuggested(s)}
+                                >
+                                    <UserCheck className="mr-1.5 h-3.5 w-3.5" />
+                                    {s.name}
+                                </Button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
