@@ -77,16 +77,6 @@ export default function MembersPage() {
 
     const members = useMemo(() => accumulated, [accumulated])
 
-    if (isLoading) {
-        return (
-            <LayoutWrapper>
-                <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-            </LayoutWrapper>
-        )
-    }
-
     return (
         <LayoutWrapper>
             <Tabs defaultValue="directory" className="w-full space-y-4">
@@ -135,11 +125,17 @@ export default function MembersPage() {
                         )}
                     </div>
 
-                    <MembersContent
-                        initialMembers={members as unknown as Member[]}
-                        view={view}
-                        onViewChange={setView}
-                    />
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <MembersContent
+                            initialMembers={members as unknown as Member[]}
+                            view={view}
+                            onViewChange={setView}
+                        />
+                    )}
 
                     {!isDone && (
                         <div className="mt-4 flex justify-center">

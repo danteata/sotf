@@ -40,12 +40,23 @@ export function HouseholdsContent() {
   const [creating, setCreating] = useState(false)
   const [managing, setManaging] = useState<Id<"households"> | null>(null)
 
+  const totalMembers = households?.reduce((sum, h) => sum + h.members.length, 0) ?? 0
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          Group family members under one address for the map, follow-up, and check-in.
-        </p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">
+            Group family members under one address for the map, follow-up, and check-in.
+          </p>
+          {households && households.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {households.length.toLocaleString()} household{households.length === 1 ? "" : "s"}
+              {" · "}
+              {totalMembers.toLocaleString()} member{totalMembers === 1 ? "" : "s"}
+            </p>
+          )}
+        </div>
         <Button size="sm" onClick={() => setCreating(true)}>
           <Plus className="mr-1.5 h-4 w-4" />
           New Household
@@ -71,8 +82,11 @@ export function HouseholdsContent() {
           {households.map((h) => (
             <Card key={h._id} className="overflow-hidden">
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-base">
-                  <span className="truncate">{h.name || "Unnamed household"}</span>
+                <CardTitle className="flex items-center justify-between text-base gap-2">
+                  <span className="truncate flex-1">{h.name || "Unnamed household"}</span>
+                  <Badge variant="secondary" className="text-[10px] shrink-0">
+                    {h.members.length} {h.members.length === 1 ? "member" : "members"}
+                  </Badge>
                   <Button variant="ghost" size="sm" onClick={() => setManaging(h._id)}>
                     Manage
                   </Button>

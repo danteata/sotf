@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Download, Filter, Plus, Search, Upload, Users, Building2, Tag, X } from "lucide-react"
+import { Download, Filter, Plus, Upload, Users, Building2, Tag, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery, useMutation } from "convex/react"
@@ -9,7 +9,6 @@ import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MembersTable } from "@/components/members-table"
 import { MemberDialog } from "@/components/member-dialog"
@@ -30,7 +29,6 @@ interface MembersContentProps {
 export function MembersContent({ initialMembers, view = 'active', onViewChange }: MembersContentProps) {
   const { trackEvent } = useAnalytics()
   const [statusFilters, setStatusFilters] = useState<string[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
   const [unitFilters, setUnitFilters] = useState<string[]>([])
   const [labelFilters, setLabelFilters] = useState<string[]>([])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
@@ -68,17 +66,8 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
       });
     }
 
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(member =>
-        (member.name?.toLowerCase().includes(query) ?? false) ||
-        (member.email?.toLowerCase().includes(query) ?? false) ||
-        (member.phone?.toLowerCase().includes(query) ?? false)
-      )
-    }
     return filtered;
-  }, [initialMembers, statusFilters, searchQuery, unitFilters, labelFilters])
+  }, [initialMembers, statusFilters, unitFilters, labelFilters])
 
   // Filter helpers
   const addFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
@@ -89,12 +78,11 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
     setStatusFilters([])
     setUnitFilters([])
     setLabelFilters([])
-    setSearchQuery("")
   }
 
   const unitName = (id: string) => unitsData?.find(u => u._id === id)?.name ?? id
   const labelName = (id: string) => (labelsData as any)?.find((l: any) => l._id === id)?.name ?? id
-  const activeFilterCount = statusFilters.length + unitFilters.length + labelFilters.length + (searchQuery ? 1 : 0)
+  const activeFilterCount = statusFilters.length + unitFilters.length + labelFilters.length
 
   const totalMembers = filteredMembers.length
 
@@ -256,17 +244,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
         </CardHeader>
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-4 relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                type="search"
-                placeholder="Search by name, email, or phone..."
-                className="pl-9 bg-background border-input-border rounded-lg"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
+            <div className="md:col-span-3">
               {/* key remounts the trigger after each pick so it resets to placeholder */}
               <Select key={`status-${statusFilters.length}`} onValueChange={(v) => addFilter(setStatusFilters, v)}>
                 <SelectTrigger className="rounded-lg">
@@ -282,7 +260,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-3">
+            <div className="md:col-span-4">
               <Select key={`unit-${unitFilters.length}`} onValueChange={(v) => addFilter(setUnitFilters, v)}>
                 <SelectTrigger className="rounded-lg">
                   <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
@@ -297,7 +275,7 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 </SelectContent>
               </Select>
             </div>
-            <div className="md:col-span-3">
+            <div className="md:col-span-5">
               <Select key={`label-${labelFilters.length}`} onValueChange={(v) => addFilter(setLabelFilters, v)}>
                 <SelectTrigger className="rounded-lg">
                   <Tag className="w-4 h-4 mr-2 text-muted-foreground" />

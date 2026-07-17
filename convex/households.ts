@@ -199,7 +199,24 @@ export const addMember = mutation({
         }
 
         await ctx.db.patch(args.member_id, { household_id: args.household_id });
-        await ctx.db.patch(args.household_id, { updated_at: new Date().toISOString() });
+
+        // Auto-populate the household's address from this member's, but only
+        // when the household doesn't already have one set — never overwrite
+        // an address someone already entered for the family.
+        const householdHasAddress =
+            household.address || household.city || household.plus_code;
+        const patch: Partial<Doc<"households">> = { updated_at: new Date().toISOString() };
+        if (!householdHasAddress && (member.address || member.city || member.plus_code)) {
+            patch.address = member.address;
+            patch.city = member.city;
+            patch.state = member.state;
+            patch.zip = member.zip;
+            patch.country = member.country;
+            patch.plus_code = member.plus_code;
+            patch.latitude = member.latitude;
+            patch.longitude = member.longitude;
+        }
+        await ctx.db.patch(args.household_id, patch);
         return { ok: true };
     },
 });
