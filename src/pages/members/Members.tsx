@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react"
-import type { FunctionReturnType } from "convex/server"
 import { MembersContent } from "@/components/members-content"
 import { HouseholdsContent } from "@/components/households-content"
 import type { Member } from "@/types/database"
@@ -13,7 +12,7 @@ import { Search, Users, Home } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
-type MemberRow = FunctionReturnType<typeof api.members.listPage>["page"][number]
+const PAGE_SIZE = 50
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
     const [debounced, setDebounced] = useState(value)
@@ -29,20 +28,23 @@ export default function MembersPage() {
     const [view, setView] = useState<"active" | "archived">("active")
     const [searchInput, setSearchInput] = useState("")
     const search = useDebouncedValue(searchInput.trim(), 250)
-    const [cursor, setCursor] = useState<string | undefined>(undefined)
-    const [accumulated, setAccumulated] = useState<MemberRow[]>([])
+    const [loadedCount, setLoadedCount] = useState(PAGE_SIZE)
 
-    // Reset pagination when filters change. Adjusting state during render
-    // (React's documented pattern for "resetting state on prop change")
-    // instead of an effect avoids an extra render pass.
+    // Reset "Load more" progress when filters change. Adjusting state during
+    // render (React's documented pattern for "resetting state on prop
+    // change") instead of an effect avoids an extra render pass.
     const filterKey = `${organization?._id ?? ""}:${view}:${search}`
     const [prevFilterKey, setPrevFilterKey] = useState(filterKey)
     if (filterKey !== prevFilterKey) {
         setPrevFilterKey(filterKey)
-        setCursor(undefined)
-        setAccumulated([])
+        setLoadedCount(PAGE_SIZE)
     }
 
+    // A single live query whose pageSize grows on "Load more", rather than
+    // one query per page merged client-side — listPage already collects and
+    // filters the whole scoped set server-side before slicing, so this costs
+    // nothing extra, and it means the visible list is always fully reactive
+    // (e.g. an archived member disappears immediately, not just on refresh).
     const page = useQuery(
         api.members.listPage,
         organization
@@ -50,32 +52,16 @@ export default function MembersPage() {
                   organization_id: organization._id,
                   filter: view,
                   search: search || undefined,
-                  pageSize: 50,
-                  cursor,
+                  pageSize: loadedCount,
               }
             : "skip",
     )
 
-    // Merge pages as they arrive
-    const [mergedForPage, setMergedForPage] = useState<typeof page>(undefined)
-    if (page && page !== mergedForPage) {
-        setMergedForPage(page)
-        if (!cursor) {
-            setAccumulated(page.page)
-        } else {
-            setAccumulated((prev) => {
-                const seen = new Set(prev.map((m) => m._id ?? m.id))
-                const next = page.page.filter((m) => !seen.has(m._id ?? m.id))
-                return [...prev, ...next]
-            })
-        }
-    }
-
     const totalCount = page?.totalCount
     const isDone = page?.isDone ?? true
-    const isLoading = page === undefined && accumulated.length === 0
+    const isLoading = page === undefined
 
-    const members = useMemo(() => accumulated, [accumulated])
+    const members = useMemo(() => page?.page ?? [], [page])
 
     return (
         <LayoutWrapper>
@@ -142,9 +128,7 @@ export default function MembersPage() {
                             <Button
                                 variant="outline"
                                 disabled={page === undefined}
-                                onClick={() => {
-                                    if (page?.nextCursor) setCursor(page.nextCursor)
-                                }}
+                                onClick={() => setLoadedCount((c) => c + PAGE_SIZE)}
                             >
                                 {page === undefined ? "Loading…" : "Load more"}
                             </Button>

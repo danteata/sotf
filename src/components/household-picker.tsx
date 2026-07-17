@@ -8,13 +8,7 @@ import { Id } from "../../convex/_generated/dataModel"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { HouseholdCombobox } from "@/components/household-combobox"
 import { useToast } from "@/hooks/use-toast"
 
 interface HouseholdPickerProps {
@@ -92,9 +86,10 @@ export function HouseholdPicker({ memberId, organizationId }: HouseholdPickerPro
 
       {!current && (
         <div className="space-y-2">
-          <Select
-            disabled={isSubmitting || households.length === 0}
-            onValueChange={(householdId) =>
+          <HouseholdCombobox
+            households={households}
+            value=""
+            onSelect={(householdId) =>
               runOrToastError(() =>
                 addMember({
                   household_id: householdId as Id<"households">,
@@ -102,22 +97,9 @@ export function HouseholdPicker({ memberId, organizationId }: HouseholdPickerPro
                 }),
               )
             }
-          >
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  households.length === 0 ? "No households yet" : "Add to existing household…"
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {households.map((h) => (
-                <SelectItem key={h._id} value={h._id}>
-                  {h.name || "Unnamed household"} ({h.members.length})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder={households.length === 0 ? "No households yet" : "Add to existing household…"}
+            className={isSubmitting || households.length === 0 ? "pointer-events-none opacity-50" : ""}
+          />
 
           {creating ? (
             <div className="flex gap-2">

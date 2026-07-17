@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useMutation, useQuery } from "convex/react"
-import { Home, Loader2, Plus, Star, Trash2, UserMinus, UserPlus } from "lucide-react"
+import { Home, Loader2, Plus, Search, Star, Trash2, UserMinus, UserPlus } from "lucide-react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
 import { useOrganization } from "@/hooks/use-organization"
@@ -39,8 +39,17 @@ export function HouseholdsContent() {
   )
   const [creating, setCreating] = useState(false)
   const [managing, setManaging] = useState<Id<"households"> | null>(null)
+  const [search, setSearch] = useState("")
 
   const totalMembers = households?.reduce((sum, h) => sum + h.members.length, 0) ?? 0
+
+  const searchQuery = search.trim().toLowerCase()
+  const filteredHouseholds = (households ?? []).filter(
+    (h) =>
+      !searchQuery ||
+      h.name.toLowerCase().includes(searchQuery) ||
+      h.members.some((m) => m.name.toLowerCase().includes(searchQuery)),
+  )
 
   return (
     <div className="space-y-4">
@@ -78,44 +87,64 @@ export function HouseholdsContent() {
           }
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {households.map((h) => (
-            <Card key={h._id} className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-base gap-2">
-                  <span className="truncate flex-1">{h.name || "Unnamed household"}</span>
-                  <Badge variant="secondary" className="text-[10px] shrink-0">
-                    {h.members.length} {h.members.length === 1 ? "member" : "members"}
-                  </Badge>
-                  <Button variant="ghost" size="sm" onClick={() => setManaging(h._id)}>
-                    Manage
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {h.address ? (
-                  <p className="text-xs text-muted-foreground">
-                    {h.address}
-                    {h.city ? `, ${h.city}` : ""}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground/70">No address set</p>
-                )}
-                <div className="flex flex-wrap gap-1.5">
-                  {h.members.length === 0 && (
-                    <span className="text-xs text-muted-foreground/70">No members yet</span>
-                  )}
-                  {h.members.map((m) => (
-                    <Badge key={m._id} variant="secondary" className="text-[10px] gap-1">
-                      {m._id === h.head_of_household_id && <Star className="h-2.5 w-2.5" />}
-                      {m.name}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search households or members…"
+              className="pl-9"
+            />
+          </div>
+
+          {filteredHouseholds.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="No households match"
+              description={`Nothing found for "${search}".`}
+            />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredHouseholds.map((h) => (
+                <Card key={h._id} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center justify-between text-base gap-2">
+                      <span className="truncate flex-1">{h.name || "Unnamed household"}</span>
+                      <Badge variant="secondary" className="text-[10px] shrink-0">
+                        {h.members.length} {h.members.length === 1 ? "member" : "members"}
+                      </Badge>
+                      <Button variant="ghost" size="sm" onClick={() => setManaging(h._id)}>
+                        Manage
+                      </Button>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {h.address ? (
+                      <p className="text-xs text-muted-foreground">
+                        {h.address}
+                        {h.city ? `, ${h.city}` : ""}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/70">No address set</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {h.members.length === 0 && (
+                        <span className="text-xs text-muted-foreground/70">No members yet</span>
+                      )}
+                      {h.members.map((m) => (
+                        <Badge key={m._id} variant="secondary" className="text-[10px] gap-1">
+                          {m._id === h.head_of_household_id && <Star className="h-2.5 w-2.5" />}
+                          {m.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {creating && organization && (

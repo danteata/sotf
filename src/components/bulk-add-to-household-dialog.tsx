@@ -15,13 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { HouseholdCombobox } from "@/components/household-combobox"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { useOrganization } from "@/hooks/use-organization"
@@ -124,23 +118,12 @@ export function BulkAddToHouseholdDialog({
                         <label className="text-xs font-semibold text-muted-foreground tracking-wider">
                             Select Household *
                         </label>
-                        <Select value={selectedHouseholdId} onValueChange={setSelectedHouseholdId}>
-                            <SelectTrigger className="bg-background/50 border-input-border">
-                                <SelectValue placeholder="Choose a household..." />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                                {households?.map((h) => (
-                                    <SelectItem key={h._id} value={h._id}>
-                                        {h.name} ({h.members.length})
-                                    </SelectItem>
-                                ))}
-                                {(!households || households.length === 0) && (
-                                    <div className="p-4 text-center text-sm text-muted-foreground">
-                                        No households available
-                                    </div>
-                                )}
-                            </SelectContent>
-                        </Select>
+                        <HouseholdCombobox
+                            households={households}
+                            value={selectedHouseholdId}
+                            onSelect={setSelectedHouseholdId}
+                            placeholder="Choose a household…"
+                        />
                     </div>
 
                     {selectedHousehold && (

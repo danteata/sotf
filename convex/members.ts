@@ -141,7 +141,11 @@ export const listPage = query({
             return { page: [], nextCursor: null, totalCount: 0, isDone: true };
         }
 
-        const pageSize = Math.min(Math.max(args.pageSize ?? 50, 1), 100);
+        // The client grows pageSize on "Load more" rather than advancing an
+        // offset (so the visible list stays fully reactive to archives/
+        // creates instead of needing a merge) -- cap high enough to cover
+        // realistic org sizes rather than the old fixed 100.
+        const pageSize = Math.min(Math.max(args.pageSize ?? 50, 1), 2000);
         const offset = args.cursor ? Math.max(0, parseInt(args.cursor, 10) || 0) : 0;
         const mode = args.filter ?? "active";
         const search = (args.search ?? "").trim();
