@@ -149,13 +149,16 @@ function CreateHouseholdDialog({
   const create = useMutation(api.households.create)
   const { toast } = useToast()
 
+  const canSubmit = name.trim().length > 0
+
   const handleSubmit = async () => {
+    if (!canSubmit) return
     setIsSubmitting(true)
     try {
       const latLng = plusCode ? await convertPlusCodeToLatLng(plusCode) : null
       await create({
         organization_id: organizationId,
-        name: name || undefined,
+        name: name.trim(),
         address: address || undefined,
         city: city || undefined,
         plus_code: plusCode || undefined,
@@ -186,8 +189,13 @@ function CreateHouseholdDialog({
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Name (optional)</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. The Mensah Household" />
+            <label className="text-sm font-medium">Name</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. The Mensah Household"
+              autoFocus
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Address</label>
@@ -208,7 +216,7 @@ function CreateHouseholdDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <Button onClick={handleSubmit} disabled={isSubmitting || !canSubmit}>
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create
           </Button>
@@ -238,7 +246,12 @@ function ManageHouseholdDialog({
   const { toast } = useToast()
 
   const [addSearch, setAddSearch] = useState("")
-  const [address, setAddress] = useState<{ address?: string; city?: string; plus_code?: string } | null>(null)
+  const [address, setAddress] = useState<{
+    name?: string
+    address?: string
+    city?: string
+    plus_code?: string
+  } | null>(null)
 
   const runOrToastError = async (action: () => Promise<unknown>) => {
     try {
@@ -295,10 +308,12 @@ function ManageHouseholdDialog({
   if (household === null) return null
 
   const effectiveAddress = address ?? {
+    name: household.name,
     address: household.address,
     city: household.city,
     plus_code: household.plus_code,
   }
+  const canSaveName = (effectiveAddress.name ?? "").trim().length > 0
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -308,6 +323,18 @@ function ManageHouseholdDialog({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Name</label>
+            <Input
+              value={effectiveAddress.name ?? ""}
+              onChange={(e) => setAddress({ ...effectiveAddress, name: e.target.value })}
+              placeholder="e.g. The Mensah Household"
+            />
+            {!canSaveName && (
+              <p className="text-xs text-destructive">Household name is required.</p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Members</label>
             <div className="rounded-md border divide-y">
@@ -445,6 +472,7 @@ function ManageHouseholdDialog({
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Close</Button>
             <Button
+              disabled={!canSaveName}
               onClick={() =>
                 runOrToastError(async () => {
                   if (address) {

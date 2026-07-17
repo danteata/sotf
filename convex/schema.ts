@@ -724,7 +724,7 @@ export default defineSchema({
     // =======================================================================
     households: defineTable({
         organization_id: v.id("organizations"),
-        name: v.optional(v.string()), // falls back to head's name if unset
+        name: v.string(),
         head_of_household_id: v.optional(v.id("members")), // must be a member of this household
         address: v.optional(v.string()),
         city: v.optional(v.string()),

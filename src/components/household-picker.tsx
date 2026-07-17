@@ -128,12 +128,12 @@ export function HouseholdPicker({ memberId, organizationId }: HouseholdPickerPro
                 autoFocus
               />
               <Button
-                disabled={isSubmitting}
+                disabled={isSubmitting || newName.trim().length === 0}
                 onClick={() =>
                   runOrToastError(async () => {
                     const householdId = await createHousehold({
                       organization_id: organizationId,
-                      name: newName || undefined,
+                      name: newName.trim(),
                     })
                     await addMember({ household_id: householdId, member_id: memberId })
                     setCreating(false)

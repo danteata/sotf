@@ -114,7 +114,7 @@ export const get = query({
 export const create = mutation({
     args: {
         organization_id: v.optional(v.id("organizations")),
-        name: v.optional(v.string()),
+        name: v.string(),
         address: v.optional(v.string()),
         city: v.optional(v.string()),
         state: v.optional(v.string()),
@@ -128,11 +128,14 @@ export const create = mutation({
         await requireWriteAccess(ctx);
         const orgId = await resolveOrgId(ctx, args.organization_id);
         if (!orgId) throw new Error("Organization not set");
+        const name = args.name.trim();
+        if (!name) throw new Error("Household name is required");
 
         const now = new Date().toISOString();
         const { organization_id: _organization_id, ...rest } = args;
         return await ctx.db.insert("households", {
             ...rest,
+            name,
             organization_id: orgId,
             created_at: now,
             updated_at: now,
@@ -164,6 +167,10 @@ export const update = mutation({
             if (!head || head.household_id !== args.id) {
                 throw new Error("Head of household must already be a member of this household");
             }
+        }
+
+        if (args.name !== undefined && !args.name.trim()) {
+            throw new Error("Household name is required");
         }
 
         const { id, ...rest } = args;
