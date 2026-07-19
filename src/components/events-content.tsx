@@ -46,9 +46,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { UpcomingEvents } from '@/components/upcoming-events'
 import { EventDialog } from '@/components/event-dialog'
 import { useTerminology, getUnitLabels } from '@/hooks/use-terminology'
+import { useOrganization } from '@/hooks/use-organization'
 import { useEventTypes } from '@/hooks/use-event-types'
 import { format, isAfter, isBefore, startOfDay } from 'date-fns'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -75,6 +86,7 @@ export function EventsContent() {
   const [itemsPerPage] = useState(10)
 
   const { terminology, isLoading: terminologyLoading } = useTerminology()
+  const { currentOrganization } = useOrganization()
   const { eventTypes } = useEventTypes()
   const unitLabels = getUnitLabels(terminology)
 
@@ -113,14 +125,16 @@ export function EventsContent() {
     currentPage * itemsPerPage
   )
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm('Are you sure you want to delete this event?')) return
+  const [eventToDelete, setEventToDelete] = useState<any | null>(null)
 
+  const handleDeleteEvent = async (eventId: string) => {
     try {
       await removeMutation({ id: eventId as Id<"events"> })
       toast({ title: "Deleted", description: "Event removed successfully" })
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" })
+    } finally {
+      setEventToDelete(null)
     }
   }
 
@@ -173,7 +187,7 @@ export function EventsContent() {
             <h1 className="text-3xl tracking-tight text-foreground">Events</h1>
           </div>
           <p className="text-muted-foreground pl-12 text-sm">
-            Manage and schedule upcoming events for {terminology.church_name}
+            Manage and schedule upcoming events for {currentOrganization?.name ?? "your organization"}
           </p>
         </div>
         <Button
@@ -351,7 +365,7 @@ export function EventsContent() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                              onClick={() => handleDeleteEvent(event._id)}
+                              onClick={() => setEventToDelete(event)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -399,6 +413,26 @@ export function EventsContent() {
         event={editingEvent}
         onSuccess={() => { }}
       />
+
+      <AlertDialog open={!!eventToDelete} onOpenChange={(open) => !open && setEventToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {eventToDelete?.title ?? "this event"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => eventToDelete && handleDeleteEvent(eventToDelete._id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
