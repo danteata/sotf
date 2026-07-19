@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { Layers, Crown, Target, Briefcase } from 'lucide-react'
+import { Users, Layers, Target, Briefcase } from 'lucide-react'
 
 interface OrganizationOverviewProps {
   organization: {
@@ -26,7 +26,7 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
         <CardContent className="pt-6 p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-[#5b21b6] text-white rounded-lg shadow-md">
-              <Layers className="h-6 w-6" />
+              <Users className="h-6 w-6" />
             </div>
             <div>
               <p className="text-3xl tracking-tight text-foreground">{totalMembers}</p>
@@ -41,7 +41,7 @@ export function OrganizationOverview({ organization }: OrganizationOverviewProps
         <CardContent className="pt-6 p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-gradient-to-br from-slate-600 to-slate-700 text-white rounded-lg shadow-md">
-              <Crown className="h-6 w-6" />
+              <Layers className="h-6 w-6" />
             </div>
             <div>
               <p className="text-3xl tracking-tight text-foreground">{totalUnits}</p>

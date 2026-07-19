@@ -34,6 +34,11 @@ import { SearchAndFilters } from './unit-management/search-and-filters'
 import { OrganizationHierarchy } from './unit-management/organization-hierarchy'
 import { CreateUnitDialog } from './unit-management/create-unit-dialog'
 import { EditUnitDialog } from './unit-management/edit-unit-dialog'
+import { CreateTemplateDialog, type TemplateFormData } from './unit-management/create-template-dialog'
+import { TemplatesLibrary } from './unit-management/templates-library'
+import { OverrideUnitDialog } from './unit-management/override-unit-dialog'
+import { MergeUnitDialog } from './unit-management/merge-unit-dialog'
+import type { Id } from '../../convex/_generated/dataModel'
 
 export function UnitManagement() {
   const { isAdmin } = useUserRole()
@@ -51,14 +56,34 @@ export function UnitManagement() {
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
   const [targetUnitId, setTargetUnitId] = useState<string | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<any | null>(null)
+  const [overrideUnit, setOverrideUnit] = useState<any | null>(null)
+  const [mergeSource, setMergeSource] = useState<any | null>(null)
+
+  // Tracks an in-flight create/update so the dialogs can show a spinner and
+  // disable their submit buttons.
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Convex Queries & Mutations
   const chartData = useQuery(api.organizations.getChartData, {});
+  const orgId = chartData?.organization?._id
+  const templates = useQuery(
+    api.unit_templates.list,
+    orgId ? { organization_id: orgId } : "skip",
+  ) || []
   const createUnitMutation = useMutation(api.units.create);
   const updateUnitMutation = useMutation(api.units.update);
+  const createTemplateMutation = useMutation(api.unit_templates.create);
+  const updateTemplateMutation = useMutation(api.unit_templates.update);
+  const removeTemplateMutation = useMutation(api.unit_templates.remove);
+  const instantiateTemplateMutation = useMutation(api.unit_templates.instantiate);
+  const overrideMutation = useMutation(api.units.overrideFromTemplate);
+  const resetMutation = useMutation(api.units.resetToTemplate);
+  const mergeMutation = useMutation(api.units.merge);
 
   const handleCreateUnit = async (data: any) => {
     if (!chartData?.organization) return;
+    setIsSubmitting(true);
     try {
       await createUnitMutation({
         name: data.name,
@@ -72,12 +97,16 @@ export function UnitManagement() {
       });
       toast({ title: "Success", description: "Unit created successfully" });
       setCreateUnitDialogOpen(false);
+      setSelectedUnitId(null);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   const handleUpdateUnit = async (id: string, data: any) => {
+    setIsSubmitting(true);
     try {
       await updateUnitMutation({
         id: id as any,
@@ -94,8 +123,111 @@ export function UnitManagement() {
       setEditUnitDialogOpen(false);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   }
+
+  const handleSaveTemplate = async (data: TemplateFormData) => {
+    if (!orgId) return;
+    setIsSubmitting(true);
+    try {
+      if (editingTemplate) {
+        await updateTemplateMutation({
+          id: editingTemplate._id as Id<"unit_templates">,
+          updates: data,
+        });
+        toast({ title: "Success", description: "Template updated" });
+      } else {
+        await createTemplateMutation({ organization_id: orgId, ...data });
+        toast({ title: "Success", description: "Template created" });
+      }
+      setTemplateDialogOpen(false);
+      setEditingTemplate(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!confirm("Delete this template? Units created from it become independent (they keep their members and data).")) return;
+    try {
+      await removeTemplateMutation({ id: templateId as Id<"unit_templates"> });
+      toast({ title: "Deleted", description: "Template removed; its units are now independent" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  }
+
+  const handleInstantiate = async (template: any) => {
+    if (!orgId) return;
+    try {
+      await instantiateTemplateMutation({
+        template_id: template._id as Id<"unit_templates">,
+        organization_id: orgId,
+      });
+      toast({ title: "Added", description: `${template.name} created from template` });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  }
+
+  const handleOverride = async (data: { name: string; description: string }) => {
+    if (!overrideUnit) return;
+    setIsSubmitting(true);
+    try {
+      await overrideMutation({
+        unit_id: overrideUnit._id as Id<"units">,
+        name: data.name,
+        description: data.description,
+      });
+      toast({ title: "Saved", description: "Local override applied" });
+      setOverrideUnit(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const handleReset = async (unitId: string) => {
+    if (!confirm("Reset this unit to its template values? Local changes will be lost.")) return;
+    try {
+      await resetMutation({ unit_id: unitId as Id<"units"> });
+      toast({ title: "Reset", description: "Unit restored to template values" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  }
+
+  const handleMerge = async (sourceId: string, targetId: string) => {
+    setIsSubmitting(true);
+    try {
+      await mergeMutation({ source_id: sourceId as Id<"units">, target_id: targetId as Id<"units"> });
+      toast({ title: "Merged", description: "Unit merged successfully" });
+      setMergeSource(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // The unit being edited, and the set of units that may be its parent —
+  // excludes itself and its descendants (using the materialized path) so the
+  // dropdown can't create a cycle.
+  const editingUnit = chartData?.units?.find((u: any) => u._id === targetUnitId) || null
+  const editableParents = useMemo(() => {
+    const units = (chartData?.units as any[]) || []
+    if (!editingUnit) return units
+    return units.filter((u: any) => {
+      if (u._id === editingUnit._id) return false
+      if (editingUnit.path && u.path?.startsWith(editingUnit.path + '/')) return false
+      return true
+    })
+  }, [chartData?.units, editingUnit])
 
   if (!chartData) {
     return <div className="p-8 text-center animate-pulse">Loading organizational hierarchy...</div>
@@ -130,6 +262,10 @@ export function UnitManagement() {
                   <Layers className="h-4 w-4 mr-2" />
                   Unit
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setEditingTemplate(null); setTemplateDialogOpen(true); }}>
+                  <Crown className="h-4 w-4 mr-2" />
+                  Template
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -149,9 +285,19 @@ export function UnitManagement() {
 
       <OrganizationOverview organization={chartData as any} />
 
+      <TemplatesLibrary
+        templates={templates as any}
+        onEdit={(t) => { setEditingTemplate(t); setTemplateDialogOpen(true); }}
+        onDelete={handleDeleteTemplate}
+        onInstantiate={handleInstantiate}
+      />
+
       <OrganizationHierarchy
         organization={chartData as any}
         viewMode={viewMode}
+        searchTerm={searchTerm}
+        filterType={filterType}
+        filterInheritance={filterInheritance}
         onInheritTemplates={() => { }}
         onCreateUnit={(unitId) => {
           setSelectedUnitId(unitId);
@@ -161,23 +307,64 @@ export function UnitManagement() {
           setTargetUnitId(unitId);
           setEditUnitDialogOpen(true);
         }}
+        onOverrideUnit={(unitId) => {
+          const u = chartData?.units?.find((x: any) => x._id === unitId) || null;
+          setOverrideUnit(u);
+        }}
+        onResetUnit={handleReset}
+        onMergeUnit={(unitId) => {
+          const u = chartData?.units?.find((x: any) => x._id === unitId) || null;
+          setMergeSource(u);
+        }}
       />
 
       <CreateUnitDialog
         open={createUnitDialogOpen}
-        onOpenChange={setCreateUnitDialogOpen}
+        onOpenChange={(o) => {
+          setCreateUnitDialogOpen(o);
+          if (!o) setSelectedUnitId(null);
+        }}
         availableUnits={chartData.units as any}
         onCreateUnit={handleCreateUnit}
-        creating={false}
+        creating={isSubmitting}
+        defaultParentId={selectedUnitId}
       />
 
       <EditUnitDialog
         open={editUnitDialogOpen}
         onOpenChange={setEditUnitDialogOpen}
-        unit={chartData?.units?.find((s: any) => s._id === targetUnitId) || null}
-        availableUnits={chartData?.units as any || []}
+        unit={editingUnit}
+        availableUnits={editableParents as any}
         onUpdateUnit={handleUpdateUnit}
-        updating={false}
+        updating={isSubmitting}
+      />
+
+      <CreateTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={(o) => {
+          setTemplateDialogOpen(o);
+          if (!o) setEditingTemplate(null);
+        }}
+        onSubmit={handleSaveTemplate}
+        saving={isSubmitting}
+        template={editingTemplate}
+      />
+
+      <OverrideUnitDialog
+        open={!!overrideUnit}
+        onOpenChange={(o) => { if (!o) setOverrideUnit(null); }}
+        selectedUnit={overrideUnit ? { id: overrideUnit._id, name: overrideUnit.name, description: overrideUnit.description, unit_id: overrideUnit._id } : null}
+        onOverrideUnit={handleOverride}
+        overriding={isSubmitting}
+      />
+
+      <MergeUnitDialog
+        open={!!mergeSource}
+        onOpenChange={(o) => { if (!o) setMergeSource(null); }}
+        source={mergeSource ? { _id: mergeSource._id, name: mergeSource.name } : null}
+        units={(chartData?.units as any) || []}
+        onMerge={handleMerge}
+        merging={isSubmitting}
       />
     </div>
   )

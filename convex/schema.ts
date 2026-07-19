@@ -95,12 +95,35 @@ export default defineSchema({
         latitude: v.optional(v.number()),
         longitude: v.optional(v.number()),
         plus_code: v.optional(v.string()),
+        // Template inheritance: set when this unit was provisioned from a
+        // template (see unit_templates). `template_overrides` lists the field
+        // names customized locally, which template-edit propagation must skip.
+        source_template_id: v.optional(v.id("unit_templates")),
+        template_overrides: v.optional(v.array(v.string())),
     })
         .index("by_org", ["organization_id"])
         .index("by_parent", ["parent_unit_id"])
         .index("by_type", ["type"])
         .index("by_org_type", ["organization_id", "type"])
-        .index("by_path", ["path"]),
+        .index("by_path", ["path"])
+        .index("by_source_template", ["source_template_id"]),
+
+    // Reusable unit blueprints. A template is NOT a real unit (no members,
+    // attendance, or tree position) — it's a definition that gets instantiated
+    // as units. `cascade_to_sub_orgs` auto-provisions one instance into every
+    // descendant org in the org tree. Instances link back via
+    // units.source_template_id and keep a living link: template edits propagate
+    // to non-overridden instance fields.
+    unit_templates: defineTable({
+        organization_id: v.id("organizations"), // the org that DEFINES the template
+        name: v.string(),
+        description: v.optional(v.string()),
+        type: v.string(), // 'administrative' | 'functional' | 'geographic'
+        category: v.optional(v.string()),
+        cascade_to_sub_orgs: v.boolean(),
+        active: v.boolean(),
+    })
+        .index("by_org", ["organization_id"]),
 
     terminologies: defineTable({
         organization_id: v.id("organizations"),

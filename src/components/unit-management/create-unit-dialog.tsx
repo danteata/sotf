@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,8 @@ interface CreateUnitDialogProps {
     leader_id?: string
   }) => Promise<void>
   creating: boolean
+  // When creating via "Add sub-unit", pre-selects this unit as the parent.
+  defaultParentId?: string | null
 }
 
 export function CreateUnitDialog({
@@ -49,7 +51,8 @@ export function CreateUnitDialog({
   onOpenChange,
   availableUnits,
   onCreateUnit,
-  creating
+  creating,
+  defaultParentId
 }: CreateUnitDialogProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -57,6 +60,11 @@ export function CreateUnitDialog({
   const [category, setCategory] = useState('')
   const [unitId, setUnitId] = useState('')
   const [leaderId, setLeaderId] = useState<string | undefined>()
+
+  // Pre-select the parent when opened from a unit's "Add sub-unit" action.
+  useEffect(() => {
+    if (open) setUnitId(defaultParentId || '')
+  }, [open, defaultParentId])
 
   // Fetch members for leader selection
   const membersData = useQuery(api.members.getAll, open ? {} : "skip")

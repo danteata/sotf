@@ -48,6 +48,7 @@ import type * as paystack from "../paystack.js";
 import type * as permissions from "../permissions.js";
 import type * as scope from "../scope.js";
 import type * as unit_admins from "../unit_admins.js";
+import type * as unit_templates from "../unit_templates.js";
 import type * as units from "../units.js";
 import type * as users from "../users.js";
 
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   permissions: typeof permissions;
   scope: typeof scope;
   unit_admins: typeof unit_admins;
+  unit_templates: typeof unit_templates;
   units: typeof units;
   users: typeof users;
 }>;
