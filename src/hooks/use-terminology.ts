@@ -12,8 +12,6 @@ export interface Terminology {
   division_term: string
   division_term_plural: string
   division_leader_term: string
-  app_name: string
-  church_name: string
 }
 
 const defaultTerminology: Terminology = {
@@ -23,8 +21,6 @@ const defaultTerminology: Terminology = {
   division_term: 'Division',
   division_term_plural: 'Divisions',
   division_leader_term: 'Division Leader',
-  app_name: 'State of the Flock',
-  church_name: 'Your Church Name',
 }
 
 export function useTerminology() {
@@ -48,8 +44,6 @@ export function useTerminology() {
       division_term: terminologyData.division_term || defaultTerminology.division_term,
       division_term_plural: terminologyData.division_term_plural || defaultTerminology.division_term_plural,
       division_leader_term: terminologyData.division_leader_term || defaultTerminology.division_leader_term,
-      app_name: terminologyData.app_name || defaultTerminology.app_name,
-      church_name: terminologyData.church_name || defaultTerminology.church_name,
     }
   }, [terminologyData])
 

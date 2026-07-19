@@ -18,6 +18,15 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useToast } from '@/hooks/use-toast'
 
+// Generic defaults for an org that hasn't customized its structure: every
+// level is just "Unit Level N". Named vocabularies are opt-in, not default.
+const DEFAULT_LEVEL_TERMS = {
+  level1_singular: 'Unit Level 1', level1_plural: 'Unit Level 1s',
+  level2_singular: 'Unit Level 2', level2_plural: 'Unit Level 2s',
+  level3_singular: 'Unit Level 3', level3_plural: 'Unit Level 3s',
+  level4_singular: 'Unit Level 4', level4_plural: 'Unit Level 4s',
+}
+
 export function TerminologyManagement() {
   const { isAdmin } = useUserRole()
   const { toast } = useToast()
@@ -27,28 +36,19 @@ export function TerminologyManagement() {
   const updateOrganization = useMutation(api.organizations.update);
 
   // Form state
-  const [formData, setFormData] = useState({
-    level1_singular: 'Organization',
-    level1_plural: 'Organizations',
-    level2_singular: 'Division',
-    level2_plural: 'Divisions',
-    level3_singular: 'Unit',
-    level3_plural: 'Units',
-    level4_singular: 'Sub-Unit',
-    level4_plural: 'Sub-Units',
-  })
+  const [formData, setFormData] = useState({ ...DEFAULT_LEVEL_TERMS })
 
   useEffect(() => {
     if (organizationData) {
       setFormData({
-        level1_singular: organizationData.level1_singular || 'Organization',
-        level1_plural: organizationData.level1_plural || 'Organizations',
-        level2_singular: organizationData.level2_singular || 'Division',
-        level2_plural: organizationData.level2_plural || 'Divisions',
-        level3_singular: organizationData.level3_singular || 'Unit',
-        level3_plural: organizationData.level3_plural || 'Units',
-        level4_singular: organizationData.level4_singular || 'Sub-Unit',
-        level4_plural: organizationData.level4_plural || 'Sub-Units',
+        level1_singular: organizationData.level1_singular || DEFAULT_LEVEL_TERMS.level1_singular,
+        level1_plural: organizationData.level1_plural || DEFAULT_LEVEL_TERMS.level1_plural,
+        level2_singular: organizationData.level2_singular || DEFAULT_LEVEL_TERMS.level2_singular,
+        level2_plural: organizationData.level2_plural || DEFAULT_LEVEL_TERMS.level2_plural,
+        level3_singular: organizationData.level3_singular || DEFAULT_LEVEL_TERMS.level3_singular,
+        level3_plural: organizationData.level3_plural || DEFAULT_LEVEL_TERMS.level3_plural,
+        level4_singular: organizationData.level4_singular || DEFAULT_LEVEL_TERMS.level4_singular,
+        level4_plural: organizationData.level4_plural || DEFAULT_LEVEL_TERMS.level4_plural,
       })
     }
   }, [organizationData])
@@ -80,16 +80,7 @@ export function TerminologyManagement() {
   }
 
   const handleResetToDefaults = () => {
-    setFormData({
-      level1_singular: 'Organization',
-      level1_plural: 'Organizations',
-      level2_singular: 'Division',
-      level2_plural: 'Divisions',
-      level3_singular: 'Unit',
-      level3_plural: 'Units',
-      level4_singular: 'Sub-Unit',
-      level4_plural: 'Sub-Units',
-    })
+    setFormData({ ...DEFAULT_LEVEL_TERMS })
   }
 
   if (!isAdmin) {
@@ -145,7 +136,7 @@ export function TerminologyManagement() {
           <CardContent className="p-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="space-y-3">
-                <Label className="text-[10px] text-slate-400 tracking-wider">Level 1: Organization</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 1</Label>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level1_singular}</Badge>
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level1_plural}</Badge>
@@ -153,7 +144,7 @@ export function TerminologyManagement() {
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] text-slate-400 tracking-wider">Level 2: Division</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 2</Label>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level2_singular}</Badge>
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level2_plural}</Badge>
@@ -161,7 +152,7 @@ export function TerminologyManagement() {
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] text-slate-400 tracking-wider">Level 3: Unit</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 3</Label>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level3_singular}</Badge>
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level3_plural}</Badge>
@@ -169,7 +160,7 @@ export function TerminologyManagement() {
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] text-slate-400 tracking-wider">Level 4: Sub-Unit</Label>
+                <Label className="text-[10px] text-slate-400 tracking-wider">Level 4</Label>
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level4_singular}</Badge>
                   <Badge variant="outline" className="border-slate-200 text-slate-600 h-8 px-3 rounded-lg bg-white">{formData.level4_plural}</Badge>
@@ -189,7 +180,7 @@ export function TerminologyManagement() {
           </CardHeader>
           <CardContent className="space-y-8 p-8 pt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
-              {/* Organization Level */}
+              {/* Level 1 */}
               <div className="space-y-2">
                 <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 1 Singular</Label>
                 <Input
@@ -207,7 +198,7 @@ export function TerminologyManagement() {
                 />
               </div>
 
-              {/* Division Level */}
+              {/* Level 2 */}
               <div className="space-y-2">
                 <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 2 Singular</Label>
                 <Input
@@ -225,7 +216,7 @@ export function TerminologyManagement() {
                 />
               </div>
 
-              {/* Unit Level */}
+              {/* Level 3 */}
               <div className="space-y-2">
                 <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 3 Singular</Label>
                 <Input
@@ -243,7 +234,7 @@ export function TerminologyManagement() {
                 />
               </div>
 
-              {/* Sub-Unit Level */}
+              {/* Level 4 */}
               <div className="space-y-2">
                 <Label className="text-[10px] text-slate-400 tracking-wider pl-1">Level 4 Singular</Label>
                 <Input

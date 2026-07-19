@@ -1,9 +1,6 @@
 'use client'
 
 import { useState, useEffect } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -28,14 +24,18 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
-import { useOrganization } from "@/hooks/use-organization"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
-import { Settings, Shield, Layout, Sparkles, Save, RotateCcw } from "lucide-react"
+import { Settings, Shield, Sparkles, Save, RotateCcw } from "lucide-react"
+import { cn } from "@/lib/utils"
 
+// The generic default for every level is "Unit Level N" (`unit_level`), listed
+// first so it's the top preset. The named presets below are optional
+// vocabularies an org can opt into; none is the default.
 const LEVEL_TYPE_TERMINOLOGY: Record<string, Record<string, { singular: string; plural: string }>> = {
   '1': {
+    unit_level: { singular: 'Unit Level 1', plural: 'Unit Level 1s' },
     denomination: { singular: 'Denomination', plural: 'Denominations' },
     network: { singular: 'Network', plural: 'Networks' },
     organization: { singular: 'Organization', plural: 'Organizations' },
@@ -45,6 +45,7 @@ const LEVEL_TYPE_TERMINOLOGY: Record<string, Record<string, { singular: string; 
     custom: { singular: '', plural: '' },
   },
   '2': {
+    unit_level: { singular: 'Unit Level 2', plural: 'Unit Level 2s' },
     ministry: { singular: 'Ministry', plural: 'Ministries' },
     department: { singular: 'Department', plural: 'Departments' },
     division: { singular: 'Division', plural: 'Divisions' },
@@ -55,6 +56,7 @@ const LEVEL_TYPE_TERMINOLOGY: Record<string, Record<string, { singular: string; 
     custom: { singular: '', plural: '' },
   },
   '3': {
+    unit_level: { singular: 'Unit Level 3', plural: 'Unit Level 3s' },
     group: { singular: 'Group', plural: 'Groups' },
     team: { singular: 'Team', plural: 'Teams' },
     unit: { singular: 'Unit', plural: 'Units' },
@@ -65,6 +67,7 @@ const LEVEL_TYPE_TERMINOLOGY: Record<string, Record<string, { singular: string; 
     custom: { singular: '', plural: '' },
   },
   '4': {
+    unit_level: { singular: 'Unit Level 4', plural: 'Unit Level 4s' },
     subgroup: { singular: 'Sub-group', plural: 'Sub-groups' },
     subunit: { singular: 'Sub-unit', plural: 'Sub-units' },
     team: { singular: 'Team', plural: 'Teams' },
@@ -74,15 +77,21 @@ const LEVEL_TYPE_TERMINOLOGY: Record<string, Record<string, { singular: string; 
   },
 }
 
-type LevelType = 'denomination' | 'network' | 'organization' | 'franchise' | 'chain' | 'federation' | 'ministry' | 'department' | 'division' | 'branch' | 'region' | 'district' | 'chapter' | 'group' | 'team' | 'unit' | 'squad' | 'cell' | 'class' | 'section' | 'subgroup' | 'subunit' | 'pair' | 'cohort' | 'custom'
+type LevelType = 'unit_level' | 'denomination' | 'network' | 'organization' | 'franchise' | 'chain' | 'federation' | 'ministry' | 'department' | 'division' | 'branch' | 'region' | 'district' | 'chapter' | 'group' | 'team' | 'unit' | 'squad' | 'cell' | 'class' | 'section' | 'subgroup' | 'subunit' | 'pair' | 'cohort' | 'custom'
 
-const settingsSchema = z.object({
-  // General settings (Stored in app_config)
-  app_name: z.string().min(1, "App name is required"),
-  church_name: z.string().min(1, "Church name is required"),
-})
+// Generic defaults for an org that hasn't customized its structure: every
+// level is just "Unit Level N". Named vocabularies (Division, Unit, …) are
+// opt-in via the presets above, never the default.
+const DEFAULT_ORG_TERMS = {
+  level1_singular: 'Unit Level 1', level1_plural: 'Unit Level 1s',
+  level2_singular: 'Unit Level 2', level2_plural: 'Unit Level 2s',
+  level3_singular: 'Unit Level 3', level3_plural: 'Unit Level 3s',
+  level4_singular: 'Unit Level 4', level4_plural: 'Unit Level 4s',
+}
 
-type SettingsFormData = z.infer<typeof settingsSchema>
+const DEFAULT_LEVEL_TYPES: Record<'level1' | 'level2' | 'level3' | 'level4', LevelType> = {
+  level1: 'unit_level', level2: 'unit_level', level3: 'unit_level', level4: 'unit_level',
+}
 
 interface SettingsDialogProps {
   open: boolean
@@ -96,31 +105,20 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
   const { trackEvent } = useAnalytics()
 
   const currentOrg = useQuery(api.organizations.current)
-  const terminologyConfigs = useQuery(api.app_config.getByCategory, { category: 'terminology' })
-  const generalConfigs = useQuery(api.app_config.getByCategory, { category: 'general' })
-
-  const setConfigMutation = useMutation(api.app_config.setKey)
   const updateOrgMutation = useMutation(api.organizations.update)
 
   // Organization structure local state
-  const [orgTerms, setOrgTerms] = useState({
-    level1_singular: 'Organization',
-    level1_plural: 'Organizations',
-    level2_singular: 'Division',
-    level2_plural: 'Divisions',
-    level3_singular: 'Unit',
-    level3_plural: 'Units',
-    level4_singular: 'Sub-Unit',
-    level4_plural: 'Sub-Units',
-  })
-  
+  const [orgTerms, setOrgTerms] = useState({ ...DEFAULT_ORG_TERMS })
+
   // Level type selections (used to derive terminology)
-  const [levelTypes, setLevelTypes] = useState({
-    level1: 'organization' as LevelType,
-    level2: 'division' as LevelType,
-    level3: 'unit' as LevelType,
-    level4: 'subunit' as LevelType,
-  })
+  const [levelTypes, setLevelTypes] = useState({ ...DEFAULT_LEVEL_TYPES })
+
+  // Which level's edit card is shown; driven by the Hierarchy Preview pills.
+  const [selectedLevel, setSelectedLevel] = useState<1 | 2 | 3 | 4>(1)
+
+  // The organization's canonical name (organizations.name). Shown in the org
+  // switcher, page headers, and the public giving page.
+  const [orgName, setOrgName] = useState('')
 
   const handleLevelTypeChange = (level: '1' | '2' | '3' | '4', type: LevelType) => {
     const levelKey = `level${level}` as keyof typeof levelTypes
@@ -149,72 +147,33 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
     return 'custom'
   }
 
-  const form = useForm<SettingsFormData>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: {
-      app_name: "Management System",
-      church_name: "Your Organization Name",
-    },
-  })
-
-  // Sync Convex logic into form and local state
+  // Sync org data into local state when the dialog opens.
   useEffect(() => {
     if (!open) return
 
     trackEvent(AnalyticsEventType.SETTINGS_OPENED, {})
 
-    if (terminologyConfigs && generalConfigs) {
-      const settingsObject: any = {}
-      const allSettings = [...terminologyConfigs, ...generalConfigs]
-      allSettings.forEach(s => {
-        settingsObject[s.key] = s.value
-      })
-      form.reset({
-        ...form.getValues(),
-        ...settingsObject
-      })
-    }
-
   if (currentOrg) {
+    setOrgName(currentOrg.name || '')
     setOrgTerms({
-      level1_singular: currentOrg.level1_singular || 'Organization',
-      level1_plural: currentOrg.level1_plural || 'Organizations',
-      level2_singular: currentOrg.level2_singular || 'Division',
-      level2_plural: currentOrg.level2_plural || 'Divisions',
-      level3_singular: currentOrg.level3_singular || 'Unit',
-      level3_plural: currentOrg.level3_plural || 'Units',
-      level4_singular: currentOrg.level4_singular || 'Sub-Unit',
-      level4_plural: currentOrg.level4_plural || 'Sub-Units',
+      level1_singular: currentOrg.level1_singular || DEFAULT_ORG_TERMS.level1_singular,
+      level1_plural: currentOrg.level1_plural || DEFAULT_ORG_TERMS.level1_plural,
+      level2_singular: currentOrg.level2_singular || DEFAULT_ORG_TERMS.level2_singular,
+      level2_plural: currentOrg.level2_plural || DEFAULT_ORG_TERMS.level2_plural,
+      level3_singular: currentOrg.level3_singular || DEFAULT_ORG_TERMS.level3_singular,
+      level3_plural: currentOrg.level3_plural || DEFAULT_ORG_TERMS.level3_plural,
+      level4_singular: currentOrg.level4_singular || DEFAULT_ORG_TERMS.level4_singular,
+      level4_plural: currentOrg.level4_plural || DEFAULT_ORG_TERMS.level4_plural,
     })
     // Detect level types from existing terminology
     setLevelTypes({
-      level1: detectLevelTypeFromTerm(currentOrg.level1_singular || 'Organization', '1'),
-      level2: detectLevelTypeFromTerm(currentOrg.level2_singular || 'Division', '2'),
-      level3: detectLevelTypeFromTerm(currentOrg.level3_singular || 'Unit', '3'),
-      level4: detectLevelTypeFromTerm(currentOrg.level4_singular || 'Sub-Unit', '4'),
+      level1: detectLevelTypeFromTerm(currentOrg.level1_singular || DEFAULT_ORG_TERMS.level1_singular, '1'),
+      level2: detectLevelTypeFromTerm(currentOrg.level2_singular || DEFAULT_ORG_TERMS.level2_singular, '2'),
+      level3: detectLevelTypeFromTerm(currentOrg.level3_singular || DEFAULT_ORG_TERMS.level3_singular, '3'),
+      level4: detectLevelTypeFromTerm(currentOrg.level4_singular || DEFAULT_ORG_TERMS.level4_singular, '4'),
     })
   }
-  }, [open, terminologyConfigs, generalConfigs, currentOrg, form])
-
-  const onSubmit = async (data: SettingsFormData) => {
-    setIsLoading(true)
-    try {
-      // Save global configs
-      const promises = Object.entries(data).map(([key, value]) => {
-        const category = 'general'
-        return setConfigMutation({ key, value: String(value), category })
-      })
-
-      await Promise.all(promises)
-      trackEvent(AnalyticsEventType.SETTING_CHANGED, { scope: 'global', keys: Object.keys(data) })
-      toast({ title: "Success", description: "Global settings updated" })
-      onSuccess?.()
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [open, currentOrg])
 
   const handleSaveOrgTerminology = async () => {
     if (!currentOrg) return
@@ -235,28 +194,38 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
   }
 
   const handleResetOrgTerminology = () => {
-    setOrgTerms({
-      level1_singular: 'Organization',
-      level1_plural: 'Organizations',
-      level2_singular: 'Division',
-      level2_plural: 'Divisions',
-      level3_singular: 'Unit',
-      level3_plural: 'Units',
-      level4_singular: 'Sub-Unit',
-      level4_plural: 'Sub-Units',
-    })
-    setLevelTypes({
-      level1: 'organization',
-      level2: 'division',
-      level3: 'unit',
-      level4: 'subunit',
-    })
+    setOrgTerms({ ...DEFAULT_ORG_TERMS })
+    setLevelTypes({ ...DEFAULT_LEVEL_TYPES })
+  }
+
+  const handleSaveOrgName = async () => {
+    if (!currentOrg) return
+    const trimmed = orgName.trim()
+    if (!trimmed) {
+      toast({ title: "Error", description: "Organization name can't be empty", variant: "destructive" })
+      return
+    }
+    setIsLoading(true)
+    try {
+      if (trimmed !== currentOrg.name) {
+        await updateOrgMutation({
+          id: currentOrg._id as Id<"organizations">,
+          updates: { name: trimmed },
+        })
+      }
+      toast({ title: "Success", description: "Organization name updated" })
+      onSuccess?.()
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-hidden p-0 glass-card border-border/50 shadow-soft rounded-2xl">
-        <DialogHeader className="p-6 bg-muted/20 border-b border-border/50">
+      <DialogContent className="sm:max-w-[700px] max-h-[85vh] flex flex-col overflow-hidden p-0 glass-card border-border/50 shadow-soft rounded-2xl">
+        <DialogHeader className="shrink-0 p-6 bg-muted/20 border-b border-border/50">
           <DialogTitle className="text-xl tracking-tight flex items-center gap-3 text-foreground">
             <div className="p-2 bg-primary/10 rounded-lg text-primary">
               <Settings className="h-5 w-5" />
@@ -268,7 +237,7 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6">
           <Tabs defaultValue="terminology" className="space-y-6">
             <TabsList className="bg-muted/50 p-1 rounded-xl w-full grid grid-cols-3">
               <TabsTrigger value="terminology" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">Identity</TabsTrigger>
@@ -277,54 +246,72 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
             </TabsList>
 
             <TabsContent value="terminology" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <Card className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
-                  <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" /> Application Branding
-                    </CardTitle>
-                    <CardDescription>Define the core identity of your system</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-6 space-y-6">
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground tracking-wide">Interface Name</Label>
-                      <Input placeholder="CMS" {...form.register("app_name")} className="bg-background/50 h-11" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground tracking-wide">Organization Label</Label>
-                      <Input placeholder="Organization Name" {...form.register("church_name")} className="bg-background/50 h-11" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Button type="submit" disabled={isLoading} className="w-full h-12 shadow-soft hover:shadow-lg transition-all">
-                  {isLoading ? "Saving..." : "Commit Branding Changes"}
-                </Button>
-              </form>
+              {/* Organization name — per-org, editable by org admins */}
+              <Card className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
+                <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" /> Organization
+                  </CardTitle>
+                  <CardDescription>Your organization's name across the app</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground tracking-wide">Organization Name</Label>
+                    <Input
+                      placeholder="e.g. First Baptist Church"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      className="bg-background/50 h-11"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Shown in the organization switcher, page headers, and the public giving page.
+                    </p>
+                  </div>
+                  <Button onClick={handleSaveOrgName} disabled={isLoading} className="w-full h-12 shadow-soft hover:shadow-lg transition-all">
+                    {isLoading ? "Saving..." : "Save Organization Name"}
+                  </Button>
+                </CardContent>
+              </Card>
             </TabsContent>
 
         <TabsContent value="organization" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card className="border border-border/50 shadow-sm bg-accent/5">
             <CardHeader className="border-b border-border/50 px-6 py-4">
               <CardTitle className="text-sm font-semibold tracking-wide">Hierarchy Preview</CardTitle>
+              <CardDescription>Click a level to edit its name</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               <div className="flex flex-wrap gap-3">
-                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-primary/20 text-primary">1. {orgTerms.level1_singular}</Badge>
-                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">2. {orgTerms.level2_singular}</Badge>
-                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">3. {orgTerms.level3_singular}</Badge>
-                <Badge variant="outline" className="bg-background px-3 py-1 text-sm border-muted-foreground/20 text-foreground">4. {orgTerms.level4_singular}</Badge>
+                {([1, 2, 3, 4] as const).map((level) => {
+                  const singularKey = `level${level}_singular` as keyof typeof orgTerms
+                  const isActive = selectedLevel === level
+                  return (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => setSelectedLevel(level)}
+                      className={cn(
+                        "px-3 py-1 text-sm rounded-full border transition-all",
+                        isActive
+                          ? "bg-primary/10 border-primary/40 text-primary shadow-sm"
+                          : "bg-background border-muted-foreground/20 text-foreground hover:border-primary/30"
+                      )}
+                    >
+                      {level}. {orgTerms[singularKey]}
+                    </button>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
 
-          {[1, 2, 3, 4].map((level) => {
+          {[1, 2, 3, 4].filter((level) => level === selectedLevel).map((level) => {
             const levelKey = `level${level}` as keyof typeof levelTypes
             const types = LEVEL_TYPE_TERMINOLOGY[String(level) as '1' | '2' | '3' | '4']
             const singularKey = `level${level}_singular` as keyof typeof orgTerms
             const pluralKey = `level${level}_plural` as keyof typeof orgTerms
             const isCustom = levelTypes[levelKey] === 'custom'
-            
+
             return (
               <Card key={level} className="border border-border/50 shadow-sm overflow-hidden bg-card/50">
                 <CardHeader className="bg-muted/20 border-b border-border/50 px-6 py-4">
@@ -416,15 +403,11 @@ export function SettingsDialog({ open, onOpenChange, onSuccess }: SettingsDialog
                   </div>
                 </CardContent>
               </Card>
-
-              <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading} className="w-full h-12 shadow-soft hover:shadow-lg transition-all">
-                {isLoading ? "Saving..." : "Commit General Settings"}
-              </Button>
             </TabsContent>
           </Tabs>
         </div>
 
-        <DialogFooter className="p-6 bg-muted/20 border-t border-border/50">
+        <DialogFooter className="shrink-0 p-6 bg-muted/20 border-t border-border/50">
           <Button
             type="button"
             variant="ghost"
