@@ -21,6 +21,8 @@ exports
 .clerk
 .kimchi
 .vercel
+.kilo
+.kilocode
 
 # Local env & secrets (supplied to the build via `fly deploy --build-secret`)
 .env
