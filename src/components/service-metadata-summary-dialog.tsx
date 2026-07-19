@@ -98,6 +98,15 @@ export function ServiceMetadataSummaryDialog({
     const { user } = useUser()
     const { organization } = useOrganization()
     const [isLoading, setIsLoading] = useState(false)
+    // Which speaker mode is selected — tracked explicitly rather than derived
+    // from preacher_id/preacher_name, since preacher_name is also used to
+    // cache the *internal* minister's display name (see the auto-populate
+    // effect below). Deriving "guest mode" from "preacher_name is set" meant
+    // clicking Guest Speaker on a blank form did nothing observable: it only
+    // cleared preacher_id (already empty), and nothing ever made
+    // preacher_name truthy since the guest-name field itself only rendered
+    // once preacher_name was already truthy — a deadlock.
+    const [speakerMode, setSpeakerMode] = useState<'internal' | 'guest'>('internal')
     const { eventTypes } = useEventTypes()
 
     const createSummary = useMutation(api.financial.createMetadataSummary)
@@ -154,6 +163,7 @@ export function ServiceMetadataSummaryDialog({
                 verified_by_name: summary.verified_by_name || '',
                 notes: summary.notes || '',
             })
+            setSpeakerMode(summary.preacher_name && !summary.preacher_id ? 'guest' : 'internal')
         } else if (open && !summary) {
             form.reset({
                 service_date: new Date(),
@@ -173,6 +183,7 @@ export function ServiceMetadataSummaryDialog({
                 verified_by_name: '',
                 notes: '',
             })
+            setSpeakerMode('internal')
         }
     }, [open, summary, form])
 
@@ -255,12 +266,12 @@ export function ServiceMetadataSummaryDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-hidden p-0 border-0 shadow-soft-xl rounded-2xl bg-background">
+            <DialogContent className="sm:max-w-[850px] max-h-[90vh] flex flex-col overflow-hidden p-0 border-0 shadow-soft-xl rounded-2xl bg-background">
                 {/* Header Strip */}
-                <div className="h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                <div className="h-1.5 shrink-0 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
 
-                <div className="flex flex-col h-full overflow-hidden">
-                    <DialogHeader className="p-8 pb-4">
+                <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <DialogHeader className="p-8 pb-4 shrink-0">
                         <div className="flex items-center justify-between">
                             <div className="space-y-1">
                                 <DialogTitle className="text-2xl flex items-center gap-3">
@@ -282,7 +293,7 @@ export function ServiceMetadataSummaryDialog({
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto p-8 pt-2">
+                    <div className="flex-1 min-h-0 overflow-y-auto p-8 pt-2">
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                                 {/* Service Details */}
@@ -397,9 +408,9 @@ export function ServiceMetadataSummaryDialog({
                                 </section>
 
                                 {/* Message Details */}
-                                <section className="space-y-6 rounded-xl border border-indigo-200/50 bg-indigo-50/30 p-6">
-                                    <div className="flex items-center gap-2 text-indigo-700 mb-2">
-                                        <BookOpen className="h-4 w-4" />
+                                <section className="space-y-6 rounded-xl border border-border/50 bg-muted/20 p-6">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <BookOpen className="h-4 w-4 text-primary" />
                                         <h4 className="font-semibold text-lg">Message & Sermon</h4>
                                     </div>
 
@@ -411,7 +422,7 @@ export function ServiceMetadataSummaryDialog({
                                                 <FormItem>
                                                     <FormLabel className="text-sm">Sermon Title</FormLabel>
                                                     <FormControl>
-                                                        <Input placeholder="Theme of the message..." className="h-11 rounded-lg bg-white/50" {...field} />
+                                                        <Input placeholder="Theme of the message..." className="h-11 rounded-lg bg-background" {...field} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -426,7 +437,7 @@ export function ServiceMetadataSummaryDialog({
                                                     <FormLabel className="text-sm">Category</FormLabel>
                                                     <Select onValueChange={field.onChange} value={field.value}>
                                                         <FormControl>
-                                                            <SelectTrigger className="h-11 rounded-lg bg-white/50">
+                                                            <SelectTrigger className="h-11 rounded-lg bg-background">
                                                                 <SelectValue placeholder="Select Category" />
                                                             </SelectTrigger>
                                                         </FormControl>
@@ -449,26 +460,28 @@ export function ServiceMetadataSummaryDialog({
 
                                     <div className="space-y-4 pt-2">
                                         <div className="flex items-center gap-4 p-1 bg-muted/50 rounded-lg w-fit">
-                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-white/50">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-background">
                                                 <input
                                                     type="radio"
                                                     id="member-speaker"
                                                     name="speaker-type"
-                                                    checked={!!form.watch('preacher_id') || (!form.watch('preacher_id') && !form.watch('preacher_name'))}
+                                                    checked={speakerMode === 'internal'}
                                                     onChange={() => {
+                                                        setSpeakerMode('internal')
                                                         form.setValue('preacher_name', '')
                                                     }}
                                                     className="h-4 w-4 accent-primary cursor-pointer"
                                                 />
                                                 <label htmlFor="member-speaker" className="text-xs cursor-pointer">Internal Speaker</label>
                                             </div>
-                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-white/50">
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors hover:bg-background">
                                                 <input
                                                     type="radio"
                                                     id="guest-speaker"
                                                     name="speaker-type"
-                                                    checked={!!form.watch('preacher_name') && !form.watch('preacher_id')}
+                                                    checked={speakerMode === 'guest'}
                                                     onChange={() => {
+                                                        setSpeakerMode('guest')
                                                         form.setValue('preacher_id', '')
                                                     }}
                                                     className="h-4 w-4 accent-primary cursor-pointer"
@@ -477,7 +490,7 @@ export function ServiceMetadataSummaryDialog({
                                             </div>
                                         </div>
 
-                                        {form.watch('preacher_name') && !form.watch('preacher_id') ? (
+                                        {speakerMode === 'guest' ? (
                                             <FormField
                                                 control={form.control}
                                                 name="preacher_name"
@@ -485,7 +498,7 @@ export function ServiceMetadataSummaryDialog({
                                                     <FormItem>
                                                         <FormLabel className="text-sm">Guest Name</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Name of guest speaker..." className="h-11 rounded-lg bg-white/50" {...field} />
+                                                            <Input placeholder="Name of guest speaker..." className="h-11 rounded-lg bg-background" {...field} />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -508,7 +521,7 @@ export function ServiceMetadataSummaryDialog({
                                                             value={field.value}
                                                             onValueChange={field.onChange}
                                                             placeholder="Search for minister..."
-                                                            className="h-11 rounded-lg bg-white/50"
+                                                            className="h-11 rounded-lg bg-background"
                                                         />
                                                         <FormMessage />
                                                     </FormItem>
