@@ -143,8 +143,12 @@ export function AttendanceContent() {
         </div>
       </div>
 
+      {/* On mobile, the primary action (Record tab below) comes before these
+          stat cards — reordered via `order-*` so the page doesn't force a
+          long scroll past six stacked cards before reaching it. Desktop
+          keeps the original stats-first order (order-none). */}
       {loading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="order-2 md:order-none grid grid-cols-2 gap-3 md:gap-6 lg:grid-cols-3 xl:grid-cols-6">
           {[...Array(6)].map((_, i) => (
             <Card key={i} className="border-border/50 shadow-soft rounded-2xl overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -159,7 +163,7 @@ export function AttendanceContent() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="order-2 md:order-none grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-3 xl:grid-cols-6">
           {/* Total Active Members */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
@@ -234,8 +238,8 @@ export function AttendanceContent() {
         </div>
       )}
 
-      <Tabs defaultValue="record" className="w-full space-y-6">
-        <TabsList className="bg-muted/50 p-1 rounded-lg h-auto flex-wrap gap-0.5">
+      <Tabs defaultValue="record" className="order-1 md:order-none w-full space-y-6">
+        <TabsList className="bg-muted/50 p-1 rounded-lg h-auto max-w-full flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {[
             {
               value: "record",
@@ -267,7 +271,7 @@ export function AttendanceContent() {
               key={tab.value}
               value={tab.value}
               className={cn(
-                "h-8 px-3 rounded-md text-sm gap-1.5",
+                "h-8 shrink-0 grow-0 px-3 rounded-md text-sm gap-1.5",
                 "data-[state=active]:bg-background",
                 "data-[state=active]:text-foreground",
                 "data-[state=active]:shadow-sm",

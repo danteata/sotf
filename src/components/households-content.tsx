@@ -53,7 +53,7 @@ export function HouseholdsContent() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
             Group family members under one address for the map, follow-up, and check-in.
@@ -109,12 +109,21 @@ export function HouseholdsContent() {
               {filteredHouseholds.map((h) => (
                 <Card key={h._id} className="overflow-hidden">
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base gap-2">
-                      <span className="truncate flex-1">{h.name || "Unnamed household"}</span>
+                    {/* CardHeader lays this out as a CSS grid item, not a
+                        flex child — min-w-0 on the inner span alone isn't
+                        enough, since a grid item's own intrinsic min-width
+                        (as computed by its ancestor grid) still defaults to
+                        its content's full min-content size regardless of
+                        flex-shrink settings among ITS OWN children. Without
+                        min-w-0 here too, the grid track stays wide enough to
+                        fit the whole unwrapped name, which is what was
+                        pushing "Manage" off the card for longer names. */}
+                    <CardTitle className="flex items-center justify-between text-base gap-2 min-w-0">
+                      <span className="truncate flex-1 min-w-0">{h.name || "Unnamed household"}</span>
                       <Badge variant="secondary" className="text-[10px] shrink-0">
                         {h.members.length} {h.members.length === 1 ? "member" : "members"}
                       </Badge>
-                      <Button variant="ghost" size="sm" onClick={() => setManaging(h._id)}>
+                      <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setManaging(h._id)}>
                         Manage
                       </Button>
                     </CardTitle>
