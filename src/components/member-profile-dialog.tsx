@@ -1,6 +1,6 @@
 
 import { format } from "date-fns"
-import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake, Home, Star, Activity, CircleDollarSign } from "lucide-react"
+import { Calendar, Mail, Phone, MapPin, Award, Loader2, Shield, Hash, Crown, CheckCircle2, XCircle, AlertTriangle, HeartHandshake, Home, Star, Activity, CircleDollarSign, Info } from "lucide-react"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { MemberLabels } from "./label-selector"
 import type { Member } from "@/types/database"
 import { useUserRole } from "@/hooks/use-user-role"
@@ -85,6 +86,36 @@ function SectionLabel({ icon: Icon, children }: { icon: React.ElementType; child
   )
 }
 
+const ENGAGEMENT_METRICS = {
+  Recency: { weight: "35%", description: "Days since the member last attended." },
+  Trend: { weight: "30%", description: "Attendance in the last 8 weeks vs. the 8 weeks before that — catches a member sliding from weekly to monthly before they'd ever miss 3 in a row." },
+  Consistency: { weight: "20%", description: "Attendance rate over roughly the last 12 weeks." },
+  Involvement: { weight: "15%", description: "How many active groups/units the member belongs to." },
+} as const
+
+/** A metric label with a click-to-open (works on touch too, unlike a hover-only
+ *  tooltip) info icon explaining what it measures and how much it's weighted. */
+function MetricLabel({ metric }: { metric: keyof typeof ENGAGEMENT_METRICS }) {
+  const { weight, description } = ENGAGEMENT_METRICS[metric]
+  return (
+    <span className="inline-flex items-center gap-1">
+      {metric}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button type="button" className="text-muted-foreground/50 hover:text-foreground transition-colors">
+            <Info className="h-2.5 w-2.5" />
+            <span className="sr-only">What does {metric} mean?</span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 text-xs space-y-1" align="start">
+          <p className="font-medium text-foreground">{metric} <span className="text-muted-foreground font-normal">({weight} of score)</span></p>
+          <p className="text-muted-foreground">{description}</p>
+        </PopoverContent>
+      </Popover>
+    </span>
+  )
+}
+
 export function MemberProfileDialog({
   member,
   open,
@@ -149,7 +180,7 @@ export function MemberProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 border border-border/50 shadow-soft-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-x-hidden overflow-y-auto p-0 border border-border/50 shadow-soft-lg">
         {/* Header Background */}
         <div className="h-24 sm:h-28 rounded-t-xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent" />
 
@@ -164,22 +195,25 @@ export function MemberProfileDialog({
               <div className="absolute bottom-0.5 right-0.5 h-4 w-4 bg-emerald-500 border-2 border-background rounded-full shadow-sm" />
             </div>
 
-            <div className="flex-1 pb-1">
+            <div className="flex-1 min-w-0 pb-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h2 className="text-xl text-foreground tracking-tight font-semibold">{member.name}</h2>
+                <h2 className="text-xl text-foreground tracking-tight font-semibold break-words">{member.name}</h2>
                 <StatusBadge status={member.status} />
               </div>
               <div className="flex flex-col gap-1">
                 {member.email && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Mail className="h-3.5 w-3.5" />
-                    {member.email}
+                  <p
+                    className="text-sm text-muted-foreground flex items-center gap-2 min-w-0"
+                    title={member.email}
+                  >
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{member.email}</span>
                   </p>
                 )}
                 {member.phone && (
-                  <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Phone className="h-3.5 w-3.5" />
-                    {member.phone}
+                  <p className="text-sm text-muted-foreground flex items-center gap-2 min-w-0">
+                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{member.phone}</span>
                   </p>
                 )}
               </div>
@@ -312,10 +346,10 @@ export function MemberProfileDialog({
                     {engagementBreakdown && (
                       <>
                         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                          <div className="flex justify-between"><span>Recency</span><span className="font-medium text-foreground">{engagementBreakdown.recency}</span></div>
-                          <div className="flex justify-between"><span>Trend</span><span className="font-medium text-foreground">{engagementBreakdown.trend}</span></div>
-                          <div className="flex justify-between"><span>Consistency</span><span className="font-medium text-foreground">{engagementBreakdown.consistency}</span></div>
-                          <div className="flex justify-between"><span>Involvement</span><span className="font-medium text-foreground">{engagementBreakdown.involvement}</span></div>
+                          <div className="flex justify-between"><MetricLabel metric="Recency" /><span className="font-medium text-foreground">{engagementBreakdown.recency}</span></div>
+                          <div className="flex justify-between"><MetricLabel metric="Trend" /><span className="font-medium text-foreground">{engagementBreakdown.trend}</span></div>
+                          <div className="flex justify-between"><MetricLabel metric="Consistency" /><span className="font-medium text-foreground">{engagementBreakdown.consistency}</span></div>
+                          <div className="flex justify-between"><MetricLabel metric="Involvement" /><span className="font-medium text-foreground">{engagementBreakdown.involvement}</span></div>
                         </div>
                         {typeof engagementBreakdown.days_since_last === "number" && (
                           <p className="text-xs text-muted-foreground">

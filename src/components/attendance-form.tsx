@@ -23,6 +23,8 @@ import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
+import { MemberProfileDialog } from "@/components/member-profile-dialog"
+import type { Member } from "@/types/database"
 
 interface AttendanceFormProps {
   availableMembers?: any[]
@@ -42,6 +44,7 @@ export function AttendanceForm({
   const [selectedEventId, setSelectedEventId] = useState<string>("auto-create")
   const [notes, setNotes] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [viewingMember, setViewingMember] = useState<Member | null>(null)
   const { toast } = useToast();
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes();
   const { trackEvent } = useAnalytics();
@@ -296,7 +299,7 @@ export function AttendanceForm({
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="search"
-                  placeholder="Filter by name or identifier..."
+                  placeholder="Filter by name or email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-11 h-11 border-border rounded-xl bg-background focus:ring-primary"
@@ -351,16 +354,25 @@ export function AttendanceForm({
                           />
                         </TableCell>
                         <TableCell className="py-4">
-                          <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setViewingMember(member)}
+                            className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
+                          >
                             <Avatar className="h-10 w-10 rounded-xl border-2 border-background shadow-sm">
                               <AvatarImage src={member.avatar_url || member.avatar} alt={member.name} />
                               <AvatarFallback className="bg-muted text-muted-foreground text-xs">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="font-bold text-foreground">{member.name}</span>
-                              <span className="text-[10px] text-muted-foreground tracking-tight">{member.id.substring(0, 8)}</span>
+                              <span className="font-bold text-foreground underline-offset-2 hover:underline">{member.name}</span>
+                              {/* Phone/email, not the raw internal id — this is the only
+                                  contact info visible on mobile, since the Contact column
+                                  is hidden below md. */}
+                              <span className="text-[10px] text-muted-foreground tracking-tight md:hidden">
+                                {member.phone || member.email || "No contact info"}
+                              </span>
                             </div>
-                          </div>
+                          </button>
                         </TableCell>
                         <TableCell className="hidden md:table-cell py-4 text-center">
                           <span className="text-sm text-muted-foreground">{member.phone || '–'}</span>
@@ -411,6 +423,12 @@ export function AttendanceForm({
           </Button>
         </CardFooter>
       </Card>
+
+      <MemberProfileDialog
+        member={viewingMember}
+        open={!!viewingMember}
+        onOpenChange={(open) => !open && setViewingMember(null)}
+      />
     </div>
   )
 }
