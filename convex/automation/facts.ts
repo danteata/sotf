@@ -170,17 +170,35 @@ export async function loadMemberAttendedIds(
 }
 
 /**
+ * A member's tenure-start date ("YYYY-MM-DD"), for bounding attendance
+ * lookback so a recently-added member isn't penalized for services that
+ * happened before they joined. Falls through joined_date -> created_at ->
+ * _creationTime — the same chain attendance.getMemberSummary and
+ * engagement/scoring.ts's tenureDays each use.
+ */
+export function tenureStartDateFor(member: Doc<"members">): string {
+    return (
+        member.joined_date ||
+        member.created_at?.slice(0, 10) ||
+        new Date(member._creationTime).toISOString().slice(0, 10)
+    );
+}
+
+/**
  * Filter org attendance records to those applicable to a member: unit-scoped
- * (an event type with no unit_ids applies to everyone) and, optionally, to a
- * single event_type_value. Shared by computeStreak and the engagement-score
- * window helpers below, so every attendance-derived signal agrees on scoping.
+ * (an event type with no unit_ids applies to everyone), optionally to a
+ * single event_type_value, and never before the member's own tenure start.
+ * Shared by computeStreak and the engagement-score window helpers below, so
+ * every attendance-derived signal agrees on scoping.
  */
 function applicableAttendanceRecords(
     orgAttendance: OrgAttendanceContext,
     memberUnitIds: Set<string>,
     eventTypeValue?: string,
+    tenureStartDate?: string,
 ): OrgAttendanceRecord[] {
     return orgAttendance.records.filter((r) => {
+        if (tenureStartDate && r.date < tenureStartDate) return false;
         if (eventTypeValue && r.event_type_value !== eventTypeValue) return false;
         if (r.unit_ids.length === 0) return true; // applies to all
         return r.unit_ids.some((u) => memberUnitIds.has(u));
@@ -189,8 +207,8 @@ function applicableAttendanceRecords(
 
 /**
  * Pure streak computation. Mirrors attendance.getMemberSummary:665.
- * - Filters org records to those applicable to the member (unit scoping) and,
- *   optionally, to a specific event_type_value.
+ * - Filters org records to those applicable to the member (unit scoping,
+ *   tenure start) and, optionally, to a specific event_type_value.
  * - Sorts by date desc; consecutive absences = leading run of "absent".
  */
 export function computeStreak(
@@ -198,8 +216,9 @@ export function computeStreak(
     attendedIds: Set<string>,
     memberUnitIds: Set<string>,
     eventTypeValue?: string,
+    tenureStartDate?: string,
 ): StreakFacts {
-    const applicable = applicableAttendanceRecords(orgAttendance, memberUnitIds, eventTypeValue);
+    const applicable = applicableAttendanceRecords(orgAttendance, memberUnitIds, eventTypeValue, tenureStartDate);
 
     // Records are already newest-first from the index; keep that order.
     const sorted = [...applicable].sort((a, b) => b.date.localeCompare(a.date));
@@ -245,8 +264,9 @@ export function computeAttendanceWindowCounts(
     windowDays: number,
     endDaysAgo: number = 0,
     eventTypeValue?: string,
+    tenureStartDate?: string,
 ): AttendanceWindowCounts {
-    const applicableRecords = applicableAttendanceRecords(orgAttendance, memberUnitIds, eventTypeValue);
+    const applicableRecords = applicableAttendanceRecords(orgAttendance, memberUnitIds, eventTypeValue, tenureStartDate);
     const now = Date.now();
     const windowEnd = now - endDaysAgo * 24 * 3600 * 1000;
     const windowStart = windowEnd - windowDays * 24 * 3600 * 1000;
@@ -276,5 +296,5 @@ export async function computeMemberStreak(
         .withIndex("by_member", (q) => q.eq("member_id", member._id))
         .collect();
     const memberUnitIds = new Set(memberUnits.map((mu) => mu.unit_id as string));
-    return computeStreak(orgAttendance, attendedIds, memberUnitIds, eventTypeValue);
+    return computeStreak(orgAttendance, attendedIds, memberUnitIds, eventTypeValue, tenureStartDateFor(member));
 }

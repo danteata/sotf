@@ -22,6 +22,7 @@ import {
     computeStreak,
     loadMemberAttendedIds,
     loadOrgAttendanceContext,
+    tenureStartDateFor,
 } from "./facts";
 
 /** Does an org have any enabled rule that needs the attendance-streak context? */
@@ -143,7 +144,7 @@ export function matchMemberAgainstDerivedRule(input: {
 
     const streakFor = (eventTypeValue?: string): StreakFacts => {
         if (!orgAttendance || !attendedIds) return { count: 0 };
-        return computeStreak(orgAttendance, attendedIds, memberUnitIds, eventTypeValue);
+        return computeStreak(orgAttendance, attendedIds, memberUnitIds, eventTypeValue, tenureStartDateFor(member));
     };
 
     let matched = false;

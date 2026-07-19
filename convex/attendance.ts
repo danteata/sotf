@@ -610,6 +610,16 @@ export const getMemberSummary = query({
             .collect();
         const memberUnitIds = new Set(memberUnits.map((mu) => mu.unit_id));
 
+        // A member can't be "absent" from a service that happened before they
+        // joined — bound the lookback to their tenure start. Falls through
+        // joined_date -> created_at -> _creationTime, the same chain
+        // engagement/scoring.ts's tenureDays uses, so a brand-new member
+        // isn't penalized for the org's pre-existing attendance history.
+        const tenureStartDate = member
+            ? member.joined_date || member.created_at?.slice(0, 10) ||
+              new Date(member._creationTime).toISOString().slice(0, 10)
+            : null;
+
         // Get member's attendance records
         const memberAttendance = await ctx.db
             .query("member_attendance")
@@ -629,9 +639,13 @@ export const getMemberSummary = query({
                 .collect()
             : await ctx.db.query("attendance").order("desc").collect();
 
+        const relevantAttendanceRecords = tenureStartDate
+            ? allAttendanceRecords.filter((record) => record.date >= tenureStartDate)
+            : allAttendanceRecords;
+
         // Build attendance history with present/absent status
         const attendanceHistory = await Promise.all(
-            allAttendanceRecords.map(async (record) => {
+            relevantAttendanceRecords.map(async (record) => {
                 const eventType = record.event_type_id ? await ctx.db.get(record.event_type_id) : null;
                 const eventUnitIds = (eventType as any)?.unit_ids || [];
 

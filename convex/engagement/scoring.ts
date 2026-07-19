@@ -23,6 +23,7 @@ import {
     computeStreak,
     loadMemberAttendedIds,
     loadOrgAttendanceContext,
+    tenureStartDateFor,
 } from "../automation/facts";
 
 type Ctx = MutationCtx | QueryCtx;
@@ -95,10 +96,7 @@ function riskLevelFor(score: number): RiskLevel {
 }
 
 function tenureDays(member: Doc<"members">): number | undefined {
-    // `||`, not `??`: an empty-string joined_date (seen in real data) should
-    // fall through to created_at, not be treated as a valid date.
-    const isoDate = member.joined_date || member.created_at;
-    const start = isoDate ? new Date(isoDate).getTime() : member._creationTime;
+    const start = new Date(tenureStartDateFor(member)).getTime();
     if (isNaN(start)) return undefined;
     return Math.max(0, (Date.now() - start) / (24 * 3600 * 1000));
 }
@@ -147,13 +145,16 @@ export async function computeEngagementScore(
         .collect();
     const memberUnitIds = new Set(memberUnits.map((mu) => mu.unit_id as string));
 
-    const streak = computeStreak(orgAttendance, attendedIds, memberUnitIds);
+    const tenureStartDate = tenureStartDateFor(member);
+    const streak = computeStreak(orgAttendance, attendedIds, memberUnitIds, undefined, tenureStartDate);
     const trendRecent = computeAttendanceWindowCounts(
         orgAttendance,
         attendedIds,
         memberUnitIds,
         TREND_WINDOW_DAYS,
         0,
+        undefined,
+        tenureStartDate,
     );
     const trendPrior = computeAttendanceWindowCounts(
         orgAttendance,
@@ -161,6 +162,8 @@ export async function computeEngagementScore(
         memberUnitIds,
         TREND_WINDOW_DAYS,
         TREND_WINDOW_DAYS,
+        undefined,
+        tenureStartDate,
     );
     const consistency = computeAttendanceWindowCounts(
         orgAttendance,
@@ -168,6 +171,8 @@ export async function computeEngagementScore(
         memberUnitIds,
         CONSISTENCY_WINDOW_DAYS,
         0,
+        undefined,
+        tenureStartDate,
     );
     const activeUnits = memberUnits.filter((mu) => mu.is_active).length;
     const lastCareContact = await lastResolvedCareContact(ctx, member._id);
