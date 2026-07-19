@@ -10,8 +10,10 @@ type AnyCtx = MutationCtx | QueryCtx;
 // Shared helpers (reused by invitations, users, units and the mutations below)
 // -----------------------------------------------------------------------------
 
-// Return the unit ids that a given member administers (leader or assistant admin).
-// This is the source of truth for unit-level admin scoping.
+// Return the unit ids that a given member administers (leader or assistant
+// admin), including every descendant of each administered unit — an admin of
+// a parent unit administers everything nested beneath it. This is the source
+// of truth for unit-level admin scoping.
 export async function getUnitIdsAdministeredBy(
     ctx: AnyCtx,
     memberId: Id<"members">,
@@ -21,16 +23,44 @@ export async function getUnitIdsAdministeredBy(
         .withIndex("by_member", (q) => q.eq("member_id", memberId))
         .collect();
     const active = records.filter((r) => r.is_active);
-    if (active.length > 0) return active.map((r) => r.unit_id);
 
-    // Fallback for data predating the unit_admins table (before backfill): a
-    // member with no admin rows still gets scope for any unit they legacy-lead.
-    // Self-heals once backfillFromLeaders runs or they are added as an admin.
-    const legacyLed = await ctx.db
-        .query("units")
-        .filter((q) => q.eq(q.field("leader_id"), memberId))
-        .collect();
-    return legacyLed.map((u) => u._id);
+    let directUnitIds: Id<"units">[];
+    if (active.length > 0) {
+        directUnitIds = active.map((r) => r.unit_id);
+    } else {
+        // Fallback for data predating the unit_admins table (before backfill): a
+        // member with no admin rows still gets scope for any unit they legacy-lead.
+        // Self-heals once backfillFromLeaders runs or they are added as an admin.
+        const legacyLed = await ctx.db
+            .query("units")
+            .filter((q) => q.eq(q.field("leader_id"), memberId))
+            .collect();
+        directUnitIds = legacyLed.map((u) => u._id);
+    }
+
+    return await expandWithDescendantUnitIds(ctx, directUnitIds);
+}
+
+// Expand a set of unit ids to also include every descendant unit, via the
+// materialized `path` prefix scan (same mechanic as units.ts:getDescendants).
+// Units predating the path/depth backfill are returned as-is (no expansion).
+async function expandWithDescendantUnitIds(
+    ctx: AnyCtx,
+    unitIds: Id<"units">[],
+): Promise<Id<"units">[]> {
+    const result = new Set<Id<"units">>(unitIds);
+    for (const unitId of unitIds) {
+        const unit = await ctx.db.get(unitId);
+        if (!unit?.path) continue;
+        const descendants = await ctx.db
+            .query("units")
+            .withIndex("by_path", (q) =>
+                q.gte("path", unit.path! + "/").lt("path", unit.path! + "0"),
+            )
+            .collect();
+        for (const d of descendants) result.add(d._id);
+    }
+    return Array.from(result);
 }
 
 // Ensure a member is an admin of a unit. Idempotent: reactivates/updates an

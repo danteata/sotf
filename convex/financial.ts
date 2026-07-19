@@ -11,7 +11,7 @@ import {
     requireUser,
     resolveOrgId,
 } from "./auth";
-import { getLinkedMember } from "./scope";
+import { getLinkedMember, resolveManagedMemberIds } from "./scope";
 import { internal } from "./_generated/api";
 
 // Categories that count as "giving" (member-attributed income), as opposed
@@ -41,15 +41,43 @@ export const listTransactions = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
-        const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
-        if (orgId) {
-            return await ctx.db
+
+        // super_admin: any org (or the whole table with no org filter).
+        if (isSuperAdmin(user)) {
+            if (args.organization_id) {
+                return await ctx.db
+                    .query("financial_transactions")
+                    .withIndex("by_org", (q) => q.eq("organization_id", args.organization_id!))
+                    .order("desc")
+                    .collect();
+            }
+            return await ctx.db.query("financial_transactions").order("desc").collect();
+        }
+
+        const orgId = await resolveOrgId(ctx, args.organization_id);
+        if (!orgId) return [];
+
+        const orgTransactions = () =>
+            ctx.db
                 .query("financial_transactions")
                 .withIndex("by_org", (q) => q.eq("organization_id", orgId))
                 .order("desc")
                 .collect();
+
+        // Org admins and treasurers get the full org ledger (including
+        // org-level rows with no member_id, e.g. expenses).
+        if (isOrgAdmin(user) || user.role === "treasurer") {
+            return await orgTransactions();
         }
-        return await ctx.db.query("financial_transactions").order("desc").collect();
+
+        // Unit-level admins see only giving attributed to members within
+        // their unit scope; org-level (member-less) rows stay hidden from
+        // them. Everyone else (plain members) sees nothing here.
+        const managed = await resolveManagedMemberIds(ctx);
+        if (managed === "all" || managed === "org") return await orgTransactions();
+        if (managed.size === 0) return [];
+        const rows = await orgTransactions();
+        return rows.filter((r) => r.member_id && managed.has(r.member_id));
     },
 });
 
@@ -267,16 +295,27 @@ export const getMyGiving = query({
     },
 });
 
-/** A specific member's completed giving history — treasurer/org-admin view. */
+/**
+ * A specific member's completed giving history. Org admins and treasurers may
+ * view any member's; unit-level admins may view only members within their unit
+ * scope. Everyone else is forbidden.
+ */
 export const listMemberGiving = query({
     args: { member_id: v.id("members") },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
-        if (!isOrgAdmin(user) && user.role !== "treasurer") throw new Error("Forbidden");
         const member = await ctx.db.get(args.member_id);
         if (!member) return [];
         if (member.organization_id) {
             await requireOrgAccess(ctx, member.organization_id);
+        }
+        if (!isOrgAdmin(user) && user.role !== "treasurer") {
+            const managed = await resolveManagedMemberIds(ctx);
+            const inScope =
+                managed === "all" ||
+                managed === "org" ||
+                (managed instanceof Set && managed.has(args.member_id));
+            if (!inScope) throw new Error("Forbidden");
         }
         const rows = await ctx.db
             .query("financial_transactions")
