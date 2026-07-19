@@ -2,24 +2,21 @@
 
 import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
     Building2,
-    MapPin,
-    Users,
     Settings,
     BarChart3,
-    Grid3X3,
     Shield,
-    TrendingUp,
     Layout,
     ArrowUpRight
 } from 'lucide-react'
 import { UnitManagement } from '@/components/unit-management'
 import { OrganizationChart } from '@/components/organization-chart'
 import { SettingsDialog } from '@/components/settings-dialog'
+import { EventTypesManagement } from '@/components/event-types-management'
+import { OrganizationLinks } from '@/components/organization-links'
 import { LayoutWrapper } from '@/components/layout-wrapper'
 import { useUserRole } from '@/hooks/use-user-role'
 import { useOrganization } from '@/hooks/use-organization'
@@ -32,7 +29,7 @@ export default function OrganizationPage() {
     const [activeTab, setActiveTab] = useState('units')
     const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
 
-    // Convex Query for Real Stats
+    // Powers the header subtitle ("oversight of {org name}").
     const chartData = useQuery(api.organizations.getChartData, {
         organization_id: organization?._id
     })
@@ -61,12 +58,6 @@ export default function OrganizationPage() {
                 </div>
             </LayoutWrapper>
         )
-    }
-
-    const orgStats = {
-        divisions: chartData?.rootUnits?.length || 0,
-        units: chartData?.units?.length || 0,
-        members: chartData?.memberCounts?.length || 0
     }
 
     return (
@@ -101,34 +92,6 @@ export default function OrganizationPage() {
                     </div>
                 </div>
 
-                {/* Tactical Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <StatCard
-                        label="Central Org"
-                        value="1"
-                        icon={<Building2 className="h-5 w-5" />}
-                        iconBg="bg-primary/10 text-primary"
-                    />
-                    <StatCard
-                        label="Divisions"
-                        value={orgStats.divisions.toString()}
-                        icon={<MapPin className="h-5 w-5" />}
-                        iconBg="bg-orange-500/10 text-orange-500"
-                    />
-                    <StatCard
-                        label="Managed Units"
-                        value={orgStats.units.toString()}
-                        icon={<Grid3X3 className="h-5 w-5" />}
-                        iconBg="bg-blue-500/10 text-blue-500"
-                    />
-                    <StatCard
-                        label="Total Personnel"
-                        value={orgStats.members.toString()}
-                        icon={<Users className="h-5 w-5" />}
-                        iconBg="bg-emerald-500/10 text-emerald-500"
-                    />
-                </div>
-
                 {/* Operational Tabs */}
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
                     <TabsList className="bg-muted/50 p-1 rounded-xl w-full md:w-auto inline-flex">
@@ -137,7 +100,7 @@ export default function OrganizationPage() {
                             className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-6 transition-all"
                         >
                             <Layout className="h-4 w-4 mr-2" />
-                            Unit Deployment
+                            Unit Management
                         </TabsTrigger>
                         <TabsTrigger
                             value="chart"
@@ -145,6 +108,20 @@ export default function OrganizationPage() {
                         >
                             <BarChart3 className="h-4 w-4 mr-2" />
                             Hierarchy Visualizer
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="event-types"
+                            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-6 transition-all"
+                        >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Event Types
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="org-links"
+                            className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-6 transition-all"
+                        >
+                            <Building2 className="h-4 w-4 mr-2" />
+                            Linked Orgs
                         </TabsTrigger>
                     </TabsList>
 
@@ -159,12 +136,24 @@ export default function OrganizationPage() {
                             <OrganizationChart />
                         </div>
                     </TabsContent>
+
+                    <TabsContent value="event-types" className="animate-in fade-in duration-500">
+                        <div className="rounded-xl overflow-hidden shadow-soft border border-border/50 bg-card p-6">
+                            <EventTypesManagement />
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="org-links" className="animate-in fade-in duration-500">
+                        <div className="rounded-xl overflow-hidden shadow-soft border border-border/50 bg-card p-6">
+                            <OrganizationLinks />
+                        </div>
+                    </TabsContent>
                 </Tabs>
 
                 {/* Knowledge Base Area */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <InfoBlock
-                        title="Unit Deployment"
+                        title="Unit Management"
                         items={[
                             "Configure and relocate operational units between sector divisions",
                             "Batch execute terminology updates and structural changes",
@@ -189,27 +178,6 @@ export default function OrganizationPage() {
                 />
             </div>
         </LayoutWrapper>
-    )
-}
-
-function StatCard({ label, value, icon, iconBg }: { label: string, value: string, icon: React.ReactNode, iconBg: string }) {
-    return (
-        <Card className="rounded-xl shadow-sm border border-border/50 hover:shadow-md transition-all">
-            <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className={`p-2.5 rounded-xl ${iconBg}`}>
-                        {icon}
-                    </div>
-                    <Badge variant="outline" className="border-0 bg-muted/50 text-muted-foreground text-[10px]">
-                        Active
-                    </Badge>
-                </div>
-                <div className="space-y-1">
-                    <div className="text-2xl tracking-tight text-foreground">{value}</div>
-                    <div className="text-xs text-muted-foreground tracking-wide">{label}</div>
-                </div>
-            </CardContent>
-        </Card>
     )
 }
 

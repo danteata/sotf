@@ -1,8 +1,25 @@
 
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-import { requireOrgAccess, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId, isSuperAdmin } from "./auth";
+import { query, mutation, internalMutation, MutationCtx } from "./_generated/server";
+import { Doc, Id } from "./_generated/dataModel";
+import {
+    requireOrgAccess,
+    requireOrgAdmin,
+    requireSuperAdmin,
+    requireUser,
+    resolveOrgId,
+    isSuperAdmin,
+    isOrgAdmin,
+    normalizeOrgId,
+    isDescendantOrg,
+    getDescendantOrgIds,
+    getAncestorOrgIds,
+} from "./auth";
+import { internal } from "./_generated/api";
+import {
+    provisionAncestorTemplatesToOrg,
+    detachTemplatesOwnedBy,
+} from "./unit_templates";
 
 export const list = query({
     handler: async (ctx) => {
@@ -23,7 +40,19 @@ export const list = query({
         const orgId = await resolveOrgId(ctx);
         if (!orgId) return [];
         const org = await ctx.db.get(orgId);
-        return org ? [org] : [];
+        if (!org) return [];
+        if (!isOrgAdmin(user)) return [org];
+
+        // Org admins also get their descendant orgs (e.g. a parent-org admin's
+        // sub-organizations) surfaced alongside their own org. Plain
+        // members/unit-level roles never see beyond their own org, since
+        // only org-admin-tier roles get cross-org descent (auth.ts).
+        const descendantIds = await getDescendantOrgIds(ctx, orgId);
+        const descendants = (
+            await Promise.all(descendantIds.map((id) => ctx.db.get(id)))
+        ).filter((o): o is NonNullable<typeof o> => o !== null);
+
+        return [org, ...descendants];
     },
 });
 
@@ -48,6 +77,10 @@ export const create = mutation({
             active: true,
             organization_admin_id: identity.subject,
         });
+        // Path embeds the org's own id so it's a stable, collision-free
+        // prefix for descendant range scans — set after insert since the id
+        // doesn't exist beforehand.
+        await ctx.db.patch(orgId, { depth: 0, path: "/" + orgId });
 
         // Create initial member
         await ctx.db.insert("members", {
@@ -64,6 +97,356 @@ export const create = mutation({
         });
 
         return orgId;
+    },
+});
+
+// Attach (or detach, with parentOrganizationId: null) an org under another in
+// the org tree — e.g. linking an existing org under a parent org that signed up
+// later. Gated to super_admin: this changes who can read/write the
+// sub-organization's data, so it's a deliberate action, not self-serve.
+export const setParentOrganization = mutation({
+    args: {
+        organization_id: v.id("organizations"),
+        parent_organization_id: v.union(v.id("organizations"), v.null()),
+    },
+    handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx);
+        const formerAncestors = await getAncestorOrgIds(ctx, args.organization_id);
+        const subtreeBefore = [
+            args.organization_id,
+            ...(await getDescendantOrgIds(ctx, args.organization_id)),
+        ];
+        await applyOrgParentChange(
+            ctx,
+            args.organization_id,
+            args.parent_organization_id ?? null,
+        );
+        await syncTemplatesOnParentChange(ctx, args.organization_id, formerAncestors, subtreeBefore);
+        return true;
+    },
+});
+
+// Core re-parenting logic shared by every attach/detach path (super_admin
+// setParentOrganization, self-join via invite code, parent-org remove-sub-org,
+// leave-parent). Validates against cycles, recomputes this
+// org's path/depth, and cascades path rewrites to all its descendants.
+async function applyOrgParentChange(
+    ctx: MutationCtx,
+    orgId: Id<"organizations">,
+    parentOrgId: Id<"organizations"> | null,
+): Promise<void> {
+    const org = await ctx.db.get(orgId);
+    if (!org) throw new Error("Organization not found");
+
+    let newParentPath = "";
+    let newDepth = 0;
+
+    if (parentOrgId) {
+        if (parentOrgId === orgId) {
+            throw new Error("An organization cannot be its own parent");
+        }
+        const parent = await ctx.db.get(parentOrgId);
+        if (!parent) throw new Error("Parent organization not found");
+
+        const wouldCreateCycle = await orgIsAncestorOf(ctx, orgId, parentOrgId);
+        if (wouldCreateCycle) {
+            throw new Error("This would create a circular organization hierarchy");
+        }
+
+        newParentPath = parent.path ?? "/" + parent._id;
+        newDepth = (parent.depth ?? 0) + 1;
+    }
+
+    const oldPath = org.path ?? "/" + org._id;
+    const newPath = newParentPath + "/" + orgId;
+
+    await ctx.db.patch(orgId, {
+        parent_organization_id: parentOrgId ?? undefined,
+        path: newPath,
+        depth: newDepth,
+    });
+
+    if (oldPath !== newPath) {
+        await updateDescendantOrgPaths(ctx, oldPath, newPath);
+    }
+}
+
+// Keep template inheritance consistent when an org's parent changes. Capture
+// `formerAncestors` and `subtreeBefore` BEFORE calling applyOrgParentChange,
+// then call this after: instances inheriting from ancestors the org no longer
+// has are detached; cascade templates from the new ancestor chain are
+// provisioned into the org and every descendant. Handles attach, detach, and
+// move uniformly.
+async function syncTemplatesOnParentChange(
+    ctx: MutationCtx,
+    orgId: Id<"organizations">,
+    formerAncestors: Id<"organizations">[],
+    subtreeBefore: Id<"organizations">[],
+): Promise<void> {
+    const newAncestors = new Set(await getAncestorOrgIds(ctx, orgId));
+    const removed = formerAncestors.filter((a) => !newAncestors.has(a));
+    await detachTemplatesOwnedBy(ctx, subtreeBefore, removed);
+
+    const subtreeNow = [orgId, ...(await getDescendantOrgIds(ctx, orgId))];
+    for (const id of subtreeNow) {
+        await provisionAncestorTemplatesToOrg(ctx, id);
+    }
+}
+
+// True when `candidateAncestorId` is `orgId` itself or already sits above it
+// in the org tree — used to reject re-parenting moves that would create a
+// cycle (mirrors units.ts:checkForCycle, one level up).
+async function orgIsAncestorOf(
+    ctx: MutationCtx,
+    orgId: Id<"organizations">,
+    candidateAncestorId: Id<"organizations">,
+): Promise<boolean> {
+    let cursorId: Id<"organizations"> | undefined = candidateAncestorId;
+    while (cursorId) {
+        if (cursorId === orgId) return true;
+        const cursor: Doc<"organizations"> | null = await ctx.db.get(cursorId);
+        if (!cursor) break;
+        cursorId = cursor.parent_organization_id;
+    }
+    return false;
+}
+
+// Rewrite the `path` of every descendant org when an ancestor's path changes
+// (mirrors units.ts:updateDescendantPaths, one level up).
+async function updateDescendantOrgPaths(
+    ctx: MutationCtx,
+    oldPath: string,
+    newPath: string,
+): Promise<void> {
+    const descendants = await ctx.db
+        .query("organizations")
+        .withIndex("by_path", (q) =>
+            q.gte("path", oldPath + "/").lt("path", oldPath + "0"),
+        )
+        .collect();
+
+    for (const descendant of descendants) {
+        if (!descendant.path) continue;
+        const rewritten = newPath + descendant.path.slice(oldPath.length);
+        await ctx.db.patch(descendant._id, { path: rewritten });
+    }
+}
+
+// One-off backfill: set depth 0 / path "/{_id}" on every org predating the
+// org-tree fields. Safe to run repeatedly (skips orgs that already have a
+// path). Run once after deploy: `npx convex run organizations:backfillPaths`.
+export const backfillPaths = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        const orgs = await ctx.db.query("organizations").collect();
+        let updated = 0;
+        for (const org of orgs) {
+            if (org.path) continue;
+            await ctx.db.patch(org._id, { depth: 0, path: "/" + org._id });
+            updated++;
+        }
+        return { updated };
+    },
+});
+
+// --- Self-serve org linking (invite-code flow) ------------------------------
+
+// Human-friendly code charset: no ambiguous 0/O/1/I.
+const INVITE_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function generateCode(): string {
+    let suffix = "";
+    for (let i = 0; i < 5; i++) {
+        suffix += INVITE_CODE_CHARS[Math.floor(Math.random() * INVITE_CODE_CHARS.length)];
+    }
+    return "ORG-" + suffix;
+}
+
+function normalizeInviteCode(code: string): string {
+    return code.trim().toUpperCase();
+}
+
+// Create (or rotate) this org's invite code. Rotating invalidates the previous
+// code. Org-admin only — it's the key another org uses to link under this one.
+export const generateInviteCode = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await requireOrgAdmin(ctx);
+        const orgId = normalizeOrgId(ctx, user.organization_id);
+        if (!orgId) throw new Error("Organization not set");
+
+        let code = generateCode();
+        for (let attempt = 0; attempt < 10; attempt++) {
+            const clash = await ctx.db
+                .query("organizations")
+                .withIndex("by_invite_code", (q) => q.eq("invite_code", code))
+                .unique();
+            if (!clash) break;
+            code = generateCode();
+        }
+
+        await ctx.db.patch(orgId, { invite_code: code });
+        return { code };
+    },
+});
+
+// Resolve an invite code to the parent org it belongs to, for the joining
+// admin's confirmation screen. Returns null for an unknown code.
+export const getOrganizationByInviteCode = query({
+    args: { code: v.string() },
+    handler: async (ctx, args) => {
+        await requireUser(ctx);
+        const code = normalizeInviteCode(args.code);
+        if (!code) return null;
+        const parent = await ctx.db
+            .query("organizations")
+            .withIndex("by_invite_code", (q) => q.eq("invite_code", code))
+            .unique();
+        if (!parent) return null;
+        return { _id: parent._id, name: parent.name };
+    },
+});
+
+// An org admin redeems another org's invite code to link THEIR OWN org under
+// it. Consent is inherent: only an admin of the joining org can do this, and
+// they always attach their own org (never an arbitrary id), so a leaked code
+// can't pull in an org the holder doesn't run.
+export const joinOrganizationByCode = mutation({
+    args: { code: v.string() },
+    handler: async (ctx, args) => {
+        const user = await requireOrgAdmin(ctx);
+        const myOrgId = normalizeOrgId(ctx, user.organization_id);
+        if (!myOrgId) throw new Error("Organization not set");
+
+        const code = normalizeInviteCode(args.code);
+        const parent = await ctx.db
+            .query("organizations")
+            .withIndex("by_invite_code", (q) => q.eq("invite_code", code))
+            .unique();
+        if (!parent) throw new Error("Invalid or expired invite code");
+        if (parent._id === myOrgId) {
+            throw new Error("You can't join your own organization");
+        }
+
+        const myOrg = await ctx.db.get(myOrgId);
+        if (myOrg?.parent_organization_id) {
+            throw new Error(
+                "Your organization is already linked to a parent. Leave it before joining another.",
+            );
+        }
+
+        const subtreeBefore = [myOrgId, ...(await getDescendantOrgIds(ctx, myOrgId))];
+        await applyOrgParentChange(ctx, myOrgId, parent._id);
+        await syncTemplatesOnParentChange(ctx, myOrgId, [], subtreeBefore);
+
+        await ctx.runMutation(internal.audit.logEvent, {
+            action: "organization.linked_to_parent",
+            entity_type: "organization",
+            entity_id: myOrgId,
+            entity_name: myOrg?.name ?? "Organization",
+            performed_by: user.clerk_user_id,
+            performed_by_name: user.name || user.email || "Unknown",
+            performed_by_role: user.role,
+            organization_id: myOrgId,
+            changes: { parent: { after: { id: parent._id, name: parent.name } } },
+        });
+
+        return { parent: parent.name };
+    },
+});
+
+// An org admin unlinks their own org from its parent org.
+export const leaveParentOrganization = mutation({
+    args: {},
+    handler: async (ctx) => {
+        const user = await requireOrgAdmin(ctx);
+        const myOrgId = normalizeOrgId(ctx, user.organization_id);
+        if (!myOrgId) throw new Error("Organization not set");
+
+        const myOrg = await ctx.db.get(myOrgId);
+        if (!myOrg?.parent_organization_id) return { left: false };
+
+        const formerAncestors = await getAncestorOrgIds(ctx, myOrgId);
+        const subtreeBefore = [myOrgId, ...(await getDescendantOrgIds(ctx, myOrgId))];
+        await applyOrgParentChange(ctx, myOrgId, null);
+        await syncTemplatesOnParentChange(ctx, myOrgId, formerAncestors, subtreeBefore);
+
+        await ctx.runMutation(internal.audit.logEvent, {
+            action: "organization.unlinked_from_parent",
+            entity_type: "organization",
+            entity_id: myOrgId,
+            entity_name: myOrg.name,
+            performed_by: user.clerk_user_id,
+            performed_by_name: user.name || user.email || "Unknown",
+            performed_by_role: user.role,
+            organization_id: myOrgId,
+            changes: { parent: { before: { id: myOrg.parent_organization_id } } },
+        });
+
+        return { left: true };
+    },
+});
+
+// A parent-org admin removes a sub-organization from their tree. The caller
+// must be an admin whose org is an ancestor of the sub-org (or super_admin).
+export const removeSubOrganization = mutation({
+    args: { organization_id: v.id("organizations") },
+    handler: async (ctx, args) => {
+        const user = await requireOrgAdmin(ctx);
+        const myOrgId = normalizeOrgId(ctx, user.organization_id);
+
+        if (!isSuperAdmin(user)) {
+            if (!myOrgId) throw new Error("Organization not set");
+            const ok = await isDescendantOrg(ctx, myOrgId, args.organization_id);
+            if (!ok) throw new Error("Forbidden");
+        }
+
+        const subOrg = await ctx.db.get(args.organization_id);
+        if (!subOrg) throw new Error("Organization not found");
+
+        const formerAncestors = await getAncestorOrgIds(ctx, args.organization_id);
+        const subtreeBefore = [
+            args.organization_id,
+            ...(await getDescendantOrgIds(ctx, args.organization_id)),
+        ];
+        await applyOrgParentChange(ctx, args.organization_id, null);
+        await syncTemplatesOnParentChange(ctx, args.organization_id, formerAncestors, subtreeBefore);
+
+        await ctx.runMutation(internal.audit.logEvent, {
+            action: "organization.sub_org_removed",
+            entity_type: "organization",
+            entity_id: args.organization_id,
+            entity_name: subOrg.name,
+            performed_by: user.clerk_user_id,
+            performed_by_name: user.name || user.email || "Unknown",
+            performed_by_role: user.role,
+            organization_id: myOrgId ?? args.organization_id,
+            changes: { sub_organization: { before: { id: args.organization_id, name: subOrg.name } } },
+        });
+
+        return true;
+    },
+});
+
+// The parent org the caller's own org is linked under, if any. An org admin
+// can always learn which parent they're under, even though it sits above them
+// and isn't in their accessible-orgs list.
+export const getParentOrganization = query({
+    args: {},
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return null;
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+            .unique();
+        if (!user?.organization_id) return null;
+        const orgId = ctx.db.normalizeId("organizations", user.organization_id);
+        if (!orgId) return null;
+        const org = await ctx.db.get(orgId);
+        if (!org?.parent_organization_id) return null;
+        const parent = await ctx.db.get(org.parent_organization_id);
+        return parent ? { _id: parent._id, name: parent.name } : null;
     },
 });
 
@@ -106,6 +489,50 @@ export const current = query({
     },
 });
 
+// The org whose data the UI should currently show: the user's
+// `viewing_organization_id` if set and still accessible (e.g. browsing a
+// descendant sub-organization), otherwise their home org — same as `current`.
+// Kept separate from `current` so settings/terminology screens that must always
+// mean "my own org" (settings-dialog, terminology-management, event-dialog)
+// are unaffected by browsing into a sub-organization.
+export const getActiveOrganization = query({
+    handler: async (ctx) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if (!identity) return null;
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) => q.eq("clerk_user_id", identity.subject))
+            .unique();
+        if (!user) return null;
+
+        const homeOrgId = user.organization_id
+            ? ctx.db.normalizeId("organizations", user.organization_id)
+            : null;
+
+        const viewingOrgId = user.viewing_organization_id
+            ? ctx.db.normalizeId("organizations", user.viewing_organization_id)
+            : null;
+
+        if (viewingOrgId && viewingOrgId !== homeOrgId) {
+            try {
+                await requireOrgAccess(ctx, viewingOrgId);
+                const viewing = await ctx.db.get(viewingOrgId);
+                if (viewing) {
+                    return { ...viewing, isViewingDescendant: true };
+                }
+            } catch {
+                // Access to the viewed org was revoked (e.g. detached from
+                // its parent) — fall back to the home org below.
+            }
+        }
+
+        if (!homeOrgId) return null;
+        const home = await ctx.db.get(homeOrgId);
+        return home ? { ...home, isViewingDescendant: false } : null;
+    },
+});
+
 export const getChartData = query({
     args: { organization_id: v.optional(v.id("organizations")) },
     handler: async (ctx, args) => {
@@ -133,7 +560,10 @@ export const getChartData = query({
             .collect()
         ).filter((m) => !m.archived_at);
 
-        // Calculate member counts per unit using member_units junction table
+        // Per-unit stats: active member count (via member_units junction) and
+        // the leader's display name (resolved from leader_id). Consumed by the
+        // hierarchy cards.
+        const memberNameById = new Map(members.map((m) => [m._id, m.name]));
         const memberCounts = await Promise.all(units.map(async (unit) => {
             const unitMembers = await ctx.db
                 .query("member_units")
@@ -141,9 +571,19 @@ export const getChartData = query({
                 .collect();
 
             const activeMembers = unitMembers.filter(mu => mu.is_active);
+            let leaderName: string | undefined = unit.leader_id
+                ? memberNameById.get(unit.leader_id)
+                : undefined;
+            // Leader may be archived/inactive (not in `members`); fall back to a
+            // direct fetch so the card still shows a name.
+            if (unit.leader_id && !leaderName) {
+                const leader = await ctx.db.get(unit.leader_id);
+                leaderName = leader?.name;
+            }
             return {
                 unit_id: unit._id,
                 count: activeMembers.length,
+                leaderName,
             };
         }));
 

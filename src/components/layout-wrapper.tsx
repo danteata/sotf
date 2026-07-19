@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { RoleBasedNavigation, RoleIndicator } from "@/components/role-based-navigation"
 import { OrganizationProvider } from "@/hooks/use-organization"
 import { OrganizationSelector } from "@/components/organization-selector"
+import { ViewingOrgBanner } from "@/components/viewing-org-banner"
 import { ModeToggle } from "@/components/mode-toggle"
 import { NotificationsPopover } from "@/components/notifications-popover"
 
@@ -123,6 +124,8 @@ export function LayoutWrapper({ children, showSearch = true }: LayoutWrapperProp
               <UserNav />
             </div>
           </header>
+
+          <ViewingOrgBanner />
 
           {/* Content */}
           <main className="flex-1 overflow-auto">

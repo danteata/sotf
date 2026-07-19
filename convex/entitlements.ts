@@ -62,12 +62,34 @@ export async function getOrgSubscription(
         .unique();
 }
 
+/**
+ * Whether an org currently has Pro. An org's own active subscription confers
+ * Pro directly; otherwise coverage falls back UP the org tree — a
+ * sub-organization is Pro if any ancestor holds an active subscription flagged
+ * `covers_descendants` (a parent-org license paying for its sub-organizations).
+ * The own-subscription check comes first, so a sub-org that still pays for
+ * itself keeps its own plan until it lapses, at which point ancestor coverage
+ * silently takes over.
+ */
 export async function orgIsPro(
     ctx: Ctx,
     organizationId: Id<"organizations">,
 ): Promise<boolean> {
-    const sub = await getOrgSubscription(ctx, organizationId);
-    return isProActive(sub);
+    const own = await getOrgSubscription(ctx, organizationId);
+    if (isProActive(own)) return true;
+
+    // Walk ancestors via parent_organization_id (bounded by tree depth).
+    let org = await ctx.db.get(organizationId);
+    const seen = new Set<string>([organizationId]);
+    while (org?.parent_organization_id) {
+        const parentId = org.parent_organization_id;
+        if (seen.has(parentId)) break; // cycle guard
+        seen.add(parentId);
+        const parentSub = await getOrgSubscription(ctx, parentId);
+        if (parentSub?.covers_descendants && isProActive(parentSub)) return true;
+        org = await ctx.db.get(parentId);
+    }
+    return false;
 }
 
 /**

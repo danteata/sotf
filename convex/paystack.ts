@@ -17,11 +17,11 @@
  *   npx convex env set PAYSTACK_CALLBACK_URL  https://yourapp.com/billing/return  # optional default
  */
 
-import { action, query, internalQuery, internalMutation } from './_generated/server'
+import { action, query, mutation, internalQuery, internalMutation } from './_generated/server'
 import { api, internal } from './_generated/api'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
-import { isOrgAdmin } from './auth'
+import { isOrgAdmin, requireSuperAdmin } from './auth'
 import { isProActive } from './entitlements'
 import { GIVING_CATEGORIES } from './financial'
 
@@ -335,6 +335,38 @@ export const getMySubscription = query({
     },
 })
 
+/**
+ * Toggle the parent-org coverage flag on an org's subscription, so its Pro
+ * plan covers (or stops covering) all descendant sub-organizations. Super-admin
+ * only for now — this is how a parent org is granted descendant coverage while
+ * the dedicated Paystack parent-org plan/pricing is still being finalized.
+ * Requires the org to already hold a subscription row (the coverage is a
+ * property of an existing plan, not a standalone grant).
+ */
+export const setCoversDescendants = mutation({
+    args: {
+        organization_id: v.id('organizations'),
+        covers: v.boolean(),
+    },
+    handler: async (ctx, args) => {
+        await requireSuperAdmin(ctx)
+        const sub = await ctx.db
+            .query('subscriptions')
+            .withIndex('by_org', (q) => q.eq('organization_id', args.organization_id))
+            .unique()
+        if (!sub) {
+            throw new Error(
+                'This organization has no subscription to extend coverage from. Start its Pro subscription first.'
+            )
+        }
+        await ctx.db.patch(sub._id, {
+            covers_descendants: args.covers,
+            updatedAt: new Date().toISOString(),
+        })
+        return { covers: args.covers }
+    },
+})
+
 // --- internal data access (used by getMySubscription + the webhook) ---------
 
 export const getSubscriptionForOrg = internalQuery({
@@ -421,6 +453,11 @@ export const applyPaystackEvent = internalMutation({
             paystackSubscriptionCode:
                 args.paystackSubscriptionCode ?? existing?.paystackSubscriptionCode,
             paystackPlanCode: args.paystackPlanCode ?? existing?.paystackPlanCode,
+            // Preserve the parent-org coverage flag across webhook syncs. It's
+            // set out-of-band today via setCoversDescendants (super_admin);
+            // once a dedicated parent-org plan code exists on Paystack, derive
+            // it here from args.paystackPlanCode instead.
+            covers_descendants: existing?.covers_descendants,
             currentPeriodEnd: mergedEnd,
             lastEventAt: now,
             lastChargeAt: args.chargedAt ?? existing?.lastChargeAt,

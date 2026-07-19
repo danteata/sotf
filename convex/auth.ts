@@ -86,6 +86,54 @@ export function normalizeOrgId(
     return ctx.db.normalizeId("organizations", orgId);
 }
 
+// True when `orgId` sits under `ancestorOrgId` in the org tree (a parent org
+// overseeing a sub-organization), via the materialized `path` prefix — same
+// mechanic as units.ts's parent_unit_id/path nesting, one level up. Orgs
+// predating the path backfill (no `path` set) are never treated as descendants.
+export async function isDescendantOrg(
+    ctx: Ctx,
+    ancestorOrgId: Id<"organizations">,
+    orgId: Id<"organizations">,
+): Promise<boolean> {
+    const [ancestor, org] = await Promise.all([
+        ctx.db.get(ancestorOrgId),
+        ctx.db.get(orgId),
+    ]);
+    if (!ancestor?.path || !org?.path) return false;
+    return org.path.startsWith(ancestor.path + "/");
+}
+
+// All descendant orgs of `orgId` (its full subtree), via a `by_path`
+// prefix range scan — mirrors units.ts:getDescendants.
+export async function getDescendantOrgIds(
+    ctx: Ctx,
+    orgId: Id<"organizations">,
+): Promise<Id<"organizations">[]> {
+    const org = await ctx.db.get(orgId);
+    if (!org?.path) return [];
+    const descendants = await ctx.db
+        .query("organizations")
+        .withIndex("by_path", (q) =>
+            q.gte("path", org.path! + "/").lt("path", org.path! + "0"),
+        )
+        .collect();
+    return descendants.map((o) => o._id);
+}
+
+// Ancestor org ids of `orgId` (parents up to the root), parsed from its
+// materialized path "/rootId/…/orgId" — excludes the org itself.
+export async function getAncestorOrgIds(
+    ctx: Ctx,
+    orgId: Id<"organizations">,
+): Promise<Id<"organizations">[]> {
+    const org = await ctx.db.get(orgId);
+    if (!org?.path) return [];
+    return org.path
+        .split("/")
+        .filter(Boolean)
+        .filter((id) => id !== orgId) as Id<"organizations">[];
+}
+
 export async function resolveOrgId(
     ctx: Ctx,
     orgId?: string | Id<"organizations"> | null,
@@ -105,7 +153,17 @@ export async function resolveOrgId(
     if (!userOrg) throw new Error("Organization not set");
     if (orgId) {
         const normalized = normalizeOrgId(ctx, orgId);
-        if (!normalized || normalized !== userOrg) throw new Error("Forbidden");
+        if (!normalized) throw new Error("Forbidden");
+        if (normalized !== userOrg) {
+            // Org admins additionally get cascading access into their own
+            // org's descendants (e.g. a parent-org admin acting on a
+            // sub-organization) — every other role stays strictly pinned to
+            // its own organization_id.
+            const allowed =
+                isOrgAdmin(user) && (await isDescendantOrg(ctx, userOrg, normalized));
+            if (!allowed) throw new Error("Forbidden");
+        }
+        return normalized;
     }
     return userOrg;
 }
@@ -121,7 +179,12 @@ export async function requireOrgAccess(
     if (!userOrg) throw new Error("Organization not set");
     if (orgId) {
         const normalized = normalizeOrgId(ctx, orgId);
-        if (!normalized || normalized !== userOrg) throw new Error("Forbidden");
+        if (!normalized) throw new Error("Forbidden");
+        if (normalized !== userOrg) {
+            const allowed =
+                isOrgAdmin(user) && (await isDescendantOrg(ctx, userOrg, normalized));
+            if (!allowed) throw new Error("Forbidden");
+        }
     }
 
     return user;

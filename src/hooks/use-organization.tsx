@@ -12,6 +12,11 @@ interface OrganizationState {
   currentOrganization: any | null
   currentDivision: any | null
   currentUnit: any | null
+  // The caller's own (home) org — always this, even while viewing a sub-org.
+  homeOrganization: any | null
+  // True when currentOrganization is a descendant org being browsed, not
+  // the caller's home org.
+  isViewingDescendant: boolean
   isLoading: boolean
   error: string | null
 }
@@ -22,6 +27,10 @@ interface OrganizationActions {
   setCurrentUnit: (unit: any | null) => void
   refreshContext: () => Promise<void>
   switchOrganization: (organizationId?: string, divisionId?: string, unitId?: string) => Promise<void>
+  // Browse into a descendant org (e.g. a parent-org admin viewing a
+  // sub-organization) without changing the caller's home organization_id.
+  viewOrganization: (organizationId: string) => Promise<void>
+  returnToHomeOrganization: () => Promise<void>
 }
 
 const OrganizationReactContext = createContext<(OrganizationState & OrganizationActions) | null>(null)
@@ -32,6 +41,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const { isAuthenticated } = useConvexAuth();
 
   const currentOrg = useQuery(api.organizations.current, !isAuthenticated ? "skip" : undefined);
+  const activeOrg = useQuery(api.organizations.getActiveOrganization, !isAuthenticated ? "skip" : undefined);
   const allOrgs = useQuery(api.organizations.list, !isAuthenticated ? "skip" : undefined);
   const updateStore = useMutation(api.users.updateRole); // We might need a specific mutation for switching context
 
@@ -45,27 +55,35 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     currentOrganization: null,
     currentDivision: null,
     currentUnit: null,
+    homeOrganization: null,
+    isViewingDescendant: false,
     isLoading: true,
     error: null
   })
 
   useEffect(() => {
-    if (currentOrg === undefined || allOrgs === undefined) return;
+    if (currentOrg === undefined || activeOrg === undefined || allOrgs === undefined) return;
+
+    // Fall back to the home org until the active-org query resolves, so the
+    // UI doesn't flash "no organization" while it loads.
+    const displayedOrg = activeOrg ?? currentOrg;
 
     setState({
       context: {
-        organization: currentOrg,
+        organization: displayedOrg,
         accessibleOrganizations: allOrgs,
         userRole: 'admin' // Placeholder
       },
-      organization: currentOrg,
-      currentOrganization: currentOrg,
+      organization: displayedOrg,
+      currentOrganization: displayedOrg,
       currentDivision: null,
       currentUnit: null,
+      homeOrganization: currentOrg,
+      isViewingDescendant: !!activeOrg?.isViewingDescendant,
       isLoading: false,
       error: null
     });
-  }, [currentOrg, allOrgs]);
+  }, [currentOrg, activeOrg, allOrgs]);
 
   const setCurrentOrganization = useCallback((organization: any | null) => {
     setState(prev => ({ ...prev, currentOrganization: organization }))
@@ -80,12 +98,21 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   }, [])
 
   const switchOrgMutation = useMutation(api.users.switchOrganization);
+  const setViewingOrgMutation = useMutation(api.users.setViewingOrganization);
 
   const switchOrganization = useCallback(async (organizationId?: string, divisionId?: string, unitId?: string) => {
     if (organizationId) {
       await switchOrgMutation({ organization_id: organizationId });
     }
   }, [switchOrgMutation])
+
+  const viewOrganization = useCallback(async (organizationId: string) => {
+    await setViewingOrgMutation({ organization_id: organizationId as Id<"organizations"> });
+  }, [setViewingOrgMutation])
+
+  const returnToHomeOrganization = useCallback(async () => {
+    await setViewingOrgMutation({ organization_id: null });
+  }, [setViewingOrgMutation])
 
   const refreshContext = useCallback(async () => {
     // With Convex, this is automatic
@@ -97,7 +124,9 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     setCurrentDivision,
     setCurrentUnit,
     refreshContext,
-    switchOrganization
+    switchOrganization,
+    viewOrganization,
+    returnToHomeOrganization
   }
 
   return (

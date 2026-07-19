@@ -1,7 +1,7 @@
 
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
-import { requireIdentity, requireOrgAdmin, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
+import { requireIdentity, requireOrgAdmin, requireOrgAccess, requireSuperAdmin, requireUser, resolveOrgId } from "./auth";
 import { getUnitIdsAdministeredBy, addUnitAdminInternal } from "./unit_admins";
 import { Id } from "./_generated/dataModel";
 import { api, internal } from "./_generated/api";
@@ -452,6 +452,30 @@ export const switchOrganization = mutation({
         await ctx.db.patch(user._id, {
             organization_id: orgId,
         });
+    },
+});
+
+// Browse into another org's data without changing the caller's home
+// `organization_id` — e.g. a parent-org admin viewing one of their
+// sub-organizations. Pass `organization_id: null` to return to the home org.
+// `requireOrgAccess` enforces the same boundary as every other query: the
+// caller's own org, any descendant if they're org-admin-tier, or any org for
+// super_admin.
+export const setViewingOrganization = mutation({
+    args: { organization_id: v.union(v.id("organizations"), v.null()) },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+
+        if (args.organization_id === null) {
+            await ctx.db.patch(user._id, { viewing_organization_id: undefined });
+            return true;
+        }
+
+        await requireOrgAccess(ctx, args.organization_id);
+        await ctx.db.patch(user._id, {
+            viewing_organization_id: args.organization_id,
+        });
+        return true;
     },
 });
 

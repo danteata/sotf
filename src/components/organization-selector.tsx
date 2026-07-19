@@ -19,15 +19,37 @@ interface OrganizationSelectorProps {
   className?: string
 }
 
+// Minimal shape of an org node from api.organizations.list — carries the
+// materialized-path fields used to render the hierarchy.
+interface OrgNode {
+  _id: string
+  name: string
+  depth?: number
+  path?: string
+  parent_organization_id?: string
+}
+
 export function OrganizationSelector({ className }: OrganizationSelectorProps) {
   const {
     context,
     isLoading,
-    switchOrganization
+    homeOrganization,
+    viewOrganization,
+    returnToHomeOrganization
   } = useOrganization()
 
-  const accessibleOrganizations = context?.accessibleOrganizations || []
+  const accessibleOrganizations: OrgNode[] = context?.accessibleOrganizations || []
   const currentOrganization = context?.organization
+
+  // Sorting by materialized `path` yields a correct pre-order tree traversal
+  // (parents immediately before their descendants). Indentation is depth
+  // relative to the home org, so arbitrary nesting renders without building
+  // an explicit tree.
+  const homeDepth = homeOrganization?.depth ?? 0
+  const orgTree = [...accessibleOrganizations].sort((a, b) =>
+    (a.path || "").localeCompare(b.path || "")
+  )
+  const hasHierarchy = orgTree.length > 1
 
   const [isOpen, setIsOpen] = useState(false)
 
@@ -39,9 +61,13 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
     )
   }
 
-  const handleOrganizationSelect = async (org: any) => {
+  const handleOrganizationSelect = async (org: OrgNode) => {
     try {
-      await switchOrganization(org._id)
+      if (org._id === homeOrganization?._id) {
+        await returnToHomeOrganization()
+      } else {
+        await viewOrganization(org._id)
+      }
       setIsOpen(false)
     } catch (error) {
       console.error('Failed to switch organization:', error)
@@ -86,17 +112,20 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
         <DropdownMenuSeparator className="my-1.5 bg-border/30" />
 
         <DropdownMenuLabel className="px-2 pb-1.5 text-[10px] text-muted-foreground tracking-wider">
-          Switch Organization
+          {hasHierarchy ? "Organizations" : "Switch Organization"}
         </DropdownMenuLabel>
 
         <div className="space-y-0.5 max-h-[250px] overflow-y-auto scrollbar-thin">
-          {accessibleOrganizations.length > 0 ? (
-            accessibleOrganizations.map((org: any) => {
+          {orgTree.length > 0 ? (
+            orgTree.map((org) => {
               const isSelected = currentOrganization?._id === org._id
+              const isHome = homeOrganization?._id === org._id
+              const indent = Math.max(0, (org.depth ?? 0) - homeDepth)
               return (
                 <DropdownMenuItem
                   key={org._id}
                   onClick={() => handleOrganizationSelect(org)}
+                  style={{ paddingLeft: `${8 + indent * 16}px` }}
                   className={cn(
                     "flex items-center gap-2 p-2 rounded-lg cursor-pointer text-sm transition-all duration-200",
                     isSelected
@@ -104,8 +133,14 @@ export function OrganizationSelector({ className }: OrganizationSelectorProps) {
                       : "hover:bg-muted/50 hover:border hover:border-border/30"
                   )}
                 >
-                  <Building2 className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground")} />
+                  {indent > 0 && (
+                    <span className="text-muted-foreground/40 shrink-0 -ml-1 select-none">└</span>
+                  )}
+                  <Building2 className={cn("h-4 w-4 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
                   <span className="truncate flex-1">{org.name}</span>
+                  {isHome && hasHierarchy && (
+                    <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 shrink-0">Home</Badge>
+                  )}
                   {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
                 </DropdownMenuItem>
               )

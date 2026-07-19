@@ -11,6 +11,11 @@ export default defineSchema({
         organization_id: v.optional(v.string()), // UUID from migration, keeping as string for now
         division_id: v.optional(v.string()),
         unit_id: v.optional(v.string()),
+        // Org the user is currently browsing, if different from their home
+        // `organization_id` — e.g. a parent-org admin viewing a sub-organization.
+        // Ephemeral by convention (cleared on return-to-home); never used for
+        // authorization, only to pick which org's data the UI shows.
+        viewing_organization_id: v.optional(v.string()),
         active: v.boolean(),
     })
         .index("by_clerk_id", ["clerk_user_id"])
@@ -57,6 +62,19 @@ export default defineSchema({
         description: v.optional(v.string()),
         active: v.boolean(),
         organization_admin_id: v.optional(v.string()),
+        // Org-to-org hierarchy (a parent org overseeing sub-organizations).
+        // Self-referencing, same materialized-path pattern as `units`. A
+        // sub-organization keeps its own admins/subscription/data untouched;
+        // `parent_organization_id` only grants the ancestor's org admins
+        // cascading read/write access (see auth.ts descendant-org checks).
+        parent_organization_id: v.optional(v.id("organizations")),
+        depth: v.optional(v.number()), // 0 = top of its own tree
+        path: v.optional(v.string()), // materialized path, e.g. "/parentId/childId"
+        // One persistent, rotatable code an org shares so another org's admin
+        // can self-link under it (e.g. "ORG-UCG4X"). Redeeming it always
+        // attaches the redeemer's OWN org (they must be its admin), so a
+        // leaked code can never pull in an org the holder doesn't run.
+        invite_code: v.optional(v.string()),
         // Hierarchy configuration
         level1_singular: v.optional(v.string()),
         level1_plural: v.optional(v.string()),
@@ -70,7 +88,10 @@ export default defineSchema({
         timezone: v.optional(v.string()), // IANA tz, e.g. "Africa/Accra"
         hq_latitude: v.optional(v.number()),
         hq_longitude: v.optional(v.number()),
-    }),
+    })
+        .index("by_parent", ["parent_organization_id"])
+        .index("by_path", ["path"])
+        .index("by_invite_code", ["invite_code"]),
 
     // Nested organizational units with types
     units: defineTable({
@@ -516,6 +537,12 @@ export default defineSchema({
         paystackCustomerCode: v.optional(v.string()),
         paystackSubscriptionCode: v.optional(v.string()),
         paystackPlanCode: v.optional(v.string()),
+        // Parent-org license: when true, this subscription confers Pro on ALL
+        // descendant orgs in the org tree (sub-organizations under this one),
+        // not just this org. A sub-organization's own active subscription still
+        // takes priority; ancestor coverage is the fallback. See entitlements.ts
+        // orgIsPro, which walks parent_organization_id to honor this.
+        covers_descendants: v.optional(v.boolean()),
         // ISO end of the current paid period; null on free / no period yet.
         currentPeriodEnd: v.optional(v.union(v.string(), v.null())),
         lastEventAt: v.optional(v.string()),
