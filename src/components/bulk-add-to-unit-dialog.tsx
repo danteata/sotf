@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useOrganization } from "@/hooks/use-organization"
 import { Member } from "@/types/database"
 

@@ -45,7 +45,7 @@ interface MembersTableProps {
 
 import { useMutation, useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useOrganization } from "@/hooks/use-organization"
 
 export function MembersTable({ members, onMemberUpdate, isArchivedView = false }: MembersTableProps) {

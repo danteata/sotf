@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog"
 import { HouseholdCombobox } from "@/components/household-combobox"
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { useOrganization } from "@/hooks/use-organization"
 import { Member } from "@/types/database"
 
