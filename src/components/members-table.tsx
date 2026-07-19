@@ -353,7 +353,7 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
               {visibleCols.contact && <TableHead className="hidden md:table-cell">Contact</TableHead>}
               {visibleCols.address && <TableHead className="hidden md:table-cell">Address</TableHead>}
               {visibleCols.household && <TableHead className="hidden md:table-cell">Household</TableHead>}
-              <TableHead>
+              <TableHead className="hidden md:table-cell">
                 <div className="flex items-center space-x-2 cursor-pointer" onClick={() => handleSort("status")}>
                   <span className="font-bold">Status</span>
                   <ArrowUpDown className="h-4 w-4" />
@@ -412,7 +412,17 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
                       <AvatarImage src={member.avatar_url || member.avatar} alt={member.name} />
                       <AvatarFallback className="bg-muted text-foreground font-semibold text-sm border border-border/50">{member.initials}</AvatarFallback>
                     </Avatar>
-                    <div className="font-bold">{member.name}</div>
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="font-bold truncate">{member.name}</div>
+                      {/* Phone + status only shown here on mobile — the
+                          Status column is hidden below md, and Contact is
+                          hidden below md too, so this is the only place
+                          either is visible on a small screen. */}
+                      <div className="flex items-center gap-2 md:hidden">
+                        <span className="text-xs text-muted-foreground truncate">{member.phone || '—'}</span>
+                        {getStatusBadge(member.status)}
+                      </div>
+                    </div>
                   </div>
                 </TableCell>
                 {visibleCols.contact && (
@@ -439,7 +449,7 @@ export function MembersTable({ members, onMemberUpdate, isArchivedView = false }
                     )}
                   </TableCell>
                 )}
-                <TableCell>{getStatusBadge(member.status)}</TableCell>
+                <TableCell className="hidden md:table-cell">{getStatusBadge(member.status)}</TableCell>
                 {visibleCols.units && (
                   <TableCell className="hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">

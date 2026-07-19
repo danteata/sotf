@@ -152,6 +152,16 @@ export const listPage = query({
         filter: v.optional(v.union(v.literal("active"), v.literal("archived"), v.literal("all"))),
         search: v.optional(v.string()),
         status: v.optional(v.string()),
+        // Directory facet filters. Applied server-side across the whole scoped
+        // set *before* slicing, so "Load more" paginates the filtered result
+        // rather than the client having to load every page before it can
+        // filter locally.
+        statuses: v.optional(v.array(v.string())),
+        unit_ids: v.optional(v.array(v.id("units"))),
+        label_ids: v.optional(v.array(v.id("labels"))),
+        household_ids: v.optional(v.array(v.id("households"))),
+        no_household: v.optional(v.boolean()),
+        risk_levels: v.optional(v.array(v.string())),
         pageSize: v.optional(v.number()),
         cursor: v.optional(v.string()),
     },
@@ -206,9 +216,59 @@ export const listPage = query({
         if (args.status) {
             members = members.filter((m) => m.status === args.status);
         }
+        if (args.statuses && args.statuses.length > 0) {
+            const wanted = new Set(args.statuses);
+            members = members.filter((m) => wanted.has(m.status));
+        }
         if (search) {
             members = members.filter((m) => matchesSearch(m, search));
         }
+
+        // Unit / label filters resolve through junction tables. Gather the set
+        // of member ids belonging to ANY selected unit/label (union), then keep
+        // members in that set.
+        if (args.unit_ids && args.unit_ids.length > 0) {
+            const inUnits = new Set<string>();
+            await Promise.all(
+                args.unit_ids.map(async (uid) => {
+                    const rows = await ctx.db
+                        .query("member_units")
+                        .withIndex("by_unit", (q) => q.eq("unit_id", uid))
+                        .collect();
+                    rows.forEach((r) => inUnits.add(r.member_id));
+                }),
+            );
+            members = members.filter((m) => inUnits.has(m._id));
+        }
+        if (args.label_ids && args.label_ids.length > 0) {
+            const withLabel = new Set<string>();
+            await Promise.all(
+                args.label_ids.map(async (lid) => {
+                    const rows = await ctx.db
+                        .query("member_labels")
+                        .withIndex("by_label", (q) => q.eq("label_id", lid))
+                        .collect();
+                    rows.forEach((r) => withLabel.add(r.member_id));
+                }),
+            );
+            members = members.filter((m) => withLabel.has(m._id));
+        }
+
+        const householdIds = args.household_ids ?? [];
+        if (householdIds.length > 0 || args.no_household) {
+            const wanted = new Set<string>(householdIds);
+            members = members.filter((m) => {
+                const hid = m.household_id as string | undefined;
+                if (!hid) return !!args.no_household;
+                return wanted.has(hid);
+            });
+        }
+
+        if (args.risk_levels && args.risk_levels.length > 0) {
+            const wanted = new Set(args.risk_levels);
+            members = members.filter((m) => wanted.has(m.engagement_risk_level ?? ""));
+        }
+
         members.sort((a, b) => a.name.localeCompare(b.name));
 
         const totalCount = members.length;

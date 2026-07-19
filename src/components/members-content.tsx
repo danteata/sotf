@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Download, Filter, Plus, Upload, Users, Building2, Home, Tag, X, ShieldAlert } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
+import { Download, Filter, Plus, Upload, Users, Building2, Home, Tag, X, ShieldAlert, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { useTerminology } from "@/hooks/use-terminology"
 import { useQuery, useMutation } from "convex/react"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
+import type { Id } from "../../convex/_generated/dataModel"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MembersTable } from "@/components/members-table"
@@ -22,7 +24,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useSubscription } from "@/providers/SubscriptionProvider"
 
 interface MembersContentProps {
-  initialMembers: Member[]
   view?: 'active' | 'archived'
   onViewChange?: (view: 'active' | 'archived') => void
 }
@@ -31,7 +32,18 @@ interface MembersContentProps {
 // any real Id<"households"> so it can sit in the same string[] filter state.
 const NO_HOUSEHOLD = "__none__"
 
-export function MembersContent({ initialMembers, view = 'active', onViewChange }: MembersContentProps) {
+const PAGE_SIZE = 50
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs)
+    return () => clearTimeout(t)
+  }, [value, delayMs])
+  return debounced
+}
+
+export function MembersContent({ view = 'active', onViewChange }: MembersContentProps) {
   const { trackEvent } = useAnalytics()
   const [statusFilters, setStatusFilters] = useState<string[]>([])
   const [unitFilters, setUnitFilters] = useState<string[]>([])
@@ -40,6 +52,9 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
   const [riskFilters, setRiskFilters] = useState<string[]>([])
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
+  const [searchInput, setSearchInput] = useState("")
+  const search = useDebouncedValue(searchInput.trim(), 250)
+  const [loadedCount, setLoadedCount] = useState(PAGE_SIZE)
 
   const { organization } = useOrganization()
   const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
@@ -50,48 +65,55 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
   const { toast } = useToast()
   const { isPro } = useSubscription()
 
-  const filteredMembers = useMemo(() => {
-    let filtered = [...initialMembers]
+  // Households can include the "no household" sentinel; split it out so the
+  // server receives real household ids plus a boolean.
+  const householdIds = useMemo(
+    () => householdFilters.filter(h => h !== NO_HOUSEHOLD),
+    [householdFilters],
+  )
+  const noHousehold = householdFilters.includes(NO_HOUSEHOLD)
 
-    // Status: match ANY selected status
-    if (statusFilters.length > 0) {
-      filtered = filtered.filter(member => statusFilters.includes(member.status))
-    }
+  // All facet filters are applied server-side (in members.listPage) across the
+  // whole scoped set before slicing, so "Load more" grows the page over the
+  // filtered result instead of forcing the user to load every page first.
+  const filterKey = [
+    organization?._id ?? "",
+    view,
+    search,
+    [...statusFilters].sort().join(","),
+    [...unitFilters].sort().join(","),
+    [...labelFilters].sort().join(","),
+    [...householdFilters].sort().join(","),
+    [...riskFilters].sort().join(","),
+  ].join("|")
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey)
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey)
+    setLoadedCount(PAGE_SIZE)
+  }
 
-    // Units: member is in ANY selected unit
-    if (unitFilters.length > 0) {
-      filtered = filtered.filter(member => {
-        const memberUnitIds = (member as any).unit_ids || [];
-        const memberUnitNames = (member as any).unit_names || [];
-        return unitFilters.some(f => memberUnitIds.includes(f) || memberUnitNames.includes(f));
-      });
-    }
+  const page = useQuery(
+    api.members.listPage,
+    organization?._id
+      ? {
+          organization_id: organization._id,
+          filter: view,
+          search: search || undefined,
+          pageSize: loadedCount,
+          statuses: statusFilters.length ? statusFilters : undefined,
+          unit_ids: unitFilters.length ? (unitFilters as Id<"units">[]) : undefined,
+          label_ids: labelFilters.length ? (labelFilters as Id<"labels">[]) : undefined,
+          household_ids: householdIds.length ? (householdIds as Id<"households">[]) : undefined,
+          no_household: noHousehold || undefined,
+          risk_levels: riskFilters.length ? riskFilters : undefined,
+        }
+      : "skip",
+  )
 
-    // Labels: member has ANY selected label
-    if (labelFilters.length > 0) {
-      filtered = filtered.filter(member => {
-        const memberLabels = (member as any).labels || [];
-        return labelFilters.some(f => memberLabels.some((label: any) => label._id === f || label.name === f));
-      });
-    }
-
-    // Households: member is in ANY selected household (or unassigned, via NO_HOUSEHOLD)
-    if (householdFilters.length > 0) {
-      filtered = filtered.filter(member => {
-        const householdId = member.household_id as string | undefined;
-        return householdFilters.some(f =>
-          f === NO_HOUSEHOLD ? !householdId : householdId === f
-        );
-      });
-    }
-
-    // Risk level: member's engagement risk bucket is ANY selected level
-    if (riskFilters.length > 0) {
-      filtered = filtered.filter(member => riskFilters.includes(member.engagement_risk_level || ""))
-    }
-
-    return filtered;
-  }, [initialMembers, statusFilters, unitFilters, labelFilters, householdFilters, riskFilters])
+  const isLoading = page === undefined
+  const isDone = page?.isDone ?? true
+  const totalCount = page?.totalCount
+  const filteredMembers = useMemo(() => (page?.page ?? []) as unknown as Member[], [page])
 
   // Filter helpers
   const addFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) =>
@@ -114,8 +136,6 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
   const riskLabel = (level: string) => RISK_LABELS[level] ?? level
   const activeFilterCount =
     statusFilters.length + unitFilters.length + labelFilters.length + householdFilters.length + riskFilters.length
-
-  const totalMembers = filteredMembers.length
 
   const handleExport = () => {
     const headers = [
@@ -267,11 +287,27 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
 
       {/* Filters and Search */}
       <Card className="shadow-soft hover:shadow-soft-lg transition-all rounded-xl border border-border/50">
-        <CardHeader className="bg-muted/30 pb-4">
+        <CardHeader className="bg-muted/30 pb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
             Filter Directory
           </CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search name, email, or phone…"
+                className="pl-9 bg-background"
+              />
+            </div>
+            {typeof totalCount === "number" && (
+              <span className="hidden sm:inline text-sm text-muted-foreground whitespace-nowrap">
+                {totalCount.toLocaleString()} member{totalCount === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-6">
           <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4", isPro ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
@@ -397,13 +433,11 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
                 </Button>
               )}
             </div>
-            {/* Only shown when status/unit/label filters narrow the currently
-                loaded page further — otherwise this would just repeat the
-                authoritative total shown above the table (Members.tsx), which
-                already accounts for search across the whole org. */}
-            {activeFilterCount > 0 && (
+            {/* Filters run server-side across the whole scoped set, so this is
+                the authoritative match count, not just the loaded page. */}
+            {activeFilterCount > 0 && typeof totalCount === "number" && (
               <span className="text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full shrink-0">
-                {totalMembers.toLocaleString()} match{totalMembers === 1 ? '' : 'es'} filter{totalMembers !== 1 ? 's' : ''} (of loaded)
+                {totalCount.toLocaleString()} match{totalCount === 1 ? '' : 'es'} filter{totalCount !== 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -411,12 +445,31 @@ export function MembersContent({ initialMembers, view = 'active', onViewChange }
       </Card>
 
       {/* Table and dialogs */}
-      <div className="rounded-xl overflow-hidden shadow-soft border border-border/50 bg-card">
-        <MembersTable
-          members={filteredMembers}
-          isArchivedView={view === 'archived'}
-        />
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : (
+        <>
+          <div className="rounded-xl overflow-hidden shadow-soft border border-border/50 bg-card">
+            <MembersTable
+              members={filteredMembers}
+              isArchivedView={view === 'archived'}
+            />
+          </div>
+
+          {!isDone && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setLoadedCount((c) => c + PAGE_SIZE)}
+              >
+                Load more
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       <MemberDialog
         open={isAddMemberOpen}
