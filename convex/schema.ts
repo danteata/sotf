@@ -770,6 +770,15 @@ export default defineSchema({
         created_by: v.optional(v.string()), // clerk_user_id, manual creation only
         created_at: v.string(),
         updated_at: v.string(),
+        // When the task first moved to "contacted" — the intervention moment,
+        // distinct from resolved_at. Used for care-loop timing/attribution.
+        contacted_at: v.optional(v.string()),
+        // Engagement snapshot at creation — the at-risk baseline this follow-up
+        // is meant to move. Compared against the member's current level to
+        // attribute recoveries (see engagement/impact.ts). Undefined on Free
+        // orgs / members with no score yet.
+        member_score_at_contact: v.optional(v.number()),
+        member_risk_at_contact: v.optional(v.string()),
         resolved_at: v.optional(v.string()),
     })
         .index("by_org", ["organization_id"])

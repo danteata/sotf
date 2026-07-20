@@ -7,8 +7,22 @@
 
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import { Doc, Id } from "../_generated/dataModel";
 import { isSuperAdmin, requireUser, resolveOrgId } from "../auth";
-import { isOrgWideScope, resolveManagedMemberIds } from "../scope";
+import {
+    callerOrgId,
+    isOrgWideScope,
+    memberIdInScope,
+    resolveManagedMemberIds,
+} from "../scope";
+import {
+    impactLevel,
+    impactScore,
+    parseBreakdown,
+    queueReasons,
+    recoveryOutcome,
+    wasAtRisk,
+} from "./impact";
 
 /**
  * Lowest-scoring members for the org (or the caller's managed scope), for the
@@ -52,5 +66,197 @@ export const listAtRisk = query({
             engagement_risk_level: m.engagement_risk_level,
             household_id: m.household_id,
         }));
+    },
+});
+
+// Statuses that mean a member is already being followed up on (so they should
+// not resurface in the "who to call next" queue).
+const OPEN_TASK_STATUSES = ["pending", "contacted"] as const;
+
+/**
+ * Impact-ranked care queue: at-risk members who DON'T already have an open
+ * follow-up, ordered by how much a call is worth right now (severity ×
+ * recoverability × relationship proximity — see engagement/impact.ts), each
+ * with "why" chips. This answers "who should I call first" when a leader only
+ * has time for a handful of calls, rather than dumping the whole at-risk list.
+ *
+ * Scope-aware (unit admins see only their members) and Pro-gated by data: Free
+ * orgs have no scored members, so this returns []. New members are intentionally
+ * excluded — first-contact/onboarding is a separate flow from recovery.
+ */
+export const careQueue = query({
+    args: {
+        organization_id: v.optional(v.id("organizations")),
+        limit: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user)
+            ? args.organization_id
+            : await resolveOrgId(ctx, args.organization_id);
+        if (!orgId) return [];
+
+        const limit = Math.min(Math.max(args.limit ?? 12, 1), 50);
+        const scope = await resolveManagedMemberIds(ctx);
+        const nowMs = Date.now();
+
+        // Members already in an open follow-up loop — excluded from the queue.
+        const openTaskMemberIds = new Set<string>();
+        for (const status of OPEN_TASK_STATUSES) {
+            const rows = await ctx.db
+                .query("care_tasks")
+                .withIndex("by_org_and_status", (q) =>
+                    q.eq("organization_id", orgId).eq("status", status),
+                )
+                .take(1000);
+            for (const r of rows) openTaskMemberIds.add(r.member_id as string);
+        }
+
+        // Lowest-scoring members first (the at-risk pool). The trailing index
+        // field excludes unscored members (Free orgs / not-yet-computed).
+        const candidates = await ctx.db
+            .query("members")
+            .withIndex("by_org_and_engagement_score", (q) =>
+                q.eq("organization_id", orgId).gte("engagement_score", 0),
+            )
+            .order("asc")
+            .take(200);
+
+        const ranked = candidates
+            .filter(
+                (m) =>
+                    !m.archived_at &&
+                    (m.engagement_risk_level === "high" ||
+                        m.engagement_risk_level === "medium") &&
+                    !openTaskMemberIds.has(m._id as string) &&
+                    (isOrgWideScope(scope) || scope.has(m._id)),
+            )
+            .map((m) => {
+                const breakdown = parseBreakdown(m.engagement_breakdown);
+                const daysSinceLast = breakdown?.days_since_last;
+                const impact = impactScore({
+                    score: m.engagement_score,
+                    breakdown,
+                    daysSinceLast,
+                    hasHousehold: !!m.household_id,
+                });
+                return {
+                    id: m._id,
+                    name: m.name,
+                    avatar_url: m.avatar_url,
+                    engagement_score: m.engagement_score,
+                    engagement_risk_level: m.engagement_risk_level,
+                    household_id: m.household_id,
+                    impact,
+                    impact_level: impactLevel(impact),
+                    days_since_last: daysSinceLast,
+                    reasons: queueReasons({
+                        riskLevel: m.engagement_risk_level,
+                        breakdown,
+                        daysSinceLast,
+                        lastCareContactAt: breakdown?.last_care_contact_at,
+                        nowMs,
+                    }),
+                };
+            });
+
+        ranked.sort((a, b) => b.impact - a.impact);
+        return ranked.slice(0, limit);
+    },
+});
+
+/**
+ * Care-loop outcome attribution — "Members Recovered". For members who had a
+ * follow-up created while at risk within the window, compares their risk level
+ * at that time (snapshotted on the task) against their current level. Because
+ * the engagement score already folds in attendance recency/trend, a move back
+ * to "low" genuinely reflects re-engagement — no separate attendance read.
+ *
+ * Forward-looking by nature: it measures tasks created from this release on,
+ * once baselines are being snapshotted. Scope-aware and Pro-gated by data.
+ */
+export const careImpactStats = query({
+    args: {
+        organization_id: v.optional(v.id("organizations")),
+        window_days: v.optional(v.number()),
+    },
+    handler: async (ctx, args) => {
+        const user = await requireUser(ctx);
+        const orgId = isSuperAdmin(user)
+            ? args.organization_id
+            : await resolveOrgId(ctx, args.organization_id);
+        const windowDays = Math.min(Math.max(args.window_days ?? 90, 7), 365);
+        const empty = {
+            windowDays,
+            scoringActive: false,
+            atRiskContacted: 0,
+            recovered: 0,
+            improving: 0,
+            stillAtRisk: 0,
+            recoveryRate: 0,
+        };
+        if (!orgId) return empty;
+
+        const scope = await resolveManagedMemberIds(ctx);
+        const callerOrg = callerOrgId(ctx, user);
+        const cutoffIso = new Date(Date.now() - windowDays * 24 * 3600 * 1000).toISOString();
+
+        // Does engagement scoring apply to this org at all? (Pro orgs get scored
+        // by the daily recompute; Free orgs never do.) Drives whether the UI
+        // shows an empty "recoveries will appear here" state vs. nothing.
+        const anyScored = await ctx.db
+            .query("members")
+            .withIndex("by_org_and_engagement_score", (q) =>
+                q.eq("organization_id", orgId).gte("engagement_score", 0),
+            )
+            .first();
+        const scoringActive = !!anyScored;
+
+        const tasks = await ctx.db
+            .query("care_tasks")
+            .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+            .order("desc")
+            .take(500);
+
+        // Per member, keep the most-severe at-risk baseline across their tasks
+        // in the window (a "high" baseline dominates a later "medium" one).
+        const baselineByMember = new Map<string, string>();
+        for (const t of tasks) {
+            if (t.created_at < cutoffIso) continue;
+            if (!wasAtRisk(t.member_risk_at_contact)) continue;
+            if (!memberIdInScope(t.member_id, orgId, scope, callerOrg)) continue;
+            const prev = baselineByMember.get(t.member_id as string);
+            if (prev === "high") continue;
+            baselineByMember.set(t.member_id as string, t.member_risk_at_contact!);
+        }
+
+        let recovered = 0;
+        let improving = 0;
+        let stillAtRisk = 0;
+        await Promise.all(
+            Array.from(baselineByMember.entries()).map(async ([memberId, baseline]) => {
+                const member = (await ctx.db.get(memberId as Id<"members">)) as
+                    | Doc<"members">
+                    | null;
+                const outcome = recoveryOutcome(baseline, member?.engagement_risk_level);
+                if (outcome === "recovered") recovered++;
+                else if (outcome === "improving") improving++;
+                else stillAtRisk++;
+            }),
+        );
+
+        const atRiskContacted = baselineByMember.size;
+        const recoveryRate =
+            atRiskContacted === 0 ? 0 : Math.round((recovered / atRiskContacted) * 100);
+
+        return {
+            windowDays,
+            scoringActive,
+            atRiskContacted,
+            recovered,
+            improving,
+            stillAtRisk,
+            recoveryRate,
+        };
     },
 });

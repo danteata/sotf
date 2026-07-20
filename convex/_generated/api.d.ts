@@ -28,6 +28,7 @@ import type * as care_tasks from "../care_tasks.js";
 import type * as check_ins from "../check_ins.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
+import type * as engagement_impact from "../engagement/impact.js";
 import type * as engagement_queries from "../engagement/queries.js";
 import type * as engagement_recompute from "../engagement/recompute.js";
 import type * as engagement_scoring from "../engagement/scoring.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   check_ins: typeof check_ins;
   crons: typeof crons;
   dashboard: typeof dashboard;
+  "engagement/impact": typeof engagement_impact;
   "engagement/queries": typeof engagement_queries;
   "engagement/recompute": typeof engagement_recompute;
   "engagement/scoring": typeof engagement_scoring;

@@ -11,6 +11,7 @@ import { FinancialWidget } from "@/components/financial-widget"
 import { ServiceSummaryWidget } from "@/components/service-summary-widget"
 import { MyCareTasksWidget } from "@/components/my-care-tasks-widget"
 import { AtRiskWidget } from "@/components/at-risk-widget"
+import { CareImpactWidget } from "@/components/care-impact-widget"
 import { useUserRole } from "@/hooks/use-user-role"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
@@ -191,6 +192,10 @@ export function DashboardContent() {
     </div>
     <div className="mt-6">
       <MyCareTasksWidget />
+    </div>
+
+    <div className="mt-6">
+      <CareImpactWidget />
     </div>
 
     <div className="mt-6">

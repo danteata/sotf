@@ -13,6 +13,22 @@ type Ctx = QueryCtx | MutationCtx;
 
 const STATUSES = ["pending", "contacted", "resolved"] as const;
 
+/**
+ * The at-risk baseline to record on a care task at creation: the member's
+ * engagement level right now. Compared against their current level later to
+ * attribute recoveries (engagement/impact.ts). Both undefined on Free orgs or
+ * members not yet scored — the attribution query treats those as unmeasured.
+ */
+function engagementSnapshot(member: Doc<"members">): {
+    member_score_at_contact?: number;
+    member_risk_at_contact?: string;
+} {
+    return {
+        member_score_at_contact: member.engagement_score,
+        member_risk_at_contact: member.engagement_risk_level,
+    };
+}
+
 function isValidStatus(status: string): status is (typeof STATUSES)[number] {
     return (STATUSES as readonly string[]).includes(status);
 }
@@ -239,6 +255,7 @@ export const create = mutation({
             created_by: user.clerk_user_id,
             created_at: now,
             updated_at: now,
+            ...engagementSnapshot(member),
         });
 
         await ctx.db.insert("care_task_notes", {
@@ -303,6 +320,9 @@ export const updateStatus = mutation({
         await ctx.db.patch(args.id, {
             status: args.status,
             updated_at: now,
+            // Stamp the first move to "contacted" as the intervention moment.
+            contacted_at:
+                args.status === "contacted" && !task.contacted_at ? now : task.contacted_at,
             resolved_at: args.status === "resolved" ? now : task.resolved_at,
         });
 
@@ -398,6 +418,7 @@ export const createForHousehold = mutation({
                 created_by: user.clerk_user_id,
                 created_at: now,
                 updated_at: now,
+                ...engagementSnapshot(member),
             });
             await ctx.db.insert("care_task_notes", {
                 care_task_id: taskId,

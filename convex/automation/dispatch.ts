@@ -157,6 +157,9 @@ async function processTask(ctx: MutationCtx, task: Doc<"automation_tasks">) {
             }
 
             const now = new Date().toISOString();
+            // Snapshot the member's at-risk baseline for recovery attribution
+            // (engagement/impact.ts), same as manual care-task creation.
+            const careMember = await ctx.db.get(task.member_id);
             const careTaskId = await ctx.db.insert("care_tasks", {
                 organization_id: task.organization_id,
                 member_id: task.member_id,
@@ -166,6 +169,8 @@ async function processTask(ctx: MutationCtx, task: Doc<"automation_tasks">) {
                 rule_id: task.rule_id,
                 created_at: now,
                 updated_at: now,
+                member_score_at_contact: careMember?.engagement_score,
+                member_risk_at_contact: careMember?.engagement_risk_level,
             });
             await ctx.db.insert("care_task_notes", {
                 care_task_id: careTaskId,
