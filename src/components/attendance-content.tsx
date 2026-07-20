@@ -17,6 +17,7 @@ import { api } from "../../convex/_generated/api"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { useUserRole, useManagedMembers, useAccessibleUnits } from "@/hooks/use-user-role"
+import { hasCapability } from "@/lib/permissions"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function AttendanceContent() {
-  const { isAdmin } = useUserRole();
+  const { role } = useUserRole();
+  // Managing check-in sessions is allowed for org admins and unit-level admins
+  // alike — mirrors the backend requireWriteAccess check (convex/scope.ts).
+  const canManageCheckIn = hasCapability(role, "command_center");
   const { members, isLoading: membersLoading } = useManagedMembers();
   const { ministries, isLoading: filtersLoading } = useAccessibleUnits();
   const { trackEvent } = useAnalytics();
@@ -293,7 +297,7 @@ export function AttendanceContent() {
           </TabsContent>
 
           <TabsContent value="checkin" className="space-y-4 outline-none">
-            {!isAdmin ? (
+            {!canManageCheckIn ? (
               <Card className="border-border/50 rounded-lg">
                 <CardContent className="p-8 text-center">
                   <Lock className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />

@@ -160,6 +160,8 @@ export default function KioskPage() {
             toast.error("This event doesn't apply to that member")
         } else if (res.status === "wrong_org") {
             toast.error("Member belongs to a different organization")
+        } else if (res.status === "out_of_scope") {
+            toast.error("That member isn't in a unit you manage")
         } else {
             toast.error(res.status ?? "Check-in failed")
         }

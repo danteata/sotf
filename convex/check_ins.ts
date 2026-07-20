@@ -9,7 +9,11 @@ import {
     isSuperAdmin,
     resolveOrgId,
 } from "./auth";
-import { requireWriteAccess } from "./scope";
+import {
+    requireWriteAccess,
+    resolveManagedMemberIds,
+    memberIdInScope,
+} from "./scope";
 import { requireFeature } from "./entitlements";
 import {
     ensureAttendanceRecord,
@@ -666,6 +670,13 @@ export const kioskSearchMembers = query({
         const q = args.query.trim().toLowerCase();
         if (q.length < 2) return [];
 
+        // Unit-level admins only see the members they manage; org admins and
+        // super admins see everyone in the org. Mirrors resolveManagedMemberIds
+        // used across members/attendance so scoping stays consistent.
+        const scope = await resolveManagedMemberIds(ctx);
+        const inScope = (m: Doc<"members">) =>
+            memberIdInScope(m._id, m.organization_id, scope, session.organization_id);
+
         // Try a phone-prefix match first (most reliable at a kiosk).
         let phoneMatches: Doc<"members">[] = [];
         if (/^[0-9 +]/.test(q)) {
@@ -680,7 +691,7 @@ export const kioskSearchMembers = query({
             // gte on phone is a prefix scan only when the index is ordered by
             // the full string; filter to those that actually start with q.
             phoneMatches = phoneMatches.filter((m) =>
-                (m.phone ?? "").toLowerCase().startsWith(q) && !m.archived_at,
+                (m.phone ?? "").toLowerCase().startsWith(q) && !m.archived_at && inScope(m),
             );
         }
 
@@ -696,7 +707,7 @@ export const kioskSearchMembers = query({
         const seen = new Set(phoneMatches.map((m) => m._id));
         const nameMatches: Doc<"members">[] = [];
         for (const m of orgMembers) {
-            if (seen.has(m._id) || m.archived_at) continue;
+            if (seen.has(m._id) || m.archived_at || !inScope(m)) continue;
             const name = (m.name + " " + (m.other_names ?? "")).toLowerCase();
             const email = (m.email ?? "").toLowerCase();
             const phone = (m.phone ?? "").toLowerCase();
@@ -780,6 +791,22 @@ export const kioskCheckIn = mutation({
                 device_info: args.device_info,
             });
             return { status: "wrong_org" as const };
+        }
+
+        // Unit admins may only check in members they manage.
+        const scope = await resolveManagedMemberIds(ctx);
+        if (!memberIdInScope(member._id, member.organization_id, scope, session.organization_id)) {
+            await logCheckInAudit(ctx, {
+                session_id: session._id,
+                organization_id: session.organization_id,
+                member_id: member._id,
+                member_name: member.name,
+                clerk_user_id: (await ctx.auth.getUserIdentity())?.subject,
+                method: "kiosk",
+                outcome: "out_of_scope",
+                device_info: args.device_info,
+            });
+            return { status: "out_of_scope" as const };
         }
 
         const applies = await assertEventAppliesToMember(ctx, {
@@ -913,6 +940,26 @@ export const kioskCheckInVisitor = mutation({
             // Email index is global; verify same org.
             if (member && member.organization_id !== session.organization_id) {
                 member = null;
+            }
+        }
+
+        // If the visitor form resolved to an EXISTING member, a unit admin may
+        // only check them in when that member is within their managed scope.
+        // (Brand-new walk-ins created below are always allowed.)
+        if (member) {
+            const scope = await resolveManagedMemberIds(ctx);
+            if (!memberIdInScope(member._id, member.organization_id, scope, session.organization_id)) {
+                await logCheckInAudit(ctx, {
+                    session_id: session._id,
+                    organization_id: session.organization_id,
+                    member_id: member._id,
+                    member_name: member.name,
+                    clerk_user_id: (await ctx.auth.getUserIdentity())?.subject,
+                    method: "kiosk",
+                    outcome: "out_of_scope",
+                    device_info: args.device_info,
+                });
+                return { status: "out_of_scope" as const };
             }
         }
 
