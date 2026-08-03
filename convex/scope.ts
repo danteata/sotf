@@ -100,6 +100,66 @@ export async function resolveManagedMemberIds(
     return managedMemberIds;
 }
 
+/**
+ * How many of the caller's managed members were present, per attendance row.
+ *
+ * Walks `member_attendance` by member (not by attendance row): a unit's roster
+ * is small and bounded, while a service's present-set is not. Cost still grows
+ * with roster x history — bound the caller's date range where the report allows
+ * it. Rows with no managed member present are absent from the map — read a
+ * missing key as 0.
+ */
+export async function scopedPresenceCounts(
+    ctx: Ctx,
+    scopedIds: Set<Id<"members">>,
+): Promise<Map<Id<"attendance">, number>> {
+    const counts = new Map<Id<"attendance">, number>();
+    for (const memberId of scopedIds) {
+        const rows = await ctx.db
+            .query("member_attendance")
+            .withIndex("by_member", (q) => q.eq("member_id", memberId))
+            .collect();
+        for (const row of rows) {
+            counts.set(row.attendance_id, (counts.get(row.attendance_id) ?? 0) + 1);
+        }
+    }
+    return counts;
+}
+
+/**
+ * Human-readable description of what the caller's reports cover, so scoped
+ * numbers can be labelled in the UI instead of reading as org-wide totals.
+ * `unitNames` is empty for org-wide callers.
+ */
+export async function describeCallerScope(
+    ctx: Ctx,
+    /** Pass an already-resolved scope to avoid re-walking `member_units`. */
+    resolved?: ManagedMemberScope,
+): Promise<{
+    isScoped: boolean;
+    unitNames: string[];
+    memberCount: number | null;
+}> {
+    const scope = resolved ?? (await resolveManagedMemberIds(ctx));
+    if (isOrgWideScope(scope)) {
+        return { isScoped: false, unitNames: [], memberCount: null };
+    }
+
+    const user = await getUserSafe(ctx);
+    const member = user ? await getLinkedMember(ctx, user) : null;
+    const unitIds = member ? await getUnitIdsAdministeredBy(ctx, member._id) : [];
+    const units = await Promise.all(unitIds.map((id) => ctx.db.get(id)));
+
+    return {
+        isScoped: true,
+        unitNames: units
+            .filter((u): u is NonNullable<typeof u> => !!u && u.active)
+            .map((u) => u.name)
+            .sort((a, b) => a.localeCompare(b)),
+        memberCount: scope.size,
+    };
+}
+
 /** True when the scope is org-wide (super_admin or org admin), not unit-scoped. */
 export function isOrgWideScope(
     scope: ManagedMemberScope,

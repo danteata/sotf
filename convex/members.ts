@@ -9,7 +9,9 @@ import {
     resolveManagedMemberIds,
     memberIdInScope,
     callerOrgId,
+    describeCallerScope,
     getLinkedMember,
+    isOrgWideScope,
 } from "./scope";
 import { assertMemberLimit } from "./entitlements";
 import { internal } from "./_generated/api";
@@ -1249,58 +1251,94 @@ export const getInsights = query({
         const user = await requireUser(ctx);
         const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
 
+        // Unit-level admins get insights about their own roster: every figure
+        // below — demographics, engagement, retention, the at-risk list — is
+        // derived from `members`, which is narrowed to the members they manage.
+        const memberScope = await resolveManagedMemberIds(ctx);
+        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
+
         const members = (orgId
             ? await ctx.db.query("members").withIndex("by_org", (q: any) => q.eq("organization_id", orgId)).collect()
             : await ctx.db.query("members").collect()
-        ).filter((m) => !m.archived_at);
-
-        const memberAttendanceRecords = await ctx.db.query("member_attendance").collect();
-        const attendanceRecords = await ctx.db.query("attendance").collect();
+        ).filter((m) => !m.archived_at && (!scopedIds || scopedIds.has(m._id)));
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-        const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
         const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+        // Every series here looks back at most 12 months, so only that slice of
+        // attendance is read — and only for this org. (It used to scan the whole
+        // `attendance` and `member_attendance` tables across every org, which
+        // both mixed other orgs into the counts and grew without bound.)
+        const windowStart = formatDate(new Date(now.getFullYear(), now.getMonth() - 11, 1));
+        const attendanceRecords = orgId
+            ? await ctx.db
+                .query("attendance")
+                .withIndex("by_org_and_date", (q) =>
+                    q.eq("organization_id", orgId).gte("date", windowStart),
+                )
+                .collect()
+            : await ctx.db
+                .query("attendance")
+                .withIndex("by_date", (q) => q.gte("date", windowStart))
+                .collect();
+
+        // Who was present at each service, restricted to the members in view.
+        const memberIdsInView = new Set(members.map(m => m._id));
+        const presentByRecord = new Map<Id<"attendance">, Set<Id<"members">>>();
+        for (const record of attendanceRecords) {
+            const rows = await ctx.db
+                .query("member_attendance")
+                .withIndex("by_attendance", (q) => q.eq("attendance_id", record._id))
+                .collect();
+            const present = new Set<Id<"members">>();
+            for (const row of rows) {
+                if (memberIdsInView.has(row.member_id)) present.add(row.member_id);
+            }
+            presentByRecord.set(record._id, present);
+        }
+
+        // Headcount per service: their members for a unit admin, the recorded
+        // total (which includes since-archived members) for org-wide callers.
+        const headcount = (record: Doc<"attendance">) =>
+            scopedIds ? (presentByRecord.get(record._id)?.size ?? 0) : record.count;
 
         const activeMembers = members.filter(m => m.status === 'active');
         const inactiveMembers = members.filter(m => m.status === 'inactive');
         const visitors = members.filter(m => m.status === 'visitor');
 
-        const recentAttendances = attendanceRecords.filter(a => {
-            const date = new Date(a.date);
-            return date >= thirtyDaysAgo && date <= now;
-        });
-
-        const memberRecentAttendance = new Map<string, number>();
-        memberAttendanceRecords.forEach(ma => {
-            const attendance = attendanceRecords.find(a => a._id === ma.attendance_id);
-            if (attendance) {
-                const date = new Date(attendance.date);
-                if (date >= thirtyDaysAgo) {
-                    const count = memberRecentAttendance.get(ma.member_id) || 0;
-                    memberRecentAttendance.set(ma.member_id, count + 1);
+        const thirtyDaysAgoStr = formatDate(thirtyDaysAgo);
+        const attendedRecently = new Set<Id<"members">>();
+        const memberLastAttendance = new Map<string, string>();
+        for (const record of attendanceRecords) {
+            for (const memberId of presentByRecord.get(record._id) ?? []) {
+                if (record.date >= thirtyDaysAgoStr) attendedRecently.add(memberId);
+                const existing = memberLastAttendance.get(memberId);
+                if (!existing || record.date > existing) {
+                    memberLastAttendance.set(memberId, record.date);
                 }
             }
-        });
+        }
 
-        const attendedLast30Days = activeMembers.filter(m => memberRecentAttendance.has(m._id)).length;
+        const attendedLast30Days = activeMembers.filter(m => attendedRecently.has(m._id)).length;
 
         const retentionData = [];
         for (let i = 11; i >= 0; i--) {
             const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
             const monthStr = monthStart.toISOString().substring(0, 7);
 
-            const monthAttendances = attendanceRecords.filter(a => a.date.startsWith(monthStr));
-            const monthMemberAttendance = memberAttendanceRecords.filter(ma => {
-                const att = attendanceRecords.find(a => a._id === ma.attendance_id);
-                return att && att.date.startsWith(monthStr);
-            });
+            // For a unit admin, only services their members actually joined
+            // count toward the average — org services their unit has no part in
+            // would otherwise drag it toward zero.
+            const monthAttendances = attendanceRecords.filter(
+                a => a.date.startsWith(monthStr) && (!scopedIds || headcount(a) > 0),
+            );
 
-            const uniqueAttendees = new Set(monthMemberAttendance.map(ma => ma.member_id)).size;
-            const totalAttendance = monthAttendances.reduce((sum, a) => sum + a.count, 0);
+            const uniqueAttendees = new Set(
+                monthAttendances.flatMap(a => [...(presentByRecord.get(a._id) ?? [])]),
+            ).size;
+            const totalAttendance = monthAttendances.reduce((sum, a) => sum + headcount(a), 0);
             const avgAttendance = monthAttendances.length > 0 ? Math.round(totalAttendance / monthAttendances.length) : 0;
 
             retentionData.push({
@@ -1313,17 +1351,6 @@ export const getInsights = query({
 
         const inactiveThreshold = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
         const inactiveThresholdStr = formatDate(inactiveThreshold);
-
-        // Latest attendance date per member, across all history — reused both
-        // to decide "potentially inactive" and to populate lastSeen below
-        // (previously hardcoded to null and never actually computed).
-        const memberLastAttendance = new Map<string, string>();
-        memberAttendanceRecords.forEach(ma => {
-            const att = attendanceRecords.find(a => a._id === ma.attendance_id);
-            if (!att) return;
-            const existing = memberLastAttendance.get(ma.member_id);
-            if (!existing || att.date > existing) memberLastAttendance.set(ma.member_id, att.date);
-        });
 
         const potentiallyInactive = activeMembers.filter(m => {
             const lastSeen = memberLastAttendance.get(m._id);
@@ -1393,7 +1420,8 @@ export const getInsights = query({
             demographics: {
                 gender: genderBreakdown,
                 ageGroups
-            }
+            },
+            scope: await describeCallerScope(ctx, memberScope),
         };
     },
 });

@@ -3,8 +3,14 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { isSuperAdmin, requireOrgAdmin, requireOrgAccess, requireUser, resolveOrgId, getUserSafe } from "./auth";
-import { requireWriteAccess } from "./scope";
-import { resolveManagedMemberIds } from "./members";
+import {
+    describeCallerScope,
+    getAdministeredUnitIds,
+    isOrgWideScope,
+    requireWriteAccess,
+    resolveManagedMemberIds,
+    scopedPresenceCounts,
+} from "./scope";
 
 // ---------------------------------------------------------------------------
 // Shared attendance helpers
@@ -191,6 +197,42 @@ export async function assertEventAppliesToMember(
     return eventUnitIds.some((uid: any) => memberUnitIds.has(uid as string));
 }
 
+/**
+ * Diff a submitted present-set against the recorded one, honoring caller scope.
+ *
+ * `scopedIds` is null for org-wide callers (full replace) and the exact member
+ * ids a unit-level admin manages otherwise. A scoped caller performs a *partial*
+ * replace: presence they don't manage is neither removed nor treated as an
+ * illegal addition when it was already recorded — an org admin or QR check-in
+ * may have put it there, and it still comes back in the submitted set.
+ *
+ * `outside` is non-empty only for a genuine privilege escalation: newly adding a
+ * member the caller doesn't manage.
+ */
+export function planPresenceChanges(args: {
+    desired: Id<"members">[];
+    current: Id<"members">[];
+    scopedIds: Set<Id<"members">> | null;
+}): {
+    toAdd: Id<"members">[];
+    toRemove: Id<"members">[];
+    outside: Id<"members">[];
+} {
+    const { desired, current, scopedIds } = args;
+    const desiredSet = new Set(desired);
+    const currentSet = new Set(current);
+
+    return {
+        toAdd: desired.filter(id => !currentSet.has(id)),
+        toRemove: current.filter(
+            id => !desiredSet.has(id) && (!scopedIds || scopedIds.has(id)),
+        ),
+        outside: scopedIds
+            ? desired.filter(id => !scopedIds.has(id) && !currentSet.has(id))
+            : [],
+    };
+}
+
 // ---------------------------------------------------------------------------
 
 export const listWithDetails = query({
@@ -204,6 +246,7 @@ export const listWithDetails = query({
                 const eventType = a.event_type_id ? await ctx.db.get(a.event_type_id) : null;
                 return {
                     ...a,
+                    org_count: a.count,
                     event_type_label: eventType?.label,
                     event_type_value: eventType?.value,
                 };
@@ -216,10 +259,19 @@ export const listWithDetails = query({
             .withIndex("by_org", (q) => q.eq("organization_id", orgId as any))
             .order("desc")
             .collect();
+
+        // A unit admin's history shows how many of *their* members attended each
+        // service; `org_count` keeps the org-wide total available for context.
+        const memberScope = await resolveManagedMemberIds(ctx);
+        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
+        const scopedCounts = scopedIds ? await scopedPresenceCounts(ctx, scopedIds) : null;
+
         return await Promise.all(attendance.map(async (a) => {
             const eventType = a.event_type_id ? await ctx.db.get(a.event_type_id) : null;
             return {
                 ...a,
+                count: scopedCounts ? (scopedCounts.get(a._id) ?? 0) : a.count,
+                org_count: a.count,
                 event_type_label: eventType?.label,
                 event_type_value: eventType?.value,
             };
@@ -271,10 +323,17 @@ export const getAttendeesWithDetails = query({
         if (attendance?.organization_id) {
             await requireOrgAccess(ctx, attendance.organization_id);
         }
-        const memberAttendance = await ctx.db
+        const allPresent = await ctx.db
             .query("member_attendance")
             .withIndex("by_attendance", q => q.eq("attendance_id", args.attendanceId))
             .collect();
+
+        // Matches the scoped headcount shown in the history list: a unit admin
+        // drills into their own members, not the whole congregation.
+        const memberScope = await resolveManagedMemberIds(ctx);
+        const memberAttendance = isOrgWideScope(memberScope)
+            ? allPresent
+            : allPresent.filter(ma => memberScope.has(ma.member_id));
 
         return await Promise.all(memberAttendance.map(async (ma) => {
             const member = await ctx.db.get(ma.member_id);
@@ -334,7 +393,10 @@ export const getByDateAndType = query({
     }
 });
 
-// Get members present for a specific attendance record
+// Get members present for a specific attendance record.
+// Unit-level admins only see the present members inside their scope — the same
+// pool they can edit (see recordFullAttendance), so the attendance form never
+// pre-selects a member it would then be forbidden from saving.
 export const getAttendanceWithMembers = query({
     args: { attendanceId: v.id("attendance") },
     handler: async (ctx, args) => {
@@ -347,7 +409,12 @@ export const getAttendanceWithMembers = query({
             .withIndex("by_attendance", q => q.eq("attendance_id", args.attendanceId))
             .collect();
 
-        const members = await Promise.all(memberAttendance.map(async (ma) => {
+        const memberScope = await resolveManagedMemberIds(ctx);
+        const visible = isOrgWideScope(memberScope)
+            ? memberAttendance
+            : memberAttendance.filter(ma => memberScope.has(ma.member_id));
+
+        const members = await Promise.all(visible.map(async (ma) => {
             const member = await ctx.db.get(ma.member_id);
             return member;
         }));
@@ -370,15 +437,12 @@ export const recordFullAttendance = mutation({
         const orgId = await resolveOrgId(ctx);
         if (!orgId) throw new Error("Organization not set");
 
-        // Unit-level admins may only mark members within their scope present.
-        // Org-wide scopes ("all" | "org") are allowed; org mismatch is checked below.
+        // Unit-level admins act on their own slice of the roster only. Org-wide
+        // scopes ("all" | "org") replace the whole present set; org mismatch is
+        // checked below. Enforced after the current rows are known (step 2).
         const memberScope = await resolveManagedMemberIds(ctx);
-        if (memberScope !== "all" && memberScope !== "org") {
-            const outside = member_ids.filter((id) => !memberScope.has(id));
-            if (outside.length > 0) {
-                throw new Error("Forbidden: one or more members are outside your scope");
-            }
-        }
+        // null == org-wide caller; otherwise the exact member ids they manage.
+        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
 
         // Validate member org membership up-front (cheap guard).
         for (const memberId of member_ids) {
@@ -397,30 +461,33 @@ export const recordFullAttendance = mutation({
             notes,
         });
 
-        // 2. Compute the desired present set vs the current present set.
-        const desiredSet = new Set(member_ids);
+        // 2. Diff the submitted present-set against the recorded one, within
+        //    whatever slice of the roster this caller manages.
         const currentRows = await ctx.db
             .query("member_attendance")
             .withIndex("by_attendance", (q: any) => q.eq("attendance_id", attendanceId))
             .collect();
 
-        // Remove members no longer marked present.
-        for (const row of currentRows) {
-            if (!desiredSet.has(row.member_id)) {
-                await removeMemberPresence(ctx, {
-                    attendanceId,
-                    memberId: row.member_id,
-                });
-            }
+        const { toAdd, toRemove, outside } = planPresenceChanges({
+            desired: member_ids,
+            current: currentRows.map(row => row.member_id),
+            scopedIds,
+        });
+        if (outside.length > 0) {
+            throw new Error("Forbidden: one or more members are outside your scope");
         }
 
-        // Add members newly marked present (idempotent via markMemberPresent).
-        for (const memberId of member_ids) {
+        for (const memberId of toRemove) {
+            await removeMemberPresence(ctx, { attendanceId, memberId });
+        }
+
+        const checkedInBy = (await getUserSafe(ctx))?._id as Id<"users"> | undefined;
+        for (const memberId of toAdd) {
             await markMemberPresent(ctx, {
                 attendanceId,
                 memberId,
                 source: "manual",
-                checkedInBy: (await getUserSafe(ctx))?._id as Id<"users"> | undefined,
+                checkedInBy,
             });
         }
 
@@ -456,7 +523,20 @@ export const getStats = query({
         attendance.sort((a, b) => b.date.localeCompare(a.date));
         sundayServiceAttendance.sort((a, b) => b.date.localeCompare(a.date));
 
-        const totalActiveMembers = members.filter(m => m.status === 'active' && !m.archived_at).length;
+        // Unit-level admins get their own numbers: headcounts count only the
+        // members they manage, so "This Week" and "Rate" describe their unit
+        // rather than the whole organization. Record/day counts stay org-wide —
+        // a service happening is a fact about the org, not about one unit.
+        const memberScope = await resolveManagedMemberIds(ctx);
+        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
+        const scopedCounts = scopedIds ? await scopedPresenceCounts(ctx, scopedIds) : null;
+        const headcount = (record: Doc<"attendance">) =>
+            scopedCounts ? (scopedCounts.get(record._id) ?? 0) : record.count;
+
+        const activeMembers = members.filter(m => m.status === 'active' && !m.archived_at);
+        const totalActiveMembers = scopedIds
+            ? activeMembers.filter(m => scopedIds.has(m._id)).length
+            : activeMembers.length;
 
         // Current and Last Week logic
         const today = new Date();
@@ -472,8 +552,8 @@ export const getStats = query({
         const thisWeekAttendance = attendance.filter(a => a.date >= lastSundayStr);
         const lastWeekAttendance = attendance.filter(a => a.date >= previousSundayStr && a.date < lastSundayStr);
 
-        const thisWeekTotal = thisWeekAttendance.reduce((sum, a) => sum + a.count, 0);
-        const lastWeekTotal = lastWeekAttendance.reduce((sum, a) => sum + a.count, 0);
+        const thisWeekTotal = thisWeekAttendance.reduce((sum, a) => sum + headcount(a), 0);
+        const lastWeekTotal = lastWeekAttendance.reduce((sum, a) => sum + headcount(a), 0);
 
         const weeklyGrowthRate = lastWeekTotal > 0
             ? ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100
@@ -489,11 +569,13 @@ export const getStats = query({
 
         const recentActivityDays = attendance.filter(a => a.date >= thirtyDaysAgoStr).length;
 
-        const lastSundayCount = sundayServiceAttendance.length > 0 ? sundayServiceAttendance[0].count : null;
+        const lastSundayCount = sundayServiceAttendance.length > 0
+            ? headcount(sundayServiceAttendance[0])
+            : null;
 
         const lastFourSundays = sundayServiceAttendance.slice(0, 4);
         const fourWeekAverage = lastFourSundays.length > 0
-            ? lastFourSundays.reduce((sum, a) => sum + a.count, 0) / lastFourSundays.length
+            ? lastFourSundays.reduce((sum, a) => sum + headcount(a), 0) / lastFourSundays.length
             : null;
 
         return {
@@ -504,7 +586,8 @@ export const getStats = query({
             recentActivityDays,
             lastSundayCount,
             fourWeekAverage,
-            totalRecords: attendance.length
+            totalRecords: attendance.length,
+            scope: await describeCallerScope(ctx, memberScope),
         };
     }
 });
@@ -514,12 +597,29 @@ export const getTrends = query({
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
         const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
+
+        // The widest window any series below needs: 12 months back, or 11 weeks
+        // back plus the current partial week, whichever reaches further. Only
+        // that slice is read — the table grows without bound, the charts don't.
+        const now = new Date();
+        const monthlyStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+        const weeklyStart = new Date(now);
+        weeklyStart.setDate(now.getDate() - (now.getDay() || 7) - 70);
+        const windowStart = (weeklyStart < monthlyStart ? weeklyStart : monthlyStart)
+            .toISOString()
+            .split('T')[0];
+
         const attendance = orgId
             ? await ctx.db
                 .query("attendance")
-                .withIndex("by_org", (q) => q.eq("organization_id", orgId))
+                .withIndex("by_org_and_date", (q) =>
+                    q.eq("organization_id", orgId).gte("date", windowStart),
+                )
                 .collect()
-            : await ctx.db.query("attendance").collect();
+            : await ctx.db
+                .query("attendance")
+                .withIndex("by_date", (q) => q.gte("date", windowStart))
+                .collect();
 
         const eventTypes = await ctx.db.query("event_types").collect();
         const activeEventTypes = eventTypes.filter(et => et.is_active);
@@ -527,12 +627,30 @@ export const getTrends = query({
         // Sort by date ascending for trend logic
         attendance.sort((a, b) => a.date.localeCompare(b.date));
 
+        // Unit-level admins see their unit's participation, not the org's:
+        // every series below sums `headcount`, which counts only the members
+        // they manage. Org-wide callers keep using the record's own total.
+        const memberScope = await resolveManagedMemberIds(ctx);
+        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
+        const scopedCounts = scopedIds ? await scopedPresenceCounts(ctx, scopedIds) : null;
+        const headcount = (record: Doc<"attendance">) =>
+            scopedCounts ? (scopedCounts.get(record._id) ?? 0) : record.count;
+
+        // Drop series a unit admin's members can never appear in: an event type
+        // restricted to other units would otherwise plot a flat zero line.
+        const adminUnitIds = scopedIds ? await getAdministeredUnitIds(ctx) : "all";
+        const seriesEventTypes = adminUnitIds === "all"
+            ? activeEventTypes
+            : activeEventTypes.filter(et => {
+                const unitIds = et.unit_ids ?? [];
+                return unitIds.length === 0 || unitIds.some(id => adminUnitIds.has(id));
+            });
+
         // 1. Weekly Data (Last 11 Weeks) - Sunday Service aggregated
         const sundayServiceTypes = eventTypes.filter(et => et.value.includes("sunday-service"));
         const ssIds = new Set(sundayServiceTypes.map(t => t._id));
 
         const weeklyData = [];
-        const now = new Date();
         for (let i = 10; i >= 0; i--) {
             const date = new Date(now);
             date.setDate(now.getDate() - (now.getDay() || 7) - (i * 7)); // Align to Sundays
@@ -540,7 +658,7 @@ export const getTrends = query({
 
             const count = attendance
                 .filter(a => a.date === dateStr && a.event_type_id && ssIds.has(a.event_type_id))
-                .reduce((sum, a) => sum + a.count, 0);
+                .reduce((sum, a) => sum + headcount(a), 0);
 
             weeklyData.push({
                 name: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -557,7 +675,7 @@ export const getTrends = query({
 
             const count = attendance
                 .filter(a => a.date.startsWith(monthStr) && a.event_type_id && ssIds.has(a.event_type_id))
-                .reduce((sum, a) => sum + a.count, 0);
+                .reduce((sum, a) => sum + headcount(a), 0);
 
             monthlyData.push({
                 name: date.toLocaleDateString('en-US', { month: 'short' }),
@@ -576,10 +694,10 @@ export const getTrends = query({
                 name: date.toLocaleDateString('en-US', { month: 'short' })
             };
 
-            for (const et of activeEventTypes) {
+            for (const et of seriesEventTypes) {
                 const count = attendance
                     .filter(a => a.date.startsWith(monthStr) && a.event_type_id === et._id)
-                    .reduce((sum, a) => sum + a.count, 0);
+                    .reduce((sum, a) => sum + headcount(a), 0);
                 monthEntry[et.label] = count;
             }
 
@@ -590,7 +708,8 @@ export const getTrends = query({
             weeklyData,
             monthlyData,
             eventComparisonData,
-            activeEventTypes: activeEventTypes.map(et => ({ id: et._id, label: et.label, color: et.color }))
+            activeEventTypes: seriesEventTypes.map(et => ({ id: et._id, label: et.label, color: et.color })),
+            scope: await describeCallerScope(ctx, memberScope),
         };
     }
 });

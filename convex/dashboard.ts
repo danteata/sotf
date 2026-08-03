@@ -137,7 +137,9 @@ export const getDashboardData = query({
             }
         }
 
-        // 5. Birthdays - return all active members for frontend filtering
+        // 5. Birthdays - return the active members in scope for frontend
+        // filtering. A unit admin celebrates their own people; the org-wide
+        // list isn't theirs to act on.
         return {
             stats: {
                 totalMembers: activeMembers.length,
@@ -150,7 +152,7 @@ export const getDashboardData = query({
                 nextEventName: upcomingEvents.length > 0 ? upcomingEvents[0].title : 'No upcoming events',
             },
             upcomingEvents,
-            birthdayMembers: activeMembers.map((m: any) => ({
+            birthdayMembers: scopedMembers.map((m: any) => ({
                 id: m._id,
                 name: m.name,
                 status: m.status,
