@@ -26,6 +26,8 @@ import {
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { useOrganization } from "@/hooks/use-organization"
+import { ScopeBadge } from "@/components/scope-badge"
+import { scopeSubtitle } from "@/lib/report-scope"
 import {
   Users,
   UserCheck,
@@ -93,24 +95,27 @@ export function MemberInsights() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Member Insights</h2>
           <p className="text-sm text-muted-foreground">
-            Engagement patterns and membership analytics
+            {scopeSubtitle(insights.scope, "Engagement patterns and membership analytics")}
           </p>
         </div>
-        {overview.trendingUp ? (
-          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            Growing
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-            <TrendingDown className="h-3 w-3 mr-1" />
-            Needs Attention
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          <ScopeBadge scope={insights.scope} />
+          {overview.trendingUp ? (
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              Growing
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+              <TrendingDown className="h-3 w-3 mr-1" />
+              Needs Attention
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -12,7 +12,7 @@ export default function ReportsPage() {
           <div>
             <h1 className="text-2xl tracking-tight text-foreground">Reports & Analytics</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Comprehensive insights into your organization
+              Participation and membership insights for the members you oversee
             </p>
           </div>
         </div>

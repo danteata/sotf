@@ -70,6 +70,12 @@ export function AttendanceHistory({
     setViewDialogOpen(true)
   }
 
+  // True once any record's scoped headcount differs from the org total, i.e.
+  // the viewer is a unit admin looking at their own slice.
+  const hasScopedCounts = attendanceData.some(
+    (record) => record.org_count !== record.count,
+  )
+
   const filteredRecords = (attendanceData || []).filter((record: any) => {
     // Unit filter
     if (unitFilter !== 'all' && record.unit_name !== unitFilter) {
@@ -82,7 +88,10 @@ export function AttendanceHistory({
     <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
       <CardHeader className="p-8 pb-4">
         <CardTitle className="text-xl tracking-tight text-foreground">Historical Archives</CardTitle>
-        <CardDescription className="font-medium text-muted-foreground">Comprehensive log of processed attendance records across the organization</CardDescription>
+        <CardDescription className="font-medium text-muted-foreground">
+          Comprehensive log of processed attendance records
+          {hasScopedCounts && " — engagement shows your members, then the organization total"}
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-8 pt-4">
         <div className="space-y-6">
@@ -186,8 +195,21 @@ export function AttendanceHistory({
                         {record.event_type_label || record.event_type_value || 'Direct Record'}
                       </TableCell>
                       <TableCell className="py-5 text-center">
-                        <Badge variant="outline" className="bg-muted text-foreground border-border h-8 px-4 rounded-xl">
+                        <Badge
+                          variant="outline"
+                          className="bg-muted text-foreground border-border h-8 px-4 rounded-xl"
+                          title={
+                            record.org_count !== record.count
+                              ? `${record.count} of your members · ${record.org_count} organization-wide`
+                              : undefined
+                          }
+                        >
                           {record.count}
+                          {record.org_count !== record.count && (
+                            <span className="text-muted-foreground/60 font-normal">
+                              /{record.org_count}
+                            </span>
+                          )}
                         </Badge>
                       </TableCell>
                       <TableCell className="py-5 pr-6">

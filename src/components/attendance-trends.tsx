@@ -25,6 +25,8 @@ import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
 import { Id } from "../../convex/_generated/dataModel"
 import { useOrganization } from "@/hooks/use-organization"
+import { ScopeBadge } from "@/components/scope-badge"
+import { scopeSubtitle } from "@/lib/report-scope"
 import { Info, TrendingUp, Calendar, BarChart3, PieChartIcon } from "lucide-react"
 
 // Crimson-family palette (from the theme's --chart tokens) for multi-series
@@ -69,11 +71,14 @@ export function AttendanceTrends() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-foreground">Analytics</h2>
-        <p className="text-sm text-muted-foreground">
-          Track engagement patterns and growth trends
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Analytics</h2>
+          <p className="text-sm text-muted-foreground">
+            {scopeSubtitle(trendsData.scope, "Track engagement patterns and growth trends")}
+          </p>
+        </div>
+        <ScopeBadge scope={trendsData.scope} />
       </div>
 
       <Tabs defaultValue="weekly" className="w-full space-y-6">
@@ -428,6 +433,7 @@ export function AttendanceTrends() {
                   <h4 className="text-xl tracking-tight text-foreground">About this data</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
                     These figures come from recorded services. The weekly and monthly views help you spot attendance trends over time.
+                    {trendsData.scope?.isScoped && " Only members of the units you lead are counted."}
                   </p>
                 </div>
               </div>

@@ -17,6 +17,8 @@ import { api } from "../../convex/_generated/api"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { useUserRole, useManagedMembers, useAccessibleUnits } from "@/hooks/use-user-role"
+import { ScopeBadge } from "@/components/scope-badge"
+import { scopeSubtitle } from "@/lib/report-scope"
 import { hasCapability } from "@/lib/permissions"
 import {
   DropdownMenu,
@@ -99,9 +101,12 @@ export function AttendanceContent() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">Attendance</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">Attendance</h1>
+            <ScopeBadge scope={stats?.scope} />
+          </div>
           <p className="text-sm text-muted-foreground">
-            Track and manage participation
+            {scopeSubtitle(stats?.scope, "Track and manage participation")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -171,7 +176,9 @@ export function AttendanceContent() {
           {/* Total Active Members */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs text-muted-foreground">Total Members</CardTitle>
+              <CardTitle className="text-xs text-muted-foreground">
+                {stats?.scope?.isScoped ? "Your Members" : "Total Members"}
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
             <CardContent className="pb-4 px-4">
