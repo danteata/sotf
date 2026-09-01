@@ -5,7 +5,7 @@ import { Download, Filter, Plus, Upload, Users, Building2, Home, Tag, X, ShieldA
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { useTerminology } from "@/hooks/use-terminology"
-import { useQuery, useMutation } from "convex/react"
+import { useQuery, useMutation, useConvex } from "convex/react"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { api } from "../../convex/_generated/api"
@@ -57,6 +57,7 @@ export function MembersContent({ view = 'active', onViewChange }: MembersContent
   const [loadedCount, setLoadedCount] = useState(PAGE_SIZE)
 
   const { organization } = useOrganization()
+  const convex = useConvex()
   const unitsData = useQuery(api.units.listByOrg, organization?._id ? { organization_id: organization._id } : "skip");
   const labelsData = useQuery(api.labels.list, {});
   const householdsData = useQuery(api.households.list, organization?._id ? { organization_id: organization._id } : "skip");
@@ -137,7 +138,42 @@ export function MembersContent({ view = 'active', onViewChange }: MembersContent
   const activeFilterCount =
     statusFilters.length + unitFilters.length + labelFilters.length + householdFilters.length + riskFilters.length
 
-  const handleExport = () => {
+  // Export the whole filtered result, not just the rows "Load more" happens to
+  // have pulled in — the CSV silently stopped at the loaded page before, so a
+  // filtered directory of 300 exported as 50 with no indication.
+  const handleExport = async () => {
+    if (!organization?._id) return
+    const exportLimit = 2000 // listPage's server-side cap
+    let rowsToExport = filteredMembers
+    try {
+      const full = await convex.query(api.members.listPage, {
+        organization_id: organization._id,
+        filter: view,
+        search: search || undefined,
+        pageSize: exportLimit,
+        statuses: statusFilters.length ? statusFilters : undefined,
+        unit_ids: unitFilters.length ? (unitFilters as Id<"units">[]) : undefined,
+        label_ids: labelFilters.length ? (labelFilters as Id<"labels">[]) : undefined,
+        household_ids: householdIds.length ? (householdIds as Id<"households">[]) : undefined,
+        no_household: noHousehold || undefined,
+        risk_levels: riskFilters.length ? riskFilters : undefined,
+      })
+      rowsToExport = full.page as unknown as Member[]
+      if (!full.isDone) {
+        toast({
+          title: "Export truncated",
+          description: `Only the first ${exportLimit.toLocaleString()} of ${full.totalCount.toLocaleString()} matches were exported. Narrow the filters to export the rest.`,
+        })
+      }
+    } catch (err) {
+      console.error("Full export query failed, falling back to loaded rows:", err)
+      toast({
+        variant: "destructive",
+        title: "Exported loaded rows only",
+        description: "Could not fetch the full filtered list; the CSV contains the rows currently loaded.",
+      })
+    }
+
     const headers = [
       "Name",
       "Email",
@@ -161,7 +197,7 @@ export function MembersContent({ view = 'active', onViewChange }: MembersContent
       return str
     }
 
-    const rows = filteredMembers.map((m: any) => [
+    const rows = rowsToExport.map((m: any) => [
       m.name ?? "",
       m.email ?? "",
       m.phone ?? "",
@@ -191,7 +227,7 @@ export function MembersContent({ view = 'active', onViewChange }: MembersContent
 
     trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
       report: "members",
-      row_count: filteredMembers.length,
+      row_count: rowsToExport.length,
     })
   }
 
