@@ -27,6 +27,8 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from 'lucide-react'
 import { useUserRole } from '@/hooks/use-user-role'
 import { useToast } from '@/hooks/use-toast'
@@ -43,7 +45,12 @@ interface ChartNode {
   parentId?: string
   children: ChartNode[]
   memberCount: number
+  /** False when this node's subtree is collapsed — its children are laid out
+      and rendered as if it were a leaf. */
   isExpanded: boolean
+  /** Every node beneath this one, collapsed or not. Shown on the toggle so a
+      collapsed branch still says how much it is hiding. */
+  descendantCount: number
   x: number
   y: number
   width: number
@@ -64,6 +71,9 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const [zoom, setZoom] = useState(1)
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [showDetails, setShowDetails] = useState(true)
+  // Ids whose subtree is hidden. A wide org fans out dozens of units off both
+  // edges of the viewport; collapsing branches is what makes it readable.
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
   const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null)
   const [dragOverLine, setDragOverLine] = useState<{ parentId: string; childId: string } | null>(null)
   const [draggedNode, setDraggedNode] = useState<ChartNode | null>(null)
@@ -82,18 +92,24 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
   const chartData = useQuery(api.organizations.getChartData, {});
   const moveUnitMutation = useMutation(api.units.moveUnit);
 
-  // Constants for layout
-  const NODE_WIDTH = 200
-  const NODE_HEIGHT = 80
-  const LEVEL_HEIGHT = 180
-  const MIN_SPACING = 40
+  // Constants for layout. Boxes are sized to hold a two-line wrapped name —
+  // organization names in particular ("Sikarios City Church - Ash Botchway
+  // Temple") ran well past the old single-line 200px box.
+  const NODE_WIDTH = 210
+  const ROOT_WIDTH = 280
+  const LEVEL_HEIGHT = 170
+  const MIN_SPACING = 32
 
   const buildChartStructure = (
     org: any,
     allUnits: any[],
     memberCounts: any[],
-    totalMembers: number
+    totalMembers: number,
+    collapsed: Set<string>,
+    detailed: boolean
   ): { root: ChartNode, map: Map<string, ChartNode> } => {
+    const ROOT_HEIGHT = detailed ? 96 : 76
+    const UNIT_HEIGHT = detailed ? 88 : 68
     // 1. Create the root node (Organization)
     const calculatedTotal = memberCounts?.reduce((sum, mc) => sum + (mc.count || 0), 0) || 0
     const actualTotal = totalMembers || calculatedTotal
@@ -105,10 +121,11 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       level: 0,
       children: [],
       memberCount: actualTotal,
-      isExpanded: true,
+      isExpanded: !collapsed.has(org._id),
+      descendantCount: 0,
       x: 0, y: 0, // Will be set in second pass
-      width: NODE_WIDTH,
-      height: NODE_HEIGHT
+      width: ROOT_WIDTH,
+      height: ROOT_HEIGHT
     }
 
     // 2. Build hierarchical tree structure
@@ -124,10 +141,11 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
         parentId: unit.parent_unit_id || org._id,
         children: [],
         memberCount: memberCounts?.find(mc => mc.unit_id === unit._id)?.count || 0,
-        isExpanded: true,
+        isExpanded: !collapsed.has(unit._id),
+        descendantCount: 0,
         x: 0, y: 0,
         width: NODE_WIDTH,
-        height: NODE_HEIGHT - 20
+        height: UNIT_HEIGHT
       }
       unitMap.set(unit._id, node)
     })
@@ -143,10 +161,22 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       }
     })
 
-    // 3. First Pass: Calculate subtree widths
+    // 3. Count descendants (independent of collapse — a collapsed branch still
+    //    reports how many nodes it is hiding).
+    const countDescendants = (node: ChartNode): number => {
+      node.descendantCount = node.children.reduce(
+        (sum, child) => sum + 1 + countDescendants(child),
+        0,
+      )
+      return node.descendantCount
+    }
+    countDescendants(rootNode)
+
+    // 4. First Pass: Calculate subtree widths. A collapsed node lays out as a
+    //    leaf, which is the whole point — its branch stops consuming width.
     const subtreeWidthMap = new Map<string, number>()
     const calculateSubtreeWidth = (node: ChartNode): number => {
-      if (node.children.length === 0) {
+      if (node.children.length === 0 || !node.isExpanded) {
         subtreeWidthMap.set(node.id, node.width)
         return node.width
       }
@@ -164,11 +194,13 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
 
     calculateSubtreeWidth(rootNode)
 
-    // 4. Second Pass: Position nodes
+    // 5. Second Pass: Position nodes
     const positionNodes = (node: ChartNode, startX: number, y: number) => {
       const totalWidth = subtreeWidthMap.get(node.id)!
       node.x = startX + (totalWidth - node.width) / 2
       node.y = y
+
+      if (!node.isExpanded) return
 
       let currentX = startX
       node.children.forEach(child => {
@@ -185,13 +217,13 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     // container is narrower than ~1000px or the tree wider than expected.
     positionNodes(rootNode, 0, 50)
 
-    // Build flat map
+    // Build flat map of *visible* nodes only. Nodes inside a collapsed branch
+    // are never positioned, so including them would feed stale (0,0)
+    // coordinates into fitToView's bounding box and wreck the auto-fit.
     const finalMap = new Map<string, ChartNode>()
-    finalMap.set(rootNode.id, rootNode)
-    // Walk the tree to get all nodes in the map (more reliable than just unitMap if positions changed)
     const fillMap = (n: ChartNode) => {
       finalMap.set(n.id, n)
-      n.children.forEach(fillMap)
+      if (n.isExpanded) n.children.forEach(fillMap)
     }
     fillMap(rootNode)
 
@@ -204,10 +236,12 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
       chartData.organization,
       chartData.units,
       chartData.memberCounts,
-      chartData.totalMembers
+      chartData.totalMembers,
+      collapsedIds,
+      showDetails
     );
     return { rootNode: result.root, nodeMap: result.map };
-  }, [chartData]);
+  }, [chartData, collapsedIds, showDetails]);
 
   const handleNodeClick = (node: ChartNode) => {
     setSelectedNode(node)
@@ -233,6 +267,34 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     }
   }
 
+  const toggleCollapse = (nodeId: string) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(nodeId)) next.delete(nodeId)
+      else next.add(nodeId)
+      return next
+    })
+  }
+
+  // Every node that has children and could therefore be collapsed. The root is
+  // included — collapsing it reduces the chart to the organization alone.
+  const collapsibleIds = useMemo(() => {
+    const ids: string[] = []
+    const walk = (node: ChartNode) => {
+      if (node.children.length > 0) {
+        ids.push(node.id)
+        node.children.forEach(walk)
+      }
+    }
+    if (rootNode) walk(rootNode)
+    return ids
+  }, [rootNode])
+
+  const allCollapsed = collapsibleIds.length > 0 && collapsibleIds.every(id => collapsedIds.has(id))
+  const toggleCollapseAll = () => {
+    setCollapsedIds(allCollapsed ? new Set() : new Set(collapsibleIds))
+  }
+
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.2, 2))
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.2, 0.2))
 
@@ -256,7 +318,11 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     const treeHeight = maxY - minY
     const scaleX = (viewportWidth - FIT_PADDING * 2) / treeWidth
     const scaleY = (viewportHeight - FIT_PADDING * 2) / treeHeight
-    const fittedZoom = Math.min(1, scaleX, scaleY)
+    // Never shrink past legibility: a 30-unit org would otherwise fit at 12%
+    // and read as unlabelled grey boxes. Below the floor the tree overflows
+    // and the user pans (or collapses a branch) instead.
+    const MIN_FIT_ZOOM = 0.35
+    const fittedZoom = Math.max(MIN_FIT_ZOOM, Math.min(1, scaleX, scaleY))
 
     const panX = (viewportWidth - treeWidth * fittedZoom) / (2 * fittedZoom) - minX
     const panY = FIT_PADDING / fittedZoom - minY
@@ -275,14 +341,30 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
     }
   }
 
-  // Auto-fit once, the first time the chart data becomes available, so the
-  // tree is never clipped off-screen on initial load regardless of org size.
+  // Auto-fit once, the first time the chart is actually laid out, so the tree
+  // is never clipped off-screen regardless of org size.
+  //
+  // A ResizeObserver rather than a one-shot effect: this chart lives inside a
+  // Tabs panel, so on the render where the data first arrives the container
+  // can still be zero-sized. The old code called fitToView with a width of 0
+  // (which bails out) and then latched `hasAutoFit`, permanently leaving the
+  // chart at 100% with a wide tree running off both edges.
   useEffect(() => {
-    if (!rootNode || hasAutoFitRef.current) return
     const el = containerRef.current
-    if (!el) return
-    fitToView(el.clientWidth, el.clientHeight)
-    hasAutoFitRef.current = true
+    if (!el || !rootNode) return
+
+    const attemptFit = () => {
+      if (hasAutoFitRef.current) return
+      const { clientWidth, clientHeight } = el
+      if (clientWidth === 0 || clientHeight === 0) return
+      fitToView(clientWidth, clientHeight)
+      hasAutoFitRef.current = true
+    }
+
+    attemptFit()
+    const observer = new ResizeObserver(attemptFit)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [rootNode, fitToView])
 
   const getNodeColor = (node: ChartNode): string => {
@@ -419,8 +501,12 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
 
     return (
       <g key={node.id}>
-        {/* Connection lines to children */}
-        {node.children.map(child => {
+        {/* First child of the <g> so the tooltip resolves to the nearest node:
+            the box may have ellipsised a long name. */}
+        <title>{`${node.name} — ${getNodeTypeLabel(node)}, ${node.memberCount || 0} members`}</title>
+
+        {/* Connection lines to children (hidden while this branch is collapsed) */}
+        {node.isExpanded && node.children.map(child => {
           const isLineDraggedOver = dragOverLine?.parentId === node.id && dragOverLine?.childId === child.id
           return (
             <React.Fragment key={`line-${node.id}-${child.id}`}>
@@ -468,43 +554,76 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
           data-node-id={node.id}
         />
 
-        {/* Node content. Y-offsets are fractions of node.height (not fixed
-            pixels) since unit nodes (60px tall) are shorter than the root
-            (80px) — fixed offsets tuned for the root overflowed below the
-            bottom edge of the shorter unit boxes. */}
+        {/* Node content.
+            An SVG <text> element neither wraps nor clips, so a long name — an
+            organization's especially — simply ran out past both edges of its
+            box. A foreignObject hands the label to the HTML layout engine,
+            which wraps it and ellipsises the overflow, and the <title> keeps
+            the untruncated name available on hover. */}
         {!isBeingDragged && (
-          <g style={{ pointerEvents: 'none' }}>
-            <text
-              x={node.x + node.width / 2}
-              y={node.y + node.height * (showDetails ? 0.375 : 0.44)}
-              textAnchor="middle"
-              className="text-sm fill-white"
-              style={{ fontSize: '14px' }}
-            >
-              {node.name}
-            </text>
-
-            <text
-              x={node.x + node.width / 2}
-              y={node.y + node.height * (showDetails ? 0.5625 : 0.66)}
-              textAnchor="middle"
-              className="text-xs fill-white/80"
-              style={{ fontSize: '11px' }}
-            >
-              {getNodeTypeLabel(node)}
-            </text>
-
-            {showDetails && (
-              <text
-                x={node.x + node.width / 2}
-                y={node.y + node.height * 0.8125}
-                textAnchor="middle"
-                className="text-xs fill-white/60"
-                style={{ fontSize: '10px' }}
+          <foreignObject
+            x={node.x}
+            y={node.y}
+            width={node.width}
+            height={node.height}
+            style={{ pointerEvents: 'none' }}
+          >
+            <div className="flex h-full w-full flex-col items-center justify-center px-3 text-center leading-tight">
+              <div
+                className="w-full font-semibold text-white"
+                style={{
+                  fontSize: node.type === 'organization' ? '14px' : '13px',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                }}
               >
-                {node.memberCount || 0} members
-              </text>
-            )}
+                {node.name}
+              </div>
+              <div className="w-full truncate text-white/70" style={{ fontSize: '10px' }}>
+                {getNodeTypeLabel(node)}
+              </div>
+              {showDetails && (
+                <div className="w-full truncate text-white/60" style={{ fontSize: '10px' }}>
+                  {node.memberCount || 0} member{node.memberCount === 1 ? '' : 's'}
+                </div>
+              )}
+            </div>
+          </foreignObject>
+        )}
+
+        {/* Collapse / expand toggle. Sits on the bottom edge, where the
+            connectors leave the box, and reports the hidden subtree size so a
+            collapsed branch never looks like a leaf. */}
+        {node.children.length > 0 && !isBeingDragged && (
+          <g
+            className="cursor-pointer"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleCollapse(node.id)
+            }}
+          >
+            <circle
+              cx={node.x + node.width / 2}
+              cy={node.y + node.height}
+              r={11}
+              fill="var(--background)"
+              stroke="var(--border)"
+              strokeWidth={1.5}
+            />
+            <text
+              x={node.x + node.width / 2}
+              y={node.y + node.height}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="var(--foreground)"
+              style={{ fontSize: node.isExpanded ? '14px' : '9px', fontWeight: 600, pointerEvents: 'none' }}
+            >
+              {node.isExpanded ? '\u2212' : node.descendantCount}
+            </text>
           </g>
         )}
       </g>
@@ -555,7 +674,8 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                 Organization Chart
               </CardTitle>
               <CardDescription className="text-xs">
-                Visual representation of your organization hierarchy
+                Drag to pan, drag a unit onto another to re-parent it, and use the
+                circle on a box to collapse its branch
               </CardDescription>
             </div>
 
@@ -570,6 +690,19 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                 {showDetails ? 'Hide' : 'Show'} details
               </Button>
 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleCollapseAll}
+                disabled={collapsibleIds.length === 0}
+                className="h-8 rounded-lg shadow-sm"
+              >
+                {allCollapsed
+                  ? <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
+                  : <ChevronsDownUp className="h-3.5 w-3.5 mr-1" />}
+                {allCollapsed ? 'Expand all' : 'Collapse all'}
+              </Button>
+
               <div className="flex items-center bg-muted/50 rounded-lg p-0.5 border border-border/50">
                 <Button variant="ghost" size="icon" onClick={handleZoomOut} className="h-7 w-7 rounded-md">
                   <ZoomOut className="h-3.5 w-3.5" />
@@ -582,7 +715,13 @@ export function OrganizationChart({ organizationId }: OrganizationChartProps) {
                 </Button>
               </div>
 
-              <Button variant="outline" size="icon" onClick={handleResetView} className="h-8 w-8 rounded-lg shadow-sm">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleResetView}
+                title="Fit chart to view"
+                className="h-8 w-8 rounded-lg shadow-sm"
+              >
                 <RotateCcw className="h-3.5 w-3.5" />
               </Button>
             </div>
