@@ -52,13 +52,30 @@ function getLastAttendanceForMember(memberId: string, attendanceRecords: Attenda
   return lastAttendance
 }
 
-export function AbsentMembers() {
+// Same default as the attendance registry: an inactive member is absent from
+// every service by definition, so leaving them in buries the people worth
+// following up on — and pads the exported follow-up list.
+const STATUS_FILTERS: { value: string; label: string; statuses: string[] | null }[] = [
+  { value: "active-visitor", label: "Active & visitors", statuses: ["active", "visitor"] },
+  { value: "active", label: "Active only", statuses: ["active"] },
+  { value: "visitor", label: "Visitors only", statuses: ["visitor"] },
+  { value: "inactive", label: "Inactive only", statuses: ["inactive"] },
+  { value: "all", label: "All statuses", statuses: null },
+]
+
+interface AbsentMembersProps {
+  /** Page-level unit filter (a unit id), or undefined for all units. */
+  unitId?: string
+  unitName?: string
+}
+
+export function AbsentMembers({ unitId, unitName }: AbsentMembersProps = {}) {
   const { trackEvent } = useAnalytics()
   const [searchQuery, setSearchQuery] = useState("")
   const [eventType, setEventType] = useState("")
   const [absenceFilter, setAbsenceFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("active-visitor")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [selectedUnit, setSelectedUnit] = useState("")
   const [sortField, setSortField] = useState<string | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [viewingMember, setViewingMember] = useState<MemberRow | null>(null)
@@ -77,17 +94,6 @@ export function AbsentMembers() {
     _id: m._id,
     lastAttendance: m.lastAttendance ?? getLastAttendanceForMember(String(m._id || m.id || ""), attendanceRecords),
   })), [membersData, attendanceRecords])
-
-  // Get unique unit names from members
-  const availableUnits = useMemo(() => {
-    const unitSet = new Set<string>()
-    allMembers.forEach((member) => {
-      if (member.unit_names && member.unit_names.length > 0) {
-        member.unit_names.forEach((unit: string) => unitSet.add(unit))
-      }
-    })
-    return Array.from(unitSet).sort()
-  }, [allMembers])
 
   const loading = rawMembersData === undefined || rawAttendanceRecords === undefined;
 
@@ -189,11 +195,17 @@ export function AbsentMembers() {
       })
     }
 
-    // Apply unit filter
-    if (selectedUnit && selectedUnit !== "all") {
-      filteredMembers = filteredMembers.filter(
-        (member) => member.unit_names?.includes(selectedUnit)
+    // Apply the page-level unit filter (by id — unit names are not unique)
+    if (unitId) {
+      filteredMembers = filteredMembers.filter((member) =>
+        (member.unit_ids || []).some((id: unknown) => String(id) === unitId),
       )
+    }
+
+    // Apply status filter
+    const allowedStatuses = STATUS_FILTERS.find(f => f.value === statusFilter)?.statuses ?? null
+    if (allowedStatuses) {
+      filteredMembers = filteredMembers.filter((member) => allowedStatuses.includes(member.status))
     }
 
     // Apply search filter
@@ -206,7 +218,7 @@ export function AbsentMembers() {
     }
 
     return filteredMembers
-  }, [selectedAttendanceRecord, selectedDate, allMembers, absenceFilter, searchQuery, selectedUnit, calculateConsecutiveAbsences, effectiveEventType, eventTypes])
+  }, [selectedAttendanceRecord, selectedDate, allMembers, absenceFilter, searchQuery, unitId, statusFilter, calculateConsecutiveAbsences, effectiveEventType, eventTypes])
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -310,15 +322,14 @@ export function AbsentMembers() {
               </SelectContent>
             </Select>
 
-            <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by unit" />
+                <SelectValue placeholder="Member status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Units</SelectItem>
-                {availableUnits.map((unit: string) => (
-                  <SelectItem key={unit} value={unit}>
-                    {unit}
+                {STATUS_FILTERS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -365,7 +376,8 @@ export function AbsentMembers() {
               trackEvent(AnalyticsEventType.REPORT_EXPORTED, {
                 report: 'absent_members',
                 event_type: effectiveEventType,
-                unit_filter: selectedUnit || 'all',
+                unit_filter: unitName || 'all',
+                status_filter: statusFilter,
               });
 
               toast.success("Export completed!")
@@ -386,8 +398,12 @@ export function AbsentMembers() {
 
         {selectedAttendanceRecord && (
           <div className="text-sm text-muted-foreground">
-            Showing absent members for: <strong>{selectedAttendanceRecord.event_type_label}</strong> on{" "}
+            <strong className="text-foreground">{absentMembers.length}</strong> absent
+            {unitName && <> in <strong className="text-foreground">{unitName}</strong></>} for{" "}
+            <strong>{selectedAttendanceRecord.event_type_label}</strong> on{" "}
             <strong>{format(new Date(selectedAttendanceRecord.date), "PPP")}</strong>
+            {" — "}
+            <strong className="text-foreground">{selectedAttendanceRecord.members.length}</strong> marked present
           </div>
         )}
       </div>

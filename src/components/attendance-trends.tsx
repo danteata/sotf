@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAccessibleUnits } from "@/hooks/use-user-role"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Area,
@@ -27,7 +29,7 @@ import { Id } from "../../convex/_generated/dataModel"
 import { useOrganization } from "@/hooks/use-organization"
 import { ScopeBadge } from "@/components/scope-badge"
 import { scopeSubtitle } from "@/lib/report-scope"
-import { Info, TrendingUp, Calendar, BarChart3, PieChartIcon } from "lucide-react"
+import { Info, TrendingUp, Calendar, BarChart3, PieChartIcon, Filter } from "lucide-react"
 
 // Crimson-family palette (from the theme's --chart tokens) for multi-series
 // charts. Use an explicit per-event-type color only when it's a valid hex;
@@ -45,13 +47,38 @@ const seriesColor = (color: string | undefined, index: number) =>
 
 export function AttendanceTrends() {
   const { context } = useOrganization()
+  const { ministries, isLoading: unitsLoading } = useAccessibleUnits()
+  const [unitFilter, setUnitFilter] = useState<string>("all")
+  const unitName = ministries.find((u) => String(u.id) === unitFilter)?.name
+
+  // The unit filter is applied server-side: every series is re-summed over that
+  // unit's members, so the charts describe the unit rather than the whole org.
   const trendsData = useQuery(api.attendance.getTrends, {
-    organization_id: context?.organization?._id as Id<"organizations">
+    organization_id: context?.organization?._id as Id<"organizations">,
+    ...(unitFilter === "all" ? {} : { unit_id: unitFilter as Id<"units"> }),
   })
+
+  const unitPicker = (
+    <Select value={unitFilter} onValueChange={setUnitFilter}>
+      <SelectTrigger className="h-9 w-full sm:w-[220px]" disabled={unitsLoading}>
+        <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+        <SelectValue placeholder={unitsLoading ? "Loading units..." : "All units"} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">All units</SelectItem>
+        {ministries.map((unit) => (
+          <SelectItem key={unit.id} value={String(unit.id)}>
+            {unit.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
 
   if (!trendsData) {
     return (
       <div className="space-y-8">
+        {unitPicker}
         <div className="flex gap-4">
           <Skeleton className="h-10 w-32 rounded-lg" />
           <Skeleton className="h-10 w-32 rounded-lg" />
@@ -75,10 +102,15 @@ export function AttendanceTrends() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">Analytics</h2>
           <p className="text-sm text-muted-foreground">
-            {scopeSubtitle(trendsData.scope, "Track engagement patterns and growth trends")}
+            {unitName
+              ? `Every chart below counts ${unitName} members only`
+              : scopeSubtitle(trendsData.scope, "Track engagement patterns and growth trends")}
           </p>
         </div>
-        <ScopeBadge scope={trendsData.scope} />
+        <div className="flex items-center gap-3">
+          {unitPicker}
+          <ScopeBadge scope={trendsData.scope} />
+        </div>
       </div>
 
       <Tabs defaultValue="weekly" className="w-full space-y-6">
@@ -433,7 +465,9 @@ export function AttendanceTrends() {
                   <h4 className="text-xl tracking-tight text-foreground">About this data</h4>
                   <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
                     These figures come from recorded services. The weekly and monthly views help you spot attendance trends over time.
-                    {trendsData.scope?.isScoped && " Only members of the units you lead are counted."}
+                    {unitName
+                      ? ` Only ${unitName} members are counted.`
+                      : trendsData.scope?.isScoped && " Only members of the units you lead are counted."}
                   </p>
                 </div>
               </div>

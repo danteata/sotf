@@ -12,17 +12,56 @@ import { ServiceSummaryWidget } from "@/components/service-summary-widget"
 import { MyCareTasksWidget } from "@/components/my-care-tasks-widget"
 import { AtRiskWidget } from "@/components/at-risk-widget"
 import { CareImpactWidget } from "@/components/care-impact-widget"
-import { useUserRole } from "@/hooks/use-user-role"
+import { useUserRole, useAccessibleUnits } from "@/hooks/use-user-role"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import type { Id } from "../../convex/_generated/dataModel"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ScopeBadge } from "@/components/scope-badge"
+import { useState } from "react"
 
 export function DashboardContent() {
-  const { isAdmin, isUnitLeader, role } = useUserRole()
-  const data = useQuery(api.dashboard.getDashboardData);
+  const { isAdmin, role } = useUserRole()
+  const { ministries, isLoading: unitsLoading } = useAccessibleUnits()
+
+  // A unit filter over the whole dashboard. "All units" is not a global
+  // override — it means everything you oversee, which is the whole church for
+  // an org admin and their own units for a unit admin. Each card keeps the
+  // church-wide figure beside the scoped one, so the global number stays
+  // readable without a second mode to be in.
+  const [unitFilter, setUnitFilter] = useState<string>("all")
+  const unitId = unitFilter === "all" ? undefined : (unitFilter as Id<"units">)
+
+  const data = useQuery(api.dashboard.getDashboardData, unitId ? { unit_id: unitId } : {});
+
+  const unitPicker = (
+    <div className="flex flex-wrap items-center gap-3">
+      <Select value={unitFilter} onValueChange={setUnitFilter}>
+        <SelectTrigger className="h-9 w-full sm:w-[240px]" disabled={unitsLoading}>
+          <SelectValue placeholder={unitsLoading ? "Loading units..." : "All units"} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All units</SelectItem>
+          {ministries.map((unit) => (
+            <SelectItem key={unit.id} value={String(unit.id)}>
+              {unit.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ScopeBadge scope={data?.scope} />
+      <p className="text-xs text-muted-foreground">
+        {data?.unitName
+          ? `Every figure below counts ${data.unitName} only.`
+          : "Counting everyone you oversee."}
+      </p>
+    </div>
+  )
 
   if (data === undefined) {
     return (
       <div className="space-y-6">
+        {unitPicker}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="card-neon">
@@ -81,22 +120,37 @@ export function DashboardContent() {
   }
 
   const { stats, upcomingEvents, birthdayMembers, financialTransactions } = data;
+  // True when the headline figure covers less than the whole church, i.e. a
+  // unit filter is on or the viewer is a unit admin. Drives the "of N
+  // church-wide" context lines.
+  const isNarrowed = stats.scopedMembersCount !== stats.totalMembers
 
   return <>
+    <div className="mb-6">{unitPicker}</div>
+
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 fade-in">
       <Card className="overflow-hidden border-0 hover-lift group relative">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         <div className="h-1 bg-gradient-to-r from-primary via-primary to-primary/60"></div>
         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-5">
-          <CardTitle className="text-sm font-semibold text-muted-foreground">Total Members</CardTitle>
+          <CardTitle className="text-sm font-semibold text-muted-foreground truncate">
+            {data.unitName ?? "Total Members"}
+          </CardTitle>
           <div className="p-2.5 bg-primary/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
             <Users className="h-5 w-5 text-primary" />
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
-          <div className="text-4xl text-foreground">{stats.totalMembers}</div>
-          <div className="inline-flex items-center gap-1.5 bg-success/15 text-success px-3 py-1.5 rounded-full text-xs font-semibold border border-success/30">
-            <span className="text-lg">+</span>{stats.newMembersThisMonthCount} This Month
+          <div className="text-4xl text-foreground">{stats.scopedMembersCount}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1.5 bg-success/15 text-success px-3 py-1.5 rounded-full text-xs font-semibold border border-success/30">
+              <span className="text-lg">+</span>{stats.newMembersThisMonthCount} This Month
+            </div>
+            {isNarrowed && (
+              <span className="text-xs text-muted-foreground">
+                of {stats.totalMembers} church-wide
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -112,11 +166,18 @@ export function DashboardContent() {
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
           <div className="text-4xl text-foreground">{stats.weeklyAttendance}</div>
-          <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border ${stats.attendanceChange >= 0
-            ? 'bg-success/15 text-success border-success/30'
-            : 'bg-destructive/15 text-destructive border-destructive/30'
-            }`}>
-            {stats.attendanceChange >= 0 ? '↗' : '↘'} {Math.abs(stats.attendanceChange)}% vs Last Week
+          <div className="flex flex-wrap items-center gap-2">
+            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold border ${stats.attendanceChange >= 0
+              ? 'bg-success/15 text-success border-success/30'
+              : 'bg-destructive/15 text-destructive border-destructive/30'
+              }`}>
+              {stats.attendanceChange >= 0 ? '↗' : '↘'} {Math.abs(stats.attendanceChange)}% vs Last Week
+            </div>
+            {stats.orgWeeklyAttendance !== stats.weeklyAttendance && (
+              <span className="text-xs text-muted-foreground">
+                of {stats.orgWeeklyAttendance} church-wide
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -126,11 +187,13 @@ export function DashboardContent() {
         <div className="h-1 bg-gradient-to-r from-accent via-accent to-accent/60"></div>
         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-5">
           <CardTitle className="text-sm font-semibold text-muted-foreground">
-            {isAdmin
-              ? "Active Groups"
-              : isUnitLeader
+            {stats.unitsScope === 'sub-units'
+              ? "Sub-units"
+              : stats.unitsScope === 'led'
                 ? "My Units"
-                : "Members"
+                : isAdmin
+                  ? "Active Groups"
+                  : "Members"
             }
           </CardTitle>
           <div className="p-2.5 bg-accent/20 rounded-xl group-hover:scale-110 transition-transform duration-300">
@@ -139,15 +202,19 @@ export function DashboardContent() {
         </CardHeader>
         <CardContent className="space-y-3 pb-6">
           <div className="text-4xl text-foreground">
-            {isAdmin
-              ? stats.activeUnitsCount
-              : stats.scopedMembersCount
+            {stats.unitsScope === 'organization' && !isAdmin
+              ? stats.scopedMembersCount
+              : stats.activeUnitsCount
             }
           </div>
-          <p className="text-xs text-muted-foreground">
-            {isAdmin
-              ? "Organization Units"
-              : `${stats.totalMembers > 0 ? Math.round((stats.scopedMembersCount / stats.totalMembers) * 100) : 0}% of Total`
+          <p className="text-xs text-muted-foreground truncate">
+            {stats.unitsScope === 'sub-units'
+              ? `Beneath ${data.unitName}`
+              : stats.unitsScope === 'led'
+                ? "Units you lead"
+                : isAdmin
+                  ? "Organization Units"
+                  : `${stats.totalMembers > 0 ? Math.round((stats.scopedMembersCount / stats.totalMembers) * 100) : 0}% of Total`
             }
           </p>
         </CardContent>
@@ -167,6 +234,11 @@ export function DashboardContent() {
           <p className="text-xs text-muted-foreground truncate">
             Next: {stats.nextEventName}
           </p>
+          {stats.orgUpcomingEventsCount !== stats.upcomingEventsCount && (
+            <p className="text-xs text-muted-foreground">
+              of {stats.orgUpcomingEventsCount} church-wide
+            </p>
+          )}
         </CardContent>
       </Card>
     </div >
@@ -174,10 +246,13 @@ export function DashboardContent() {
       <Card className="col-span-4 overflow-hidden">
         <CardHeader className="border-b border-border/30 bg-muted/10">
           <CardTitle className="text-lg font-semibold">Attendance Overview</CardTitle>
-          <CardDescription>Weekly attendance for the past 3 months</CardDescription>
+          <CardDescription>
+            Weekly attendance for the past 3 months
+            {data.unitName && ` — ${data.unitName} only`}
+          </CardDescription>
         </CardHeader>
         <CardContent className="pl-2 pt-6">
-          <Overview />
+          <Overview unitId={unitId} />
         </CardContent>
       </Card>
       <Card className="col-span-3 overflow-hidden">

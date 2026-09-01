@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from "react"
-import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3, ChevronDown, QrCode, Lock } from "lucide-react"
+import { Download, Calendar, Users, History, UserMinus, PlusCircle, RefreshCw, TrendingUp, Target, Activity, BarChart3, ChevronDown, QrCode, Lock, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AttendanceForm } from "@/components/attendance-form"
 import { AttendanceHistory } from "@/components/attendance-history"
 import { AbsentMembers } from "@/components/absent-members"
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import type { Id } from "../../convex/_generated/dataModel"
 import { useAnalytics } from "@/hooks/useAnalytics"
 import { AnalyticsEventType } from "@/services/analytics/types"
 import { useUserRole, useManagedMembers, useAccessibleUnits } from "@/hooks/use-user-role"
@@ -36,8 +38,16 @@ export function AttendanceContent() {
   const { ministries, isLoading: filtersLoading } = useAccessibleUnits();
   const { trackEvent } = useAnalytics();
 
-  const stats = useQuery(api.attendance.getStats, {});
-  const attendanceRecords = useQuery(api.attendance.listWithDetails, {});
+  // One unit filter for the whole page. It drives the metric cards, the
+  // registry you mark attendance in, the history counts and the absent list —
+  // previously each tab filtered its own table while the cards above kept
+  // reporting org-wide totals.
+  const [unitFilter, setUnitFilter] = useState<string>("all")
+  const unitId = unitFilter === "all" ? undefined : (unitFilter as Id<"units">)
+  const unitName = ministries.find((u) => String(u.id) === unitFilter)?.name
+
+  const stats = useQuery(api.attendance.getStats, unitId ? { unit_id: unitId } : {});
+  const attendanceRecords = useQuery(api.attendance.listWithDetails, unitId ? { unit_id: unitId } : {});
   const eventTypes = useQuery(api.event_types.getAll, {});
   const loading = stats === undefined || filtersLoading || membersLoading;
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -65,16 +75,17 @@ export function AttendanceContent() {
         return
       }
 
-      // Create simple CSV with available data
-      const headers = ["Date", "Event Type", "Attendance Count"]
-      const csvContent = [
-        headers.join(","),
-        [
-          `"${record.date}"`,
-          `"${record.event_type_label || "Attendance"}"`,
-          record.count
-        ].join(",")
-      ].join("\n")
+      // Create simple CSV with available data. Under a unit filter `count` is
+      // that unit's headcount, so the org-wide figure is carried alongside it
+      // rather than the two silently swapping places.
+      const scoped = record.org_count !== undefined && record.org_count !== record.count
+      const headers = scoped
+        ? ["Date", "Event Type", `${unitName ?? "In-scope"} Attendance`, "Organization Attendance"]
+        : ["Date", "Event Type", "Attendance Count"]
+      const values = scoped
+        ? [`"${record.date}"`, `"${record.event_type_label || "Attendance"}"`, record.count, record.org_count]
+        : [`"${record.date}"`, `"${record.event_type_label || "Attendance"}"`, record.count]
+      const csvContent = [headers.join(","), values.join(",")].join("\n")
 
       // Download CSV
       const blob = new Blob([csvContent], { type: "text/csv" })
@@ -152,6 +163,30 @@ export function AttendanceContent() {
         </div>
       </div>
 
+      {/* Page-level scope control. Sits above the cards because it governs
+          them as well as every tab below. */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Select value={unitFilter} onValueChange={setUnitFilter}>
+          <SelectTrigger className="h-9 w-full sm:w-[240px]" disabled={filtersLoading}>
+            <Filter className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+            <SelectValue placeholder={filtersLoading ? "Loading units..." : "All units"} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All units</SelectItem>
+            {ministries.map((unit) => (
+              <SelectItem key={unit.id} value={String(unit.id)}>
+                {unit.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {unitName
+            ? `Cards, registry, history and absentees below all count ${unitName} only.`
+            : "Counting every member you oversee. Pick a unit to narrow every number on this page."}
+        </p>
+      </div>
+
       {/* On mobile, the primary action (Record tab below) comes before these
           stat cards — reordered via `order-*` so the page doesn't force a
           long scroll past six stacked cards before reaching it. Desktop
@@ -176,8 +211,8 @@ export function AttendanceContent() {
           {/* Total Active Members */}
           <Card className="border-border/50 rounded-lg">
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4 px-4">
-              <CardTitle className="text-xs text-muted-foreground">
-                {stats?.scope?.isScoped ? "Your Members" : "Total Members"}
+              <CardTitle className="text-xs text-muted-foreground truncate">
+                {unitName ?? (stats?.scope?.isScoped ? "Your Members" : "Total Members")}
               </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground/50" />
             </CardHeader>
@@ -299,7 +334,7 @@ export function AttendanceContent() {
           <TabsContent value="record" className="space-y-4 outline-none">
             <AttendanceForm
               availableMembers={members}
-              availableUnits={ministries}
+              unitFilter={unitFilter}
             />
           </TabsContent>
 
@@ -329,13 +364,13 @@ export function AttendanceContent() {
 
           <TabsContent value="history" className="space-y-4 outline-none">
             <AttendanceHistory
-              availableUnits={ministries}
-              filtersLoading={filtersLoading}
+              unitId={unitId}
+              unitName={unitName}
             />
           </TabsContent>
 
           <TabsContent value="absent" className="space-y-4 outline-none">
-            <AbsentMembers />
+            <AbsentMembers unitId={unitId} unitName={unitName} />
           </TabsContent>
 
           <TabsContent value="metadata" className="space-y-4 outline-none">

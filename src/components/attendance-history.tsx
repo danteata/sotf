@@ -1,15 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  ChevronDown,
-  ChevronUp,
-  Download,
-  Filter,
-  Eye,
-  Search,
-  FileText,
-} from 'lucide-react'
+import { Download, Eye, Search, FileText } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -34,8 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { cn } from '@/lib/utils'
-import { format } from 'date-fns'
 import { useEventTypes } from '@/hooks/use-event-types'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -43,25 +33,39 @@ import { AttendeesDialog } from './attendees-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import type { Id } from '../../convex/_generated/dataModel'
 
-interface AttendanceHistoryProps {
-  availableUnits?: any[]
-  filtersLoading?: boolean
+/** One row of `attendance.listWithDetails`. */
+type AttendanceRow = {
+  _id: string
+  date: string
+  count: number
+  org_count: number
+  notes?: string
+  event_type_label?: string
+  event_type_value?: string
 }
 
-export function AttendanceHistory({
-  availableUnits = [],
-  filtersLoading = false,
-}: AttendanceHistoryProps) {
+interface AttendanceHistoryProps {
+  /** Page-level unit filter (a unit id); headcounts are scoped to it server-side. */
+  unitId?: Id<'units'>
+  unitName?: string
+}
+
+export function AttendanceHistory({ unitId, unitName }: AttendanceHistoryProps) {
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
   const [viewingRecord, setViewingRecord] = useState<any | null>(null)
   const [eventType, setEventType] = useState('all')
   const [search, setSearch] = useState('')
-  const [unitFilter, setUnitFilter] = useState('all')
   const { eventTypes, isLoading: eventTypesLoading } = useEventTypes()
 
-  // Convex Query
-  const rawAttendanceData = useQuery(api.attendance.listWithDetails, {});
+  // Convex Query. The unit filter is applied server-side: an attendance record
+  // belongs to the whole org, so filtering it by unit means recounting its
+  // attendees, not dropping rows.
+  const rawAttendanceData = useQuery(
+    api.attendance.listWithDetails,
+    unitId ? { unit_id: unitId } : {},
+  );
   const attendanceData = rawAttendanceData || [];
   const loading = rawAttendanceData === undefined;
 
@@ -71,18 +75,57 @@ export function AttendanceHistory({
   }
 
   // True once any record's scoped headcount differs from the org total, i.e.
-  // the viewer is a unit admin looking at their own slice.
+  // the viewer is a unit admin, or a unit filter is narrowing the counts.
   const hasScopedCounts = attendanceData.some(
     (record) => record.org_count !== record.count,
   )
 
-  const filteredRecords = (attendanceData || []).filter((record: any) => {
-    // Unit filter
-    if (unitFilter !== 'all' && record.unit_name !== unitFilter) {
+  const filteredRecords = attendanceData.filter((record: AttendanceRow) => {
+    if (eventType !== 'all' && record.event_type_value !== eventType) {
       return false
+    }
+    const term = search.trim().toLowerCase()
+    if (term) {
+      const haystack = [record.date, record.notes, record.event_type_label]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      if (!haystack.includes(term)) return false
     }
     return true
   })
+
+  const totalAttendances = filteredRecords.reduce(
+    (sum: number, record: AttendanceRow) => sum + (record.count || 0),
+    0,
+  )
+
+  const handleExportCsv = () => {
+    const escape = (val: unknown) => {
+      const str = val === null || val === undefined ? '' : String(val)
+      return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str
+    }
+    const headers = unitName
+      ? ['Date', 'Event Type', `${unitName} attendees`, 'Organization attendees', 'Notes']
+      : ['Date', 'Event Type', 'Attendees', 'Notes']
+
+    const rows = filteredRecords.map((record: AttendanceRow) =>
+      unitName
+        ? [record.date, record.event_type_label || record.event_type_value || '', record.count, record.org_count, record.notes || '']
+        : [record.date, record.event_type_label || record.event_type_value || '', record.count, record.notes || ''],
+    )
+
+    const csv = [headers, ...rows].map((row) => row.map(escape).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `attendance-history-${unitName ? `${unitName.toLowerCase().replace(/\s+/g, '-')}-` : ''}${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
 
   return (
     <Card className="border-border/50 shadow-soft-xl rounded-3xl overflow-hidden">
@@ -90,6 +133,7 @@ export function AttendanceHistory({
         <CardTitle className="text-xl tracking-tight text-foreground">Historical Archives</CardTitle>
         <CardDescription className="font-medium text-muted-foreground">
           Comprehensive log of processed attendance records
+          {unitName && ` for ${unitName}`}
           {hasScopedCounts && " — engagement shows your members, then the organization total"}
         </CardDescription>
       </CardHeader>
@@ -124,26 +168,30 @@ export function AttendanceHistory({
                 </SelectContent>
               </Select>
 
-              <Select value={unitFilter} onValueChange={setUnitFilter}>
-                <SelectTrigger className="w-[180px] h-11 border-border rounded-xl bg-background" disabled={filtersLoading}>
-                  <SelectValue placeholder={filtersLoading ? "Loading..." : "Unit Allocation"} />
-                </SelectTrigger>
-                <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
-                  <SelectItem value="all" className="font-medium py-2.5 rounded-lg">All Allocations</SelectItem>
-                  {availableUnits.map((unit: any) => (
-                    <SelectItem key={unit.id} value={unit.name} className="font-medium py-2.5 rounded-lg">
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button variant="outline" size="sm" className="h-11 rounded-xl border-border text-muted-foreground px-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCsv}
+                disabled={filteredRecords.length === 0}
+                className="h-11 rounded-xl border-border text-muted-foreground px-6"
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
             </div>
           </div>
+
+          {!loading && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center rounded-lg bg-muted text-muted-foreground px-3 py-1.5">
+                {filteredRecords.length} record{filteredRecords.length === 1 ? '' : 's'}
+                {filteredRecords.length !== attendanceData.length && ` of ${attendanceData.length}`}
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-primary/10 text-primary px-3 py-1.5 font-semibold">
+                {totalAttendances} total attendances
+              </span>
+            </div>
+          )}
 
           <div className="rounded-2xl border border-border overflow-hidden bg-card">
             <Table>

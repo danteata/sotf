@@ -3,14 +3,20 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import type { Id } from "../../convex/_generated/dataModel"
 import { Skeleton } from "@/components/ui/skeleton"
 
 interface OverviewProps {
   className?: string
+  /** Page-level unit filter, so the chart matches the cards above it. */
+  unitId?: Id<"units">
 }
 
-export function Overview({ className }: OverviewProps) {
-  const data = useQuery(api.dashboard.getAttendanceTrends, { weeks: 12 });
+export function Overview({ className, unitId }: OverviewProps) {
+  const data = useQuery(api.dashboard.getAttendanceTrends, {
+    weeks: 12,
+    ...(unitId ? { unit_id: unitId } : {}),
+  });
 
   if (data === undefined) {
     return (

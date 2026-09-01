@@ -127,6 +127,70 @@ export async function scopedPresenceCounts(
 }
 
 /**
+ * Member ids assigned to `unitId`.
+ *
+ * Direct membership only, and deliberately *not* filtered on
+ * `member_units.is_active` — this is the same rule `members.listPage`'s unit
+ * facet and `formatMember`'s `unit_names` use, so a unit filter selects the
+ * same people in a table as it counts in that table's metric cards.
+ */
+export async function unitMemberIds(
+    ctx: Ctx,
+    unitId: Id<"units">,
+): Promise<Set<Id<"members">>> {
+    const rows = await ctx.db
+        .query("member_units")
+        .withIndex("by_unit", (q) => q.eq("unit_id", unitId))
+        .collect();
+    return new Set(rows.map((r) => r.member_id));
+}
+
+/**
+ * Narrow one member set by another, where `null` means "unrestricted".
+ * Used to combine the caller's own scope with a user-chosen unit filter.
+ */
+export function intersectMemberIds(
+    a: Set<Id<"members">> | null,
+    b: Set<Id<"members">> | null,
+): Set<Id<"members">> | null {
+    if (!a) return b;
+    if (!b) return a;
+    const out = new Set<Id<"members">>();
+    for (const id of a) if (b.has(id)) out.add(id);
+    return out;
+}
+
+/**
+ * The member set a report's headcounts should be computed over: the caller's
+ * own scope, narrowed by an optional user-chosen unit filter.
+ *
+ * `countedIds === null` means "no restriction" — the caller is org-wide and no
+ * unit filter is active, so an attendance row's own denormalized `count` is
+ * already the right number and no per-member walk is needed.
+ *
+ * Shared by attendance and the dashboard so a unit filter means the same thing
+ * on every page.
+ */
+export async function resolveCountingScope(
+    ctx: Ctx,
+    unitId?: Id<"units">,
+): Promise<{
+    memberScope: ManagedMemberScope;
+    countedIds: Set<Id<"members">> | null;
+    presenceCounts: Map<Id<"attendance">, number> | null;
+}> {
+    const memberScope = await resolveManagedMemberIds(ctx);
+    const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
+    const filterIds = unitId ? await unitMemberIds(ctx, unitId) : null;
+    const countedIds = intersectMemberIds(scopedIds, filterIds);
+    return {
+        memberScope,
+        countedIds,
+        presenceCounts: countedIds ? await scopedPresenceCounts(ctx, countedIds) : null,
+    };
+}
+
+/**
  * Human-readable description of what the caller's reports cover, so scoped
  * numbers can be labelled in the UI instead of reading as org-wide totals.
  * `unitNames` is empty for org-wide callers.

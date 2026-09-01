@@ -8,8 +8,8 @@ import {
     getAdministeredUnitIds,
     isOrgWideScope,
     requireWriteAccess,
+    resolveCountingScope,
     resolveManagedMemberIds,
-    scopedPresenceCounts,
 } from "./scope";
 
 // ---------------------------------------------------------------------------
@@ -236,41 +236,34 @@ export function planPresenceChanges(args: {
 // ---------------------------------------------------------------------------
 
 export const listWithDetails = query({
-    args: {},
-    handler: async (ctx) => {
+    args: {
+        // Narrows every headcount to members of this unit, so the history's
+        // numbers agree with the unit filter the rest of the page is under.
+        unit_id: v.optional(v.id("units")),
+    },
+    handler: async (ctx, args) => {
         const user = await getUserSafe(ctx);
         if (!user) return []; // Return empty array if user doesn't exist
-        if (isSuperAdmin(user)) {
-            const attendance = await ctx.db.query("attendance").order("desc").collect();
-            return await Promise.all(attendance.map(async (a) => {
-                const eventType = a.event_type_id ? await ctx.db.get(a.event_type_id) : null;
-                return {
-                    ...a,
-                    org_count: a.count,
-                    event_type_label: eventType?.label,
-                    event_type_value: eventType?.value,
-                };
-            }));
-        }
 
-        const orgId = await resolveOrgId(ctx);
-        const attendance = await ctx.db
-            .query("attendance")
-            .withIndex("by_org", (q) => q.eq("organization_id", orgId as any))
-            .order("desc")
-            .collect();
+        const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
+        const attendance = orgId
+            ? await ctx.db
+                .query("attendance")
+                .withIndex("by_org", (q) => q.eq("organization_id", orgId as any))
+                .order("desc")
+                .collect()
+            : await ctx.db.query("attendance").order("desc").collect();
 
         // A unit admin's history shows how many of *their* members attended each
-        // service; `org_count` keeps the org-wide total available for context.
-        const memberScope = await resolveManagedMemberIds(ctx);
-        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
-        const scopedCounts = scopedIds ? await scopedPresenceCounts(ctx, scopedIds) : null;
+        // service, further narrowed by any unit filter; `org_count` keeps the
+        // org-wide total available for context.
+        const { presenceCounts } = await resolveCountingScope(ctx, args.unit_id);
 
         return await Promise.all(attendance.map(async (a) => {
             const eventType = a.event_type_id ? await ctx.db.get(a.event_type_id) : null;
             return {
                 ...a,
-                count: scopedCounts ? (scopedCounts.get(a._id) ?? 0) : a.count,
+                count: presenceCounts ? (presenceCounts.get(a._id) ?? 0) : a.count,
                 org_count: a.count,
                 event_type_label: eventType?.label,
                 event_type_value: eventType?.value,
@@ -502,8 +495,13 @@ export const recordFullAttendance = mutation({
 });
 
 export const getStats = query({
-    args: {},
-    handler: async (ctx) => {
+    args: {
+        // Optional unit filter. Every number below is computed over the members
+        // it selects, so the cards describe the same slice of the roster the
+        // page's tables are showing rather than the whole organization.
+        unit_id: v.optional(v.id("units")),
+    },
+    handler: async (ctx, args) => {
         const user = await requireUser(ctx);
         const orgId = isSuperAdmin(user) ? null : await resolveOrgId(ctx);
         const attendance = orgId
@@ -523,19 +521,20 @@ export const getStats = query({
         attendance.sort((a, b) => b.date.localeCompare(a.date));
         sundayServiceAttendance.sort((a, b) => b.date.localeCompare(a.date));
 
-        // Unit-level admins get their own numbers: headcounts count only the
-        // members they manage, so "This Week" and "Rate" describe their unit
-        // rather than the whole organization. Record/day counts stay org-wide —
-        // a service happening is a fact about the org, not about one unit.
-        const memberScope = await resolveManagedMemberIds(ctx);
-        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
-        const scopedCounts = scopedIds ? await scopedPresenceCounts(ctx, scopedIds) : null;
+        // Unit-level admins get their own numbers, and any unit filter narrows
+        // them further: every card below describes the members in scope rather
+        // than the whole organization. That includes the record/day counts,
+        // which switch to "services my slice actually appeared at" — a card
+        // reading 340 records while the unit shows up at 12 of them is what
+        // made these numbers untrustworthy under a filter.
+        const { memberScope, countedIds, presenceCounts } =
+            await resolveCountingScope(ctx, args.unit_id);
         const headcount = (record: Doc<"attendance">) =>
-            scopedCounts ? (scopedCounts.get(record._id) ?? 0) : record.count;
+            presenceCounts ? (presenceCounts.get(record._id) ?? 0) : record.count;
 
         const activeMembers = members.filter(m => m.status === 'active' && !m.archived_at);
-        const totalActiveMembers = scopedIds
-            ? activeMembers.filter(m => scopedIds.has(m._id)).length
+        const totalActiveMembers = countedIds
+            ? activeMembers.filter(m => countedIds.has(m._id)).length
             : activeMembers.length;
 
         // Current and Last Week logic
@@ -567,7 +566,12 @@ export const getStats = query({
         thirtyDaysAgo.setDate(today.getDate() - 30);
         const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-        const recentActivityDays = attendance.filter(a => a.date >= thirtyDaysAgoStr).length;
+        // Under a scope/filter, only records the counted members appear in.
+        const inScopeRecords = countedIds
+            ? attendance.filter(a => headcount(a) > 0)
+            : attendance;
+
+        const recentActivityDays = inScopeRecords.filter(a => a.date >= thirtyDaysAgoStr).length;
 
         const lastSundayCount = sundayServiceAttendance.length > 0
             ? headcount(sundayServiceAttendance[0])
@@ -586,14 +590,20 @@ export const getStats = query({
             recentActivityDays,
             lastSundayCount,
             fourWeekAverage,
-            totalRecords: attendance.length,
+            totalRecords: inScopeRecords.length,
             scope: await describeCallerScope(ctx, memberScope),
         };
     }
 });
 
 export const getTrends = query({
-    args: { organization_id: v.optional(v.id("organizations")) },
+    args: {
+        organization_id: v.optional(v.id("organizations")),
+        // Optional unit filter — every series below is summed over the members
+        // it selects, so the charts move with the filter instead of always
+        // plotting the whole organization.
+        unit_id: v.optional(v.id("units")),
+    },
     handler: async (ctx, args) => {
         const user = await requireUser(ctx);
         const orgId = isSuperAdmin(user) ? args.organization_id : await resolveOrgId(ctx, args.organization_id);
@@ -627,24 +637,26 @@ export const getTrends = query({
         // Sort by date ascending for trend logic
         attendance.sort((a, b) => a.date.localeCompare(b.date));
 
-        // Unit-level admins see their unit's participation, not the org's:
-        // every series below sums `headcount`, which counts only the members
-        // they manage. Org-wide callers keep using the record's own total.
-        const memberScope = await resolveManagedMemberIds(ctx);
-        const scopedIds = isOrgWideScope(memberScope) ? null : memberScope;
-        const scopedCounts = scopedIds ? await scopedPresenceCounts(ctx, scopedIds) : null;
+        // Unit-level admins see their unit's participation, not the org's, and
+        // an explicit unit filter narrows that further: every series below sums
+        // `headcount`, which counts only the members in scope. Unrestricted
+        // callers keep using the record's own total.
+        const { memberScope, countedIds, presenceCounts } =
+            await resolveCountingScope(ctx, args.unit_id);
         const headcount = (record: Doc<"attendance">) =>
-            scopedCounts ? (scopedCounts.get(record._id) ?? 0) : record.count;
+            presenceCounts ? (presenceCounts.get(record._id) ?? 0) : record.count;
 
-        // Drop series a unit admin's members can never appear in: an event type
+        // Drop series the counted members can never appear in: an event type
         // restricted to other units would otherwise plot a flat zero line.
-        const adminUnitIds = scopedIds ? await getAdministeredUnitIds(ctx) : "all";
-        const seriesEventTypes = adminUnitIds === "all"
-            ? activeEventTypes
-            : activeEventTypes.filter(et => {
-                const unitIds = et.unit_ids ?? [];
-                return unitIds.length === 0 || unitIds.some(id => adminUnitIds.has(id));
-            });
+        const adminUnitIds = isOrgWideScope(memberScope)
+            ? "all"
+            : await getAdministeredUnitIds(ctx);
+        const seriesEventTypes = activeEventTypes.filter(et => {
+            const unitIds = et.unit_ids ?? [];
+            if (unitIds.length === 0) return true;
+            if (args.unit_id && !unitIds.some(id => id === args.unit_id)) return false;
+            return adminUnitIds === "all" || unitIds.some(id => adminUnitIds.has(id));
+        });
 
         // 1. Weekly Data (Last 11 Weeks) - Sunday Service aggregated
         const sundayServiceTypes = eventTypes.filter(et => et.value.includes("sunday-service"));

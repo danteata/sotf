@@ -4,19 +4,24 @@ import { query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { isSuperAdmin, getUserSafe, normalizeOrgId } from "./auth";
 import {
-    resolveManagedMemberIds,
-    isOrgWideScope,
+    describeCallerScope,
     getLinkedMember,
+    resolveCountingScope,
 } from "./scope";
 import { getUnitIdsAdministeredBy } from "./unit_admins";
 
 export const getDashboardData = query({
-    args: {},
-    handler: async (ctx) => {
+    args: {
+        // Narrows every figure below to the members of this unit. Omitted means
+        // "everything I oversee" — which for an org admin is the whole church
+        // and for a unit admin is already their own slice.
+        unit_id: v.optional(v.id("units")),
+    },
+    handler: async (ctx, args) => {
         const user = await getUserSafe(ctx);
         if (!user) return null; // Return null if user doesn't exist yet
 
-        const scopedIds = await resolveManagedMemberIds(ctx);
+        const { memberScope, countedIds } = await resolveCountingScope(ctx, args.unit_id);
 
         // Check if user has organization - if not, return empty data
         const userOrg = normalizeOrgId(ctx, user.organization_id);
@@ -28,11 +33,16 @@ export const getDashboardData = query({
                     scopedMembersCount: 0,
                     newMembersThisMonthCount: 0,
                     weeklyAttendance: 0,
+                    orgWeeklyAttendance: 0,
                     attendanceChange: 0,
                     activeUnitsCount: 0,
+                    unitsScope: 'organization' as const,
                     upcomingEventsCount: 0,
+                    orgUpcomingEventsCount: 0,
                     nextEventName: 'No upcoming events',
                 },
+                unitName: null,
+                scope: { isScoped: false, unitNames: [], memberCount: null },
                 upcomingEvents: [],
                 birthdayMembers: [],
                 financialTransactions: [],
@@ -51,19 +61,19 @@ export const getDashboardData = query({
         ).filter((m) => !m.archived_at);
         const activeMembers = allMembers.filter((m) => m.status === 'active');
 
-        let scopedMembers;
-        if (isOrgWideScope(scopedIds)) {
-            scopedMembers = activeMembers;
-        } else {
-            scopedMembers = activeMembers.filter((m) => scopedIds.has(m._id));
-        }
+        const scopedMembers = countedIds
+            ? activeMembers.filter((m) => countedIds.has(m._id))
+            : activeMembers;
 
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
         const newMembersThisMonthCount = scopedMembers.filter((m: any) => m._creationTime >= firstDayOfMonth).length;
 
-        // 2. Attendance
+        // 2. Attendance. `orgWeeklyAttendance` is the same service counted
+        //    church-wide, so a scoped headline can still be read against the
+        //    whole without a second trip or a mode switch.
         const sundayType = await ctx.db.query("event_types").withIndex("by_value", q => q.eq("value", "sunday-service")).unique();
         let weeklyAttendance = 0;
+        let orgWeeklyAttendance = 0;
         let attendanceChange = 0;
 
         if (sundayType) {
@@ -77,25 +87,21 @@ export const getDashboardData = query({
             const attendanceRecords = await attendanceQuery.order("desc").take(2);
 
             if (attendanceRecords.length > 0) {
-                if (isOrgWideScope(scopedIds)) {
-                    weeklyAttendance = attendanceRecords[0].count;
-                    if (attendanceRecords.length > 1 && attendanceRecords[1].count > 0) {
-                        attendanceChange = ((attendanceRecords[0].count - attendanceRecords[1].count) / attendanceRecords[1].count) * 100;
-                    }
-                } else {
-                    const getCountForRecord = async (aid: Id<"attendance">) => {
-                        const relations = await ctx.db.query("member_attendance")
-                            .withIndex("by_attendance", q => q.eq("attendance_id", aid))
-                            .collect();
-                        return relations.filter((r) => scopedIds.has(r.member_id)).length;
-                    };
+                orgWeeklyAttendance = attendanceRecords[0].count;
 
-                    weeklyAttendance = await getCountForRecord(attendanceRecords[0]._id);
-                    if (attendanceRecords.length > 1) {
-                        const prevCount = await getCountForRecord(attendanceRecords[1]._id);
-                        if (prevCount > 0) {
-                            attendanceChange = ((weeklyAttendance - prevCount) / prevCount) * 100;
-                        }
+                const countForRecord = async (aid: Id<"attendance">, orgCount: number) => {
+                    if (!countedIds) return orgCount;
+                    const relations = await ctx.db.query("member_attendance")
+                        .withIndex("by_attendance", q => q.eq("attendance_id", aid))
+                        .collect();
+                    return relations.filter((r) => countedIds.has(r.member_id)).length;
+                };
+
+                weeklyAttendance = await countForRecord(attendanceRecords[0]._id, attendanceRecords[0].count);
+                if (attendanceRecords.length > 1) {
+                    const prevCount = await countForRecord(attendanceRecords[1]._id, attendanceRecords[1].count);
+                    if (prevCount > 0) {
+                        attendanceChange = ((weeklyAttendance - prevCount) / prevCount) * 100;
                     }
                 }
             }
@@ -110,15 +116,25 @@ export const getDashboardData = query({
         }
         const upcomingEventsRecords = await eventsQuery.order("asc").take(10);
 
-        const upcomingEvents = await Promise.all(upcomingEventsRecords.map(async (e) => {
+        const allUpcomingEvents = await Promise.all(upcomingEventsRecords.map(async (e) => {
             const type = e.event_type_id ? await ctx.db.get(e.event_type_id) : null;
             return {
                 ...e,
                 id: e._id,
                 event_type_label: type?.label,
                 event_type_color: type?.color,
+                event_type_unit_ids: (type?.unit_ids ?? []) as Id<"units">[],
             };
         }));
+
+        // Events carry no unit of their own; their event type does. Under a
+        // unit filter, keep the ones that actually apply to that unit — an
+        // event type restricted to other units is not this unit's diary.
+        const upcomingEvents = args.unit_id
+            ? allUpcomingEvents.filter(e =>
+                e.event_type_unit_ids.length === 0 ||
+                e.event_type_unit_ids.some(id => id === args.unit_id))
+            : allUpcomingEvents;
 
         // 4. Active Units
         let unitsQuery = ctx.db.query("units").filter(q => q.eq(q.field("active"), true));
@@ -137,6 +153,39 @@ export const getDashboardData = query({
             }
         }
 
+        // Under a unit filter the "groups" card describes that unit's own
+        // branch — every active unit beneath it — rather than the org's total,
+        // which the filter has nothing to do with.
+        let unitsCount: number;
+        let unitsScope: 'organization' | 'led' | 'sub-units';
+        let unitName: string | null = null;
+        if (args.unit_id) {
+            const selected = activeUnits.find(u => u._id === args.unit_id)
+                ?? (await ctx.db.get(args.unit_id));
+            unitName = selected?.name ?? null;
+
+            const childrenOf = new Map<string, typeof activeUnits>();
+            for (const u of activeUnits) {
+                if (!u.parent_unit_id) continue;
+                const siblings = childrenOf.get(u.parent_unit_id) ?? [];
+                siblings.push(u);
+                childrenOf.set(u.parent_unit_id, siblings);
+            }
+            const countDescendants = (id: string): number =>
+                (childrenOf.get(id) ?? []).reduce(
+                    (sum, child) => sum + 1 + countDescendants(child._id),
+                    0,
+                );
+            unitsCount = countDescendants(args.unit_id);
+            unitsScope = 'sub-units';
+        } else if (ledUnitsCount !== null) {
+            unitsCount = ledUnitsCount;
+            unitsScope = 'led';
+        } else {
+            unitsCount = activeUnits.length;
+            unitsScope = 'organization';
+        }
+
         // 5. Birthdays - return the active members in scope for frontend
         // filtering. A unit admin celebrates their own people; the org-wide
         // list isn't theirs to act on.
@@ -146,11 +195,16 @@ export const getDashboardData = query({
                 scopedMembersCount: scopedMembers.length,
                 newMembersThisMonthCount,
                 weeklyAttendance,
+                orgWeeklyAttendance,
                 attendanceChange: Math.round(attendanceChange * 10) / 10,
-                activeUnitsCount: ledUnitsCount !== null ? ledUnitsCount : activeUnits.length,
+                activeUnitsCount: unitsCount,
+                unitsScope,
                 upcomingEventsCount: upcomingEvents.length,
+                orgUpcomingEventsCount: allUpcomingEvents.length,
                 nextEventName: upcomingEvents.length > 0 ? upcomingEvents[0].title : 'No upcoming events',
             },
+            unitName,
+            scope: await describeCallerScope(ctx, memberScope),
             upcomingEvents,
             birthdayMembers: scopedMembers.map((m: any) => ({
                 id: m._id,
@@ -167,7 +221,12 @@ export const getDashboardData = query({
 });
 
 export const getAttendanceTrends = query({
-    args: { weeks: v.optional(v.number()) },
+    args: {
+        weeks: v.optional(v.number()),
+        // Same unit filter as getDashboardData, so the chart under the cards
+        // is plotting the slice the cards are counting.
+        unit_id: v.optional(v.id("units")),
+    },
     handler: async (ctx, args) => {
         const user = await getUserSafe(ctx);
         if (!user) return [];
@@ -176,7 +235,7 @@ export const getAttendanceTrends = query({
         }
 
         const weeks = args.weeks ?? 12;
-        const scopedIds = await resolveManagedMemberIds(ctx);
+        const { countedIds } = await resolveCountingScope(ctx, args.unit_id);
         const orgId = isSuperAdmin(user) ? null : normalizeOrgId(ctx, user.organization_id);
 
         const endDate = new Date();
@@ -202,14 +261,12 @@ export const getAttendanceTrends = query({
             const weekStart = new Date(d.setDate(diff));
             const weekKey = weekStart.toISOString().split('T')[0];
 
-            let count = 0;
-            if (isOrgWideScope(scopedIds)) {
-                count = record.count;
-            } else {
+            let count = record.count;
+            if (countedIds) {
                 const relations = await ctx.db.query("member_attendance")
                     .withIndex("by_attendance", q => q.eq("attendance_id", record._id))
                     .collect();
-                count = relations.filter((r) => scopedIds.has(r.member_id)).length;
+                count = relations.filter((r) => countedIds.has(r.member_id)).length;
             }
 
             weeklyData[weekKey] = (weeklyData[weekKey] || 0) + count;

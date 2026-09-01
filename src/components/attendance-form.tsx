@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CalendarIcon, Search, RefreshCw, CalendarDays } from "lucide-react"
+import { CalendarIcon, Search, RefreshCw, CalendarDays, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Calendar } from "@/components/ui/calendar"
@@ -26,15 +26,32 @@ import { Id } from "../../convex/_generated/dataModel"
 import { MemberProfileDialog } from "@/components/member-profile-dialog"
 import type { Member } from "@/types/database"
 
+// Which member statuses the registry shows. Inactive members are excluded by
+// default — they are the bulk of the scrolling when marking a service, and
+// leaving them in silently padded exported lists too. Visitors stay visible:
+// a visitor at a service is exactly the person you need to be able to tick.
+const STATUS_FILTERS: { value: string; label: string; statuses: string[] | null }[] = [
+  { value: "active-visitor", label: "Active & visitors", statuses: ["active", "visitor"] },
+  { value: "active", label: "Active only", statuses: ["active"] },
+  { value: "visitor", label: "Visitors only", statuses: ["visitor"] },
+  { value: "inactive", label: "Inactive only", statuses: ["inactive"] },
+  { value: "all", label: "All statuses", statuses: null },
+]
+
 interface AttendanceFormProps {
   availableMembers?: any[]
-  availableUnits?: any[]
+  /**
+   * Unit id, or "all". Owned by the page (see attendance-content) so this
+   * registry, the metric cards and the other tabs all describe one slice —
+   * hence no unit dropdown of its own down here.
+   */
+  unitFilter?: string
   onSuccess?: () => void
 }
 
 export function AttendanceForm({
   availableMembers = [],
-  availableUnits = [],
+  unitFilter = "all",
   onSuccess
 }: AttendanceFormProps) {
   const [date, setDate] = useState<Date | undefined>(new Date())
@@ -50,7 +67,7 @@ export function AttendanceForm({
   const { trackEvent } = useAnalytics();
 
   // Filters
-  const [unitFilter, setUnitFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("active-visitor")
 
   // Convex Mutations
   const recordFullAttendance = useMutation(api.attendance.recordFullAttendance)
@@ -110,6 +127,8 @@ export function AttendanceForm({
     }
   }
 
+  const allowedStatuses = STATUS_FILTERS.find(f => f.value === statusFilter)?.statuses ?? null
+
   const filteredMembers = availableMembers.filter((member) => {
     const matchesSearch =
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,17 +136,35 @@ export function AttendanceForm({
 
     const matchesUnit =
       unitFilter === "all" ||
-      (member.unit_names && member.unit_names.includes(unitFilter)) ||
-      (member.units && member.units.includes(unitFilter))
+      (member.unit_ids || []).some((id: string) => String(id) === unitFilter)
 
-    return matchesSearch && matchesUnit
+    // Someone already marked present survives the status filter: an inactive
+    // member recorded by QR check-in, or ticked before the filter was applied,
+    // must stay visible or you could neither see nor unmark them. Unit and
+    // search still apply — those are "show me this slice" questions, and the
+    // tally below reports how many marked members they are hiding.
+    const matchesStatus =
+      !allowedStatuses ||
+      allowedStatuses.includes(member.status) ||
+      selectedMembers.includes(member.id)
+
+    return matchesSearch && matchesUnit && matchesStatus
   })
 
+  // Counts, so the numbers you would otherwise tally by hand are on screen.
+  const visibleIds = filteredMembers.map((m) => m.id)
+  const selectedVisibleCount = visibleIds.filter((id) => selectedMembers.includes(id)).length
+  const allVisibleSelected = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length
+  const hiddenSelectedCount = selectedMembers.length - selectedVisibleCount
+
+  // Acts on the visible rows only: selections outside the current filters are
+  // left alone instead of being wiped by a "select all" the user aimed at the
+  // handful of rows in front of them.
   const handleSelectAll = () => {
-    if (selectedMembers.length === filteredMembers.length) {
-      setSelectedMembers([])
+    if (allVisibleSelected) {
+      setSelectedMembers(selectedMembers.filter((id) => !visibleIds.includes(id)))
     } else {
-      setSelectedMembers(filteredMembers.map((member) => member.id))
+      setSelectedMembers(Array.from(new Set([...selectedMembers, ...visibleIds])))
     }
   }
 
@@ -281,15 +318,14 @@ export function AttendanceForm({
             <Label className="text-[10px] text-muted-foreground tracking-wider pl-1">Member Registry</Label>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="flex-1">
-                <Select value={unitFilter} onValueChange={setUnitFilter}>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="h-11 border-border rounded-xl bg-background focus:ring-primary">
-                    <SelectValue placeholder="All Organizational Units" />
+                    <SelectValue placeholder="Member status" />
                   </SelectTrigger>
                   <SelectContent className="border-border/50 rounded-xl shadow-soft-2xl">
-                    <SelectItem value="all" className="font-medium py-2.5 rounded-lg">All Organizational Units</SelectItem>
-                    {availableUnits.map((unit: any) => (
-                      <SelectItem key={unit.id} value={unit.name} className="font-medium py-2.5 rounded-lg">
-                        {unit.name}
+                    {STATUS_FILTERS.map((option) => (
+                      <SelectItem key={option.value} value={option.value} className="font-medium py-2.5 rounded-lg">
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -311,10 +347,30 @@ export function AttendanceForm({
                 onClick={handleSelectAll}
                 className="h-11 rounded-xl border-border text-muted-foreground px-6 shrink-0"
               >
-                {selectedMembers.length === filteredMembers.length
-                  ? "Clear Selections"
-                  : `Select All (${filteredMembers.length})`}
+                {allVisibleSelected
+                  ? `Clear ${visibleIds.length}`
+                  : `Select All (${visibleIds.length})`}
               </Button>
+            </div>
+
+            {/* Running tallies — the counts you would otherwise get by
+                scrolling the table and counting ticks by hand. */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 text-primary px-3 py-1.5 font-semibold">
+                <Users className="h-3.5 w-3.5" />
+                {selectedMembers.length} marked present
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-muted text-muted-foreground px-3 py-1.5">
+                {visibleIds.length - selectedVisibleCount} not yet marked in view
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-muted text-muted-foreground px-3 py-1.5">
+                Showing {visibleIds.length} of {availableMembers.length} members
+              </span>
+              {hiddenSelectedCount > 0 && (
+                <span className="inline-flex items-center rounded-lg bg-muted text-muted-foreground px-3 py-1.5">
+                  {hiddenSelectedCount} marked outside this view
+                </span>
+              )}
             </div>
 
             <div className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -323,7 +379,7 @@ export function AttendanceForm({
                   <TableRow className="hover:bg-transparent border-border">
                     <TableHead className="w-[60px] pl-6">
                       <Checkbox
-                        checked={selectedMembers.length === filteredMembers.length && filteredMembers.length > 0}
+                        checked={allVisibleSelected}
                         onCheckedChange={handleSelectAll}
                         className="rounded-md border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
@@ -340,6 +396,11 @@ export function AttendanceForm({
                         <div className="flex flex-col items-center justify-center gap-2 opacity-50">
                           <Search className="h-6 w-6 text-muted-foreground/50" />
                           <p className="font-medium text-muted-foreground text-sm">No members match your criteria</p>
+                          {allowedStatuses && (
+                            <p className="text-xs text-muted-foreground/70">
+                              Showing {allowedStatuses.join(" and ")} members — switch the status filter to widen the list
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -364,7 +425,20 @@ export function AttendanceForm({
                               <AvatarFallback className="bg-muted text-muted-foreground text-xs">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="font-bold text-foreground underline-offset-2 hover:underline">{member.name}</span>
+                              <span className="flex items-center gap-2">
+                                <span className="font-bold text-foreground underline-offset-2 hover:underline">{member.name}</span>
+                                {/* Only flagged when it is not the ordinary case, so a
+                                    row that survived the status filter because it is
+                                    already marked present reads as deliberate. */}
+                                {member.status && member.status !== "active" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[9px] px-1.5 py-0 rounded-md capitalize border-border text-muted-foreground"
+                                  >
+                                    {member.status}
+                                  </Badge>
+                                )}
+                              </span>
                               {/* Phone/email, not the raw internal id — this is the only
                                   contact info visible on mobile, since the Contact column
                                   is hidden below md. */}
